@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "strict": true,
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "include": [
+    "index.js",
+    "scraper.js",
+    "db.js",
+    "keepAwake.js",
+    "global.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dashboard",
+    "e2e_tests"
+  ]
+}

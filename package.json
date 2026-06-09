@@ -4,8 +4,11 @@
   "description": "Google Maps lead scraper for furniture and home decor stores — extracts business details, emails, and platform info to Excel.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "scrape": "node index.js"
+    "start": "node start.js",
+    "dev": "concurrently \"npm run dev --prefix dashboard\" \"node start.js\"",
+    "scrape": "node index.js",
+    "lint": "eslint index.js scraper.js db.js keepAwake.js",
+    "build": "tsc"
   },
   "keywords": [
     "lead-generation",
@@ -31,5 +34,15 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
+    "@typescript-eslint/parser": "^8.61.0",
+    "concurrently": "^10.0.3",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
   }
 }

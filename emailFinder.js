@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @module emailFinder
  * @description Multi-strategy email extraction and platform detection.
@@ -779,9 +780,9 @@ async function findEmails(businesses, db) {
             emailStatus,
           });
 
-          // Save DB and Export to Excel immediately!
+          // Save DB only, defer Excel export to the end
           db.save();
-          exportToExcel(db.getAll());
+          // exportToExcel(db.getAll());
 
           completedCount++;
           if (unique.length > 0) {
@@ -813,7 +814,7 @@ async function findEmails(businesses, db) {
             emailStatus: 'error',
           });
           db.save();
-          exportToExcel(db.getAll());
+          // exportToExcel(db.getAll());
           completedCount++;
         }
       })

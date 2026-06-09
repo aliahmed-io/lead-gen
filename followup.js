@@ -2,7 +2,21 @@ require('dotenv').config();
 const nodemailer = require('nodemailer');
 const CampaignDatabase = require('./campaignDb');
 const templates = require('./templates');
+const fs = require('fs');
+const path = require('path');
 const { isWithinBusinessHours } = require('./timeUtils');
+
+function getSettings() {
+  const settingsPath = path.join(__dirname, 'settings.json');
+  if (fs.existsSync(settingsPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    } catch (e) {
+      console.error('Error parsing settings.json. Using defaults.');
+    }
+  }
+  return { delayMinMs: 300000, delayMaxMs: 1200000, maxEmailsPerDay: 30 };
+}
 
 const isDryRun = process.argv.includes('--dry-run');
 
@@ -59,10 +73,6 @@ if (followUpCandidates.length === 0) {
   console.log('\u2705 No leads are ready for follow-up right now. Exiting.');
   process.exit(0);
 }
-
-// 3. Throttling Setup
-const DELAY_MIN = parseInt(process.env.DELAY_MIN_MS || 300000); 
-const DELAY_MAX = parseInt(process.env.DELAY_MAX_MS || 1200000); 
 
 async function startFollowUps() {
   const timeCheck = isWithinBusinessHours();
@@ -145,7 +155,8 @@ async function startFollowUps() {
       if (i < followUpCandidates.length - 1) {
         // Check if the next lead is also an email send (not just a stage 3 completion)
         if (followUpCandidates[i+1].nextStage !== 3) {
-          const delayMs = Math.floor(Math.random() * (DELAY_MAX - DELAY_MIN + 1)) + DELAY_MIN;
+          const settings = getSettings();
+          const delayMs = Math.floor(Math.random() * (settings.delayMaxMs - settings.delayMinMs + 1)) + settings.delayMinMs;
           console.log(`   \u23F2\uFE0F Pausing for ${(delayMs / 1000 / 60).toFixed(2)} minutes...\n`);
           await new Promise(r => setTimeout(r, delayMs));
         }

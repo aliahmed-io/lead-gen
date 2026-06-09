@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module db
  * @description Lightweight JSON-file database for persistent lead storage
@@ -6,6 +7,9 @@
  * Stores businesses keyed by normalised website domain (or name+address
  * when no website exists). Tracks which search queries have been fully
  * processed so re-runs skip them automatically.
+ * 
+ * @typedef {import('./scraper').BusinessDetails} BusinessDetails
+ * @typedef {BusinessDetails & { _key?: string, addedAt?: string, updatedAt?: string }} StoredBusiness
  */
 
 const fs = require('fs');
@@ -18,14 +22,14 @@ const { DB_FILE, DB_AUTOSAVE_INTERVAL } = require('./config');
 class LeadsDatabase {
   /**
    * Create or load a leads database from the configured JSON file.
-   * @param {string} [dbPath] — override path (defaults to DB_FILE).
+   * @param {string} [dbPath] - override path (defaults to DB_FILE).
    */
   constructor(dbPath) {
     /** @type {string} */
     this.dbPath = dbPath || DB_FILE;
     /** @private @type {number} unsaved mutation counter */
     this._dirtyCount = 0;
-    /** @type {{businesses: Record<string,Object>, completedQueries: string[], metadata: Object}} */
+    /** @type {{businesses: Record<string,StoredBusiness>, completedQueries: string[], metadata: unknown}} */
     this.data = this._load();
   }
 
@@ -34,7 +38,7 @@ class LeadsDatabase {
   /**
    * Load existing database from disk or create a fresh one.
    * @private
-   * @returns {{businesses: Record<string,Object>, completedQueries: string[], metadata: Object}}
+   * @returns {{businesses: Record<string,StoredBusiness>, completedQueries: string[], metadata: unknown}}
    */
   _load() {
     try {
@@ -55,8 +59,18 @@ class LeadsDatabase {
         }
       }
     } catch (err) {
+      if (err instanceof SyntaxError && fs.existsSync(this.dbPath)) {
+        const backupPath = this.dbPath + '.bak';
+        try {
+          fs.renameSync(this.dbPath, backupPath);
+          console.error(`\u26A0\uFE0F  Database file corrupt. Renamed to ${backupPath}`);
+        } catch (renameErr) {
+          console.error(`\u26A0\uFE0F  Failed to rename corrupt database: ${renameErr instanceof Error ? renameErr.message : String(renameErr)}`);
+        }
+        throw new Error(`Fatal: Database JSON is corrupt: ${err.message}`);
+      }
       console.warn(
-        `\u26A0\uFE0F  Database file unreadable, creating new: ${err.message}`
+        `\u26A0\uFE0F  Database file unreadable, creating new: ${err instanceof Error ? err.message : String(err)}`
       );
     }
 
@@ -74,7 +88,7 @@ class LeadsDatabase {
   /**
    * Generate a stable deduplication key for a business record.
    * @private
-   * @param {Object} business
+   * @param {BusinessDetails} business
    * @returns {string}
    */
   _generateKey(business) {
@@ -111,17 +125,21 @@ class LeadsDatabase {
    * Persist the database to disk using an atomic write-then-rename.
    */
   save() {
-    const tmpPath = this.dbPath + '.tmp';
-    fs.writeFileSync(tmpPath, JSON.stringify(this.data, null, 2), 'utf8');
-    fs.renameSync(tmpPath, this.dbPath);
-    this._dirtyCount = 0;
+    try {
+      const tmpPath = this.dbPath + '.tmp';
+      fs.writeFileSync(tmpPath, JSON.stringify(this.data, null, 2), 'utf8');
+      fs.renameSync(tmpPath, this.dbPath);
+      this._dirtyCount = 0;
+    } catch (err) {
+      console.error(`\u26A0\uFE0F  Failed to save database: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   /* ── business CRUD ────────────────────────────────────────────── */
 
   /**
    * Check whether a business already exists in the database.
-   * @param {Object} business
+   * @param {BusinessDetails} business
    * @returns {boolean}
    */
   has(business) {
@@ -133,12 +151,13 @@ class LeadsDatabase {
    * Matches by name (case-insensitive) parsed from the feed item label.
    *
    * @param {string} label - e.g. "Store Name · 5.0 (5) · Furniture store · Cary, NC"
-   * @param {string} href - Maps URL
    * @returns {boolean}
    */
-  hasFeedItem(label, href) {
+  hasFeedItem(label) {
     if (!label) return false;
-    const name = label.split(/[·\u00B7]/)[0].trim().toLowerCase();
+    const parts = label.split(/[·\u00B7]/);
+    const rawName = parts[0];
+    const name = rawName ? rawName.trim().toLowerCase() : '';
     if (!name) return false;
 
     for (const b of Object.values(this.data.businesses)) {
@@ -151,7 +170,7 @@ class LeadsDatabase {
 
   /**
    * Insert a new business. Returns `false` if the record already exists.
-   * @param {Object} business
+   * @param {BusinessDetails} business
    * @returns {boolean}
    */
   add(business) {
@@ -170,15 +189,16 @@ class LeadsDatabase {
 
   /**
    * Merge `updates` into an existing business record.
-   * @param {Object} business
-   * @param {Object} updates
+   * @param {BusinessDetails} business
+   * @param {BusinessDetails} updates
    * @returns {boolean}
    */
   update(business, updates) {
     const key = this._generateKey(business);
-    if (!(key in this.data.businesses)) return false;
+    const existing = this.data.businesses[key];
+    if (!existing) return false;
 
-    Object.assign(this.data.businesses[key], updates, {
+    Object.assign(existing, updates, {
       updatedAt: new Date().toISOString(),
     });
     this._maybeSave();
@@ -187,8 +207,8 @@ class LeadsDatabase {
 
   /**
    * Retrieve a single business record (or `null`).
-   * @param {Object} business
-   * @returns {Object|null}
+   * @param {BusinessDetails} business
+   * @returns {StoredBusiness|null}
    */
   get(business) {
     const key = this._generateKey(business);
@@ -197,7 +217,7 @@ class LeadsDatabase {
 
   /**
    * Return every stored business record.
-   * @returns {Array<Object>}
+   * @returns {Array<StoredBusiness>}
    */
   getAll() {
     return Object.values(this.data.businesses);
@@ -212,7 +232,7 @@ class LeadsDatabase {
    * Businesses with status "scanned" (checked, genuinely no email),
    * "found", "found-playwright", or "chain-skipped" are excluded.
    *
-   * @returns {Array<Object>}
+   * @returns {Array<StoredBusiness>}
    */
   getNeedingEmailScan() {
     return this.getAll().filter(
@@ -272,7 +292,9 @@ class LeadsDatabase {
    */
   getStats() {
     const all = this.getAll();
+    /** @type {Record<string,number>} */
     const platforms = {};
+    /** @type {Record<string,number>} */
     const states = {};
 
     for (const b of all) {

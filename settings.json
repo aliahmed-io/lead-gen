@@ -1,0 +1,5 @@
+{
+  "delayMinMs": 300000,
+  "delayMaxMs": 1200000,
+  "maxEmailsPerDay": 30
+}

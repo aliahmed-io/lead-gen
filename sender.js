@@ -1,14 +1,26 @@
 require('dotenv').config();
 const nodemailer = require('nodemailer');
-const LeadsDatabase = require('./db');
+const { LeadsDatabase } = require('./db');
 const CampaignDatabase = require('./campaignDb');
 const templates = require('./templates');
+const fs = require('fs');
+const path = require('path');
 const { verifyEmail } = require('./verifier');
 const { isWithinBusinessHours } = require('./timeUtils');
 
-const isDryRun = process.argv.includes('--dry-run');
-const MAX_EMAILS_PER_DAY = 30; // Hard limit per account per day
+function getSettings() {
+  const settingsPath = path.join(__dirname, 'settings.json');
+  if (fs.existsSync(settingsPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    } catch (e) {
+      console.error('Error parsing settings.json. Using defaults.');
+    }
+  }
+  return { delayMinMs: 300000, delayMaxMs: 1200000, maxEmailsPerDay: 30 };
+}
 
+const isDryRun = process.argv.includes('--dry-run');
 // 1. Initialize DBs
 const leadsDb = new LeadsDatabase();
 const campaignDb = new CampaignDatabase();
@@ -35,8 +47,8 @@ for (let i = 1; i <= 6; i++) {
 }
 
 if (transporters.length === 0) {
-  console.error('\u274C No SMTP accounts found in .env file!');
-  process.exit(1);
+  console.log("❌ No SMTP accounts found in .env file! Skipping sender module.");
+  return;
 }
 
 // 3. Load Leads & Sync to Campaign DB
@@ -71,10 +83,6 @@ if (pendingQueue.length === 0) {
   process.exit(0);
 }
 
-// 5. Throttling Setup
-const DELAY_MIN = parseInt(process.env.DELAY_MIN_MS || 300000); 
-const DELAY_MAX = parseInt(process.env.DELAY_MAX_MS || 1200000); 
-
 /**
  * The independent worker function assigned to a specific SMTP account.
  */
@@ -91,9 +99,10 @@ async function startWorker(account) {
     }
 
     // 2. Check Daily Quotas
+    const settings = getSettings();
     const dailyCount = campaignDb.getDailyCount(account.id);
-    if (dailyCount >= MAX_EMAILS_PER_DAY) {
-      console.log(`\u26A0\uFE0F Account ${account.id} reached its daily limit of ${MAX_EMAILS_PER_DAY} emails. Shutting down worker for today.`);
+    if (dailyCount >= settings.maxEmailsPerDay) {
+      console.log(`\u26A0\uFE0F Account ${account.id} reached its daily limit of ${settings.maxEmailsPerDay} emails. Shutting down worker for today.`);
       return; // Exit this worker loop completely
     }
 
@@ -129,7 +138,7 @@ async function startWorker(account) {
       customSentence: customSentence
     });
 
-    console.log(`[Account ${account.id}] \u27A1\uFE0F Sending to: ${lead.email} (${dailyCount + 1}/${MAX_EMAILS_PER_DAY} today)`);
+    console.log(`[Account ${account.id}] \u27A1\uFE0F Sending to: ${lead.email} (${dailyCount + 1}/${settings.maxEmailsPerDay} today)`);
 
     // 6. Send
     if (isDryRun) {
@@ -171,7 +180,7 @@ async function startWorker(account) {
 
     // 7. Sleep (Independent of other workers)
     if (pendingQueue.length > 0) {
-      const delayMs = Math.floor(Math.random() * (DELAY_MAX - DELAY_MIN + 1)) + DELAY_MIN;
+      const delayMs = Math.floor(Math.random() * (settings.delayMaxMs - settings.delayMinMs + 1)) + settings.delayMinMs;
       console.log(`   \u23F2\uFE0F Account ${account.id} sleeping for ${(delayMs / 1000 / 60).toFixed(2)} minutes...\n`);
       await new Promise(r => setTimeout(r, delayMs));
     }

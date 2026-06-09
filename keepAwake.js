@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module keepAwake
  * @description Prevent the operating system from sleeping, hibernating,
@@ -31,7 +32,7 @@ let tempScriptPath = null;
 /** @type {boolean} */
 let isActive = false;
 
-/** Saved Windows power-plan values for restoration on exit */
+/** @type {{ lidAc: number|null, lidDc: number|null, standbyAc: number|null, standbyDc: number|null, hibernateAc: number|null, hibernateDc: number|null }} */
 const saved = {
   lidAc: null,
   lidDc: null,
@@ -74,7 +75,7 @@ function parsePowerIndex(output, label) {
   for (const line of output.split('\n')) {
     if (line.includes(label)) {
       const m = line.match(/0x([0-9a-fA-F]+)/);
-      return m ? parseInt(m[1], 16) : null;
+      return m && m[1] ? parseInt(m[1], 16) : null;
     }
   }
   return null;

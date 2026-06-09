@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module index
  * @description Main entry point for the Google Maps lead scraper.
@@ -31,9 +32,10 @@ process.on('uncaughtException', (err) => {
   console.error('\n\u26A0\uFE0F  [uncaughtException]', err.message);
   console.error(err.stack);
   try {
-    if (db) db.save();
+    if (db) /** @type {import('./db').LeadsDatabase} */ (db).save();
+    allowSleep();
   } catch { /* best-effort */ }
-  // Do NOT exit — let the auto-restart loop handle recovery.
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
@@ -43,9 +45,10 @@ process.on('unhandledRejection', (reason) => {
   );
   if (reason instanceof Error) console.error(reason.stack);
   try {
-    if (db) db.save();
+    if (db) /** @type {import('./db').LeadsDatabase} */ (db).save();
+    allowSleep();
   } catch { /* best-effort */ }
-  // Do NOT exit — let the auto-restart loop handle recovery.
+  process.exit(1);
 });
 
 /* ------------------------------------------------------------------ */
@@ -87,7 +90,7 @@ function setupGracefulShutdown() {
         db.markRunComplete();
       }
     } catch (err) {
-      console.error('   \u26A0\uFE0F  Error during shutdown:', err.message);
+      console.error('   \u26A0\uFE0F  Error during shutdown:', err instanceof Error ? err.message : String(err));
     }
 
     try {
@@ -124,6 +127,20 @@ async function main() {
   console.log(`   Started at:     ${new Date().toLocaleString()}`);
   console.log(bar);
 
+  // Validate configuration
+  if (!Array.isArray(SEARCH_QUERIES) || SEARCH_QUERIES.length === 0) {
+    console.error('\u274C Error: SEARCH_QUERIES is invalid or empty in config.');
+    process.exit(1);
+  }
+  if (!OUTPUT_FILE) {
+    console.error('\u274C Error: OUTPUT_FILE is not defined in config.');
+    process.exit(1);
+  }
+  if (!DB_FILE) {
+    console.error('\u274C Error: DB_FILE is not defined in config.');
+    process.exit(1);
+  }
+
   /* ── Initialise database ────────────────────────────────────── */
   db = new LeadsDatabase();
   const initialCount = db.size();
@@ -135,14 +152,14 @@ async function main() {
       await findEmails(backlog, db);
     }
   } catch (phase1Err) {
-    console.error('\n\u274C Phase 1 (backlog) failed:', phase1Err.message);
-    console.error(phase1Err.stack);
+    console.error('\n\u274C Phase 1 (backlog) failed:', phase1Err instanceof Error ? phase1Err.message : String(phase1Err));
+    if (phase1Err instanceof Error) console.error(phase1Err.stack);
     console.log('\u{1F504} Continuing to Phase 2 (Interleaved Maps/Email)...');
   }
 
   /* ── Phase 2: Interleaved Maps + Emails ─────────────────────── */
   try {
-    const currentSuccess = db.getAll().filter(b => b.emails && b.emails.length > 0).length;
+    const currentSuccess = db.getAll().filter(b => b.email && b.email.length > 0).length;
     if (currentSuccess >= 2000) {
       console.log('\n\u2705 Target of 2,000 successful leads reached. Skipping Maps Scraping.');
     } else {
@@ -153,8 +170,8 @@ async function main() {
       );
     }
   } catch (phase2Err) {
-    console.error('\n\u274C Phase 2 failed:', phase2Err.message);
-    console.error(phase2Err.stack);
+    console.error('\n\u274C Phase 2 failed:', phase2Err instanceof Error ? phase2Err.message : String(phase2Err));
+    if (phase2Err instanceof Error) console.error(phase2Err.stack);
     console.log('\u{1F504} Continuing to Phase 3 (export) with existing DB records...');
     try { db.save(); } catch { /* best-effort */ }
   }
@@ -169,8 +186,8 @@ async function main() {
     /* ── Summary ─────────────────────────────────────────────── */
     printSummary(allLeads);
   } catch (phase3Err) {
-    console.error('\n\u274C Phase 3 (export) failed:', phase3Err.message);
-    console.error(phase3Err.stack);
+    console.error('\n\u274C Phase 3 (export) failed:', phase3Err instanceof Error ? phase3Err.message : String(phase3Err));
+    if (phase3Err instanceof Error) console.error(phase3Err.stack);
   }
 
   /* ── Finalise ─────────────────────────────────────────────── */
@@ -197,7 +214,8 @@ const MAX_RESTARTS = 5;
 const RESTART_DELAY_MS = 30_000;
 
 (async () => {
-  global.leadCounter = 0;
+  
+  global['leadCounter'] = 0;
   let consecutiveFailures = 0;
 
   // The script will now naturally resume from the last uncompleted query.
@@ -211,14 +229,14 @@ const RESTART_DELAY_MS = 30_000;
       consecutiveFailures++;
       console.error(
         `\n\u274C main() threw (attempt ${consecutiveFailures}/${MAX_RESTARTS}):`,
-        fatalErr.message
+        fatalErr instanceof Error ? fatalErr.message : String(fatalErr)
       );
-      console.error(fatalErr.stack);
+      if (fatalErr instanceof Error) console.error(fatalErr.stack);
 
       // Emergency save before restarting.
       try {
         if (db) {
-          db.save();
+          /** @type {import('./db').LeadsDatabase} */ (db).save();
           console.log('\u{1F4BE} Emergency database save completed.');
         }
       } catch { /* nothing more we can do */ }
@@ -238,4 +256,10 @@ const RESTART_DELAY_MS = 30_000;
       await new Promise((r) => setTimeout(r, RESTART_DELAY_MS));
     }
   }
-})();
+  try { allowSleep(); } catch { /* ignore */ }
+})().catch(err => {
+  console.error('\n\u274C Fatal error in auto-restart loop:', err.message);
+  console.error(err.stack);
+  try { allowSleep(); } catch { /* ignore */ }
+  process.exit(1);
+});

@@ -1,0 +1,14 @@
+{
+  "initial": {
+    "subject": "Quick question for {{companyName}}",
+    "text": "Hi {{companyName}} team,\n\nHope you're having a great week!\n\n{{customSentence}} \n\n[YOUR PITCH GOES HERE - e.g. We help stores like yours in {{city}} increase conversions by X%]\n\nWould you be open to a quick 5-minute chat next week to see if there's a fit?\n\nBest,\nYour Name\nYour Title\nYour Company"
+  },
+  "followUp1": {
+    "subject": "Re: Quick question for {{companyName}}",
+    "text": "Hi {{companyName}} team,\n\nI know things get busy, so I'm just bubbling this up to the top of your inbox.\n\nAre you currently exploring any solutions for [YOUR VALUE PROP]?\n\nIf not, no worries! Just let me know.\n\nBest,\nYour Name"
+  },
+  "followUp2": {
+    "subject": "Re: Quick question for {{companyName}}",
+    "text": "Hi {{companyName}} team,\n\nI'm reaching out one last time to see if [YOUR VALUE PROP] is on your radar right now.\n\nIf it's not a priority at the moment, I completely understand and won't bother you again.\n\nThanks for your time!\n\nBest,\nYour Name"
+  }
+}

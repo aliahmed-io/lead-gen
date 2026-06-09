@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module scraper
  * @description Google Maps search-results scraper with anti-ban
@@ -26,6 +27,33 @@ const {
   BREAK_DURATION_MAX,
   MAPS_PAGE_TIMEOUT,
 } = require('./config');
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @typedef {Object} BusinessDetails
+ * @property {string} name
+ * @property {string} [website]
+ * @property {string} [phone]
+ * @property {string} [address]
+ * @property {string} [city]
+ * @property {string} [state]
+ * @property {number|null} [rating]
+ * @property {number|null} [reviews]
+ * @property {string} [category]
+ * @property {string} [priceLevel]
+ * @property {string} [openStatus]
+ * @property {string} [description]
+ * @property {Record<string, string>} [socialLinks]
+ * @property {string} [mapsUrl]
+ * @property {number} [leadNum]
+ * @property {string[]} [emails]
+ * @property {string} [email]
+ * @property {string} [emailStatus]
+ * @property {string} [platform]
+ */
 
 /* ------------------------------------------------------------------ */
 /*  Utilities                                                         */
@@ -73,7 +101,7 @@ function randomDelay(min, max) {
  * @returns {T}
  */
 function randomItem(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+  return /** @type {T} */ (arr[Math.floor(Math.random() * arr.length)]);
 }
 
 /**
@@ -127,7 +155,7 @@ async function createFreshContext(browser) {
   const page = await context.newPage();
   await page.route(
     /\.(png|jpg|jpeg|gif|webp|mp4|webm|svg)(\?.*)?$/i,
-    (route) => route.abort()
+    (route) => route.abort().catch(() => {})
   );
   return { context, page };
 }
@@ -154,22 +182,24 @@ function parseAddress(address) {
   let state = '';
 
   if (parts.length >= 2) {
-    const last = parts[parts.length - 1];
+    const last = parts[parts.length - 1] || '';
     const stateZip = last.match(/^([A-Z]{2})\s+\d{5}(?:-\d{4})?$/);
     const bare = last.match(/^([A-Z]{2})$/);
 
-    if (stateZip) {
+    if (stateZip && stateZip[1]) {
       state = stateZip[1];
-      city = parts[parts.length - 2];
-    } else if (bare) {
+      city = parts[parts.length - 2] || '';
+    } else if (bare && bare[1]) {
       state = bare[1];
-      city = parts[parts.length - 2];
+      city = parts[parts.length - 2] || '';
     } else {
       for (let i = parts.length - 1; i >= 0; i--) {
-        const m = parts[i].match(/\b([A-Z]{2})\b/);
-        if (m) {
+        const part = parts[i];
+        if (!part) continue;
+        const m = part.match(/\b([A-Z]{2})\b/);
+        if (m && m[1]) {
           state = m[1];
-          if (i > 0) city = parts[i - 1];
+          if (i > 0) city = parts[i - 1] || '';
           break;
         }
       }
@@ -207,7 +237,7 @@ async function applyStealth(context) {
     const originalQuery = window.navigator.permissions.query;
     window.navigator.permissions.query = (params) =>
       params.name === 'notifications'
-        ? Promise.resolve({ state: Notification.permission })
+        ? Promise.resolve(/** @type {PermissionStatus} */ (/** @type {unknown} */ ({ state: Notification.permission })))
         : originalQuery(params);
   });
 }
@@ -314,7 +344,7 @@ async function scrollResultsFeed(page, targetCount) {
       `${feedSel} a[href*="/maps/place/"]`,
       (anchors) => {
         const seen = new Set();
-        return anchors.filter((a) => {
+        return /** @type {HTMLAnchorElement[]} */ (anchors).filter((a) => {
           if (seen.has(a.href)) return false;
           seen.add(a.href);
           return true;
@@ -336,7 +366,7 @@ async function scrollResultsFeed(page, targetCount) {
     await randomDelay(2000, 3500);
 
     const endReached = await page.evaluate(() => {
-      const feed = document.querySelector('div[role="feed"]');
+      const feed = /** @type {HTMLElement|null} */ (document.querySelector('div[role="feed"]'));
       if (!feed) return false;
       const t = feed.innerText || '';
       return (
@@ -358,7 +388,7 @@ async function scrollResultsFeed(page, targetCount) {
  * price level, and current open/closed status.
  *
  * @param {import('playwright').Page} page
- * @returns {Promise<Object|null>}
+ * @returns {Promise<BusinessDetails|null>}
  */
 async function extractBusinessDetails(page) {
   return page.evaluate(() => {
@@ -368,7 +398,7 @@ async function extractBusinessDetails(page) {
     if (!name) return null;
 
     /* ---- Website ------------------------------------------------- */
-    const websiteEl = document.querySelector('a[data-item-id="authority"]');
+    const websiteEl = /** @type {HTMLAnchorElement|null} */ (document.querySelector('a[data-item-id="authority"]'));
     let website = '';
     if (websiteEl) {
       website = websiteEl.href || websiteEl.getAttribute('href') || '';
@@ -384,9 +414,9 @@ async function extractBusinessDetails(page) {
     }
 
     /* ---- Phone --------------------------------------------------- */
-    const phoneEl = document.querySelector(
+    const phoneEl = /** @type {HTMLButtonElement|null} */ (document.querySelector(
       'button[data-item-id^="phone:tel:"]'
-    );
+    ));
     let phone = '';
     if (phoneEl) {
       const itemId = phoneEl.getAttribute('data-item-id') || '';
@@ -398,9 +428,10 @@ async function extractBusinessDetails(page) {
     }
 
     /* ---- Address ------------------------------------------------- */
-    const addressEl =
+    const addressEl = /** @type {HTMLButtonElement|null} */ (
       document.querySelector('button[data-item-id="address"]') ||
-      document.querySelector('button[data-item-id^="address"]');
+      document.querySelector('button[data-item-id^="address"]')
+    );
     const address = addressEl?.textContent?.trim() || '';
 
     /* ---- Rating & Reviews ---------------------------------------- */
@@ -426,7 +457,7 @@ async function extractBusinessDetails(page) {
           revSpan.getAttribute('aria-label') ||
           '';
         const m = raw.match(/([\d,]+)/);
-        reviews = m ? m[1].replace(/,/g, '') : '';
+        reviews = (m && m[1]) ? m[1].replace(/,/g, '') : '';
       }
     }
 
@@ -437,9 +468,9 @@ async function extractBusinessDetails(page) {
       if (img) {
         const lbl = img.getAttribute('aria-label') || '';
         const rm = lbl.match(/([\d.]+)\s*star/i);
-        rating = rm ? rm[1] : '';
+        rating = (rm && rm[1]) ? rm[1] : '';
         const revm = lbl.match(/([\d,]+)\s*review/i);
-        reviews = revm ? revm[1].replace(/,/g, '') : '';
+        reviews = (revm && revm[1]) ? revm[1].replace(/,/g, '') : '';
       }
     }
 
@@ -494,8 +525,8 @@ async function extractBusinessDetails(page) {
     }
 
     /* ---- Social links -------------------------------------------- */
-    const socialLinks = {};
-    const allLinks = document.querySelectorAll('a[href]');
+    const socialLinks = /** @type {Record<string, string>} */ ({});
+    const allLinks = /** @type {NodeListOf<HTMLAnchorElement>} */ (document.querySelectorAll('a[href]'));
     for (const link of allLinks) {
       const href = link.href || '';
       if (href.includes('facebook.com/')) socialLinks.facebook = href;
@@ -534,7 +565,7 @@ async function extractBusinessDetails(page) {
 
 /**
  * Validate that a scraped business is legitimate and not an offline error page.
- * @param {Object} details
+ * @param {BusinessDetails|null} details
  * @returns {boolean}
  */
 function isValidBusiness(details) {
@@ -580,9 +611,10 @@ function isValidBusiness(details) {
  * @param {import('./db').LeadsDatabase} db
  * @param {{total: number, sinceBreak: number}} counters - mutable counters.
  * @param {boolean} isFirstQueryOfSession
- * @returns {Promise<{success: boolean, results: Array<Object>, newCount: number, captchaStuck?: boolean}>}
+ * @returns {Promise<{success: boolean, results: Array<BusinessDetails>, newCount: number, captchaStuck?: boolean}>}
  */
 async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
+  /** @type {Array<BusinessDetails>} */
   const results = [];
   let newCount = 0;
   let success = false;
@@ -632,7 +664,7 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
         const single = await extractBusinessDetails(page);
         if (single && single.name) {
           if (isValidBusiness(single)) {
-            const parsed = parseAddress(single.address);
+            const parsed = parseAddress(single.address || '');
             single.city = parsed.city;
             single.state = parsed.state;
 
@@ -640,7 +672,7 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
               db.add(single);
               results.push(single);
               newCount++;
-              const leadNum = ++global.leadCounter;
+              const leadNum = ++global['leadCounter'];
               single.leadNum = leadNum;
               console.log(`lead no ${leadNum} , ${single.name}, phase 1 complete`);
               if (single.website) {
@@ -673,7 +705,7 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
       'div[role="feed"] a[href*="/maps/place/"]',
       (anchors) => {
         const seen = new Set();
-        return anchors
+        return /** @type {HTMLAnchorElement[]} */ (anchors)
           .filter((a) => {
             if (seen.has(a.href)) return false;
             seen.add(a.href);
@@ -693,7 +725,9 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
     let first20AllInDb = true;
 
     for (let i = 0; i < targets.length; i++) {
-      const { href, label } = targets[i];
+      const target = targets[i];
+      if (!target) continue;
+      const { href, label } = target;
 
       /* Break check */
       counters.sinceBreak++;
@@ -716,8 +750,9 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
             break;
           } catch (navErr) {
             if (navAttempt < 2) {
+              const navErrMsg = navErr instanceof Error ? navErr.message : String(navErr);
               console.warn(
-                `   [${i + 1}/${targets.length}] \u26A0\uFE0F  Detail nav failed (attempt ${navAttempt + 1}/3): ${navErr.message}. Retrying in 3s...`
+                `   [${i + 1}/${targets.length}] \u26A0\uFE0F  Detail nav failed (attempt ${navAttempt + 1}/3): ${navErrMsg}. Retrying in 3s...`
               );
               await ensureOnline('detail page retry');
               await new Promise((r) => setTimeout(r, 3000));
@@ -741,7 +776,7 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
 
         if (details && details.name) {
           if (isValidBusiness(details)) {
-            const parsed = parseAddress(details.address);
+            const parsed = parseAddress(details.address || '');
             details.city = parsed.city;
             details.state = parsed.state;
 
@@ -751,7 +786,7 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
               newCount++;
               first20AllInDb = false; // We found a new lead!
               
-              const leadNum = ++global.leadCounter;
+              const leadNum = ++global['leadCounter'];
               details.leadNum = leadNum;
               console.log(`lead no ${leadNum} , ${details.name}, phase 1 complete`);
               if (details.website) {
@@ -785,14 +820,16 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
 
         await randomDelay(RESULT_DELAY_MIN, RESULT_DELAY_MAX);
       } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
         console.warn(
-          `   [${i + 1}/${targets.length}] \u26A0\uFE0F  Error: ${err.message}`
+          `   [${i + 1}/${targets.length}] \u26A0\uFE0F  Error: ${errMsg}`
         );
         first20AllInDb = false;
       }
     }
   } catch (err) {
-    console.error(`\u274C Query error "${query}": ${err.message}`);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`\u274C Query error "${query}": ${errMsg}`);
     success = false;
   }
 
@@ -810,9 +847,10 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
  * @param {string[]} queries
  * @param {import('./db').LeadsDatabase} db
  * @param {Function} [onQueryComplete] - async callback invoked after a query with new results
- * @returns {Promise<Array<Object>>} Newly added business records.
+ * @returns {Promise<Array<BusinessDetails>>} Newly added business records.
  */
 async function scrapeAllQueries(queries, db, onQueryComplete) {
+  /** @type {Array<BusinessDetails>} */
   const allNew = [];
   const counters = { total: 0, sinceBreak: 0 };
   let isFirstQueryOfSession = true;
@@ -836,6 +874,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
 
     for (let qi = 0; qi < queries.length; qi++) {
       const query = queries[qi];
+      if (!query) continue;
 
       if (db.isQueryCompleted(query)) {
         console.log(
@@ -864,11 +903,12 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
 
       for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt > 0) {
-          const delaySec = QUERY_BACKOFFS[attempt - 1] / 1000;
+          const backoff = QUERY_BACKOFFS[attempt - 1] || 0;
+          const delaySec = backoff / 1000;
           console.warn(
             `   \u{1F504} Retry ${attempt}/3 for "${query}" in ${delaySec}s...`
           );
-          await new Promise((r) => setTimeout(r, QUERY_BACKOFFS[attempt - 1]));
+          await new Promise((r) => setTimeout(r, backoff));
 
           /* Rotate user-agent on retry */
           try {
@@ -886,7 +926,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
         }
 
         try {
-          const scrapeResult = await scrapeQuery(page, query, db, counters);
+          const scrapeResult = await scrapeQuery(page, query, db, counters, isFirstQueryOfSession);
           allNew.push(...scrapeResult.results);
 
           console.log(
@@ -922,9 +962,10 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
           );
         } catch (queryErr) {
           /* --- Browser crash recovery --- */
-          if (isBrowserCrash(queryErr)) {
+          if (isBrowserCrash(/** @type {Error} */ (queryErr))) {
+            const queryErrMsg = queryErr instanceof Error ? queryErr.message : String(queryErr);
             console.error(
-              `   \u{1F4A5} Browser crash detected: ${queryErr.message}`
+              `   \u{1F4A5} Browser crash detected: ${queryErrMsg}`
             );
             console.log('   \u23F3 Closing old browser and relaunching in 5s...');
             try { await context.close(); } catch { /* ignore */ }
@@ -947,8 +988,9 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
             continue;
           }
           /* Non-crash error — log and retry */
+          const queryErrMsg2 = queryErr instanceof Error ? queryErr.message : String(queryErr);
           console.error(
-            `   \u274C Query error (attempt ${attempt + 1}/3): ${queryErr.message}`
+            `   \u274C Query error (attempt ${attempt + 1}/3): ${queryErrMsg2}`
           );
         }
       }
@@ -963,6 +1005,9 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
       if (qi < queries.length - 1) {
         await randomDelay(QUERY_DELAY_MIN, QUERY_DELAY_MAX);
       }
+      
+      // We have now run at least one query this session
+      isFirstQueryOfSession = false;
     }
 
     try { await context.close(); } catch { /* may already be closed */ }

@@ -1,7 +1,30 @@
 const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
 const { startCampaign } = require('./sender');
 const { startFollowUps } = require('./followup');
 const { startListener } = require('./imapListener');
+
+// Global Logger Interceptor
+const logFile = fs.createWriteStream(path.join(__dirname, 'audit.log'), { flags: 'a' });
+const originalLog = console.log;
+const originalError = console.error;
+
+function formatArgs(args) {
+  return args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+}
+
+console.log = function (...args) {
+  const msg = formatArgs(args);
+  logFile.write(`[INFO] ${new Date().toISOString()} - ${msg}\n`);
+  originalLog.apply(console, args);
+};
+
+console.error = function (...args) {
+  const msg = formatArgs(args);
+  logFile.write(`[ERROR] ${new Date().toISOString()} - ${msg}\n`);
+  originalError.apply(console, args);
+};
 
 console.log('======================================================');
 console.log('\u{1F916} MASTER SCHEDULER ONLINE');

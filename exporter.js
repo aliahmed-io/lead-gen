@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @module exporter
  * @description Export the full leads database to a formatted Excel
@@ -83,7 +84,15 @@ function exportToExcel(leads) {
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads');
 
   const outputPath = path.resolve(OUTPUT_FILE);
-  XLSX.writeFile(workbook, outputPath);
+  try {
+    XLSX.writeFile(workbook, outputPath);
+  } catch (err) {
+    if (err.code === 'EBUSY') {
+      console.warn(`\n\u26A0\uFE0F  Warning: Could not save to Excel because '${OUTPUT_FILE}' is currently open in another program (like Excel). Please close it to allow saving.`);
+    } else {
+      console.error(`\n\u274C Error saving to Excel: ${err.message}`);
+    }
+  }
 
   return outputPath;
 }
