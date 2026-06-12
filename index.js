@@ -159,16 +159,12 @@ async function main() {
 
   /* ── Phase 2: Interleaved Maps + Emails ─────────────────────── */
   try {
-    const currentSuccess = db.getAll().filter(b => b.email && b.email.length > 0).length;
-    if (currentSuccess >= 2000) {
-      console.log('\n\u2705 Target of 2,000 successful leads reached. Skipping Maps Scraping.');
-    } else {
       const newBusinesses = await scrapeAllQueries(SEARCH_QUERIES, db);
 
       console.log(
         `\u2705 Phase 2 complete: ${newBusinesses.length} new businesses added | ${db.size()} total in DB`
       );
-    }
+
   } catch (phase2Err) {
     console.error('\n\u274C Phase 2 failed:', phase2Err instanceof Error ? phase2Err.message : String(phase2Err));
     if (phase2Err instanceof Error) console.error(phase2Err.stack);

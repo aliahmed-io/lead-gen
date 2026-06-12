@@ -641,16 +641,7 @@ async function findEmails(businesses, db) {
         });
 
         const taskExecution = async () => {
-          const currentSuccess = db.getAll().filter(b => b.emails && b.emails.length > 0).length;
-          if (currentSuccess >= 2000) {
-            if (!global.targetReachedMsg) {
-              console.log('\n\u2705 Target of 2,000 successful leads reached! Stopping Email Extractor.');
-              global.targetReachedMsg = true;
-            }
-            return;
-          }
-
-          // Assign leadNum immediately at task start and log Phase 1
+          // Removed 2000 leads hard limit          // Assign leadNum immediately at task start and log Phase 1
           const leadNum = biz.leadNum || ++global.leadCounter;
           biz.leadNum = leadNum;
           if (!biz.isPhase1Logged) {
@@ -742,7 +733,12 @@ async function findEmails(businesses, db) {
                     console.warn(
                       `\n⚠️  [BROWSER CRASH] Relaunch ${browserRelaunchCount}/${MAX_BROWSER_RELAUNCHES} — retrying ${biz.name}...`
                     );
-                    try { await browser.close(); } catch {}
+                    try { 
+                      await Promise.race([
+                        browser.close().catch(() => {}),
+                        new Promise(r => setTimeout(r, 5000))
+                      ]); 
+                    } catch {}
                     try {
                       browser = await launchBrowser();
                     } catch (launchErr) {
@@ -823,7 +819,10 @@ async function findEmails(businesses, db) {
     await Promise.all(tasks);
   } finally {
     if (browser) {
-      await browser.close().catch(() => {});
+      await Promise.race([
+        browser.close().catch(() => {}),
+        new Promise(r => setTimeout(r, 5000))
+      ]);
     }
   }
 

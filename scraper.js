@@ -949,11 +949,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
             if (onQueryComplete && scrapeResult.newCount > 0) {
               await onQueryComplete(scrapeResult.results);
             }
-            const currentSuccess = db.getAll().filter(b => b.emails && b.emails.length > 0).length;
-            if (currentSuccess >= 2000) {
-               console.log('\n\u2705 Target of 2,000 successful leads reached! Aborting further Google Maps searches.');
-               return allNew;
-            }
+            // Removed 2000 limit
             break;
           }
           /* success: false but not captchaStuck — retry */
@@ -969,7 +965,12 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
             );
             console.log('   \u23F3 Closing old browser and relaunching in 5s...');
             try { await context.close(); } catch { /* ignore */ }
-            try { await browser.close(); } catch { /* ignore */ }
+            try { 
+              await Promise.race([
+                browser.close().catch(() => {}),
+                new Promise(r => setTimeout(r, 5000))
+              ]); 
+            } catch { /* ignore */ }
             await new Promise((r) => setTimeout(r, 5000));
             await ensureOnline('browser crash recovery');
             browser = await chromium.launch({
@@ -1012,7 +1013,12 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
 
     try { await context.close(); } catch { /* may already be closed */ }
   } finally {
-    try { await browser.close(); } catch { /* may already be closed */ }
+    try { 
+      await Promise.race([
+        browser.close().catch(() => {}),
+        new Promise(r => setTimeout(r, 5000))
+      ]); 
+    } catch { /* may already be closed */ }
   }
 
   console.log(
