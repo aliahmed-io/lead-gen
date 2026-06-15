@@ -9,7 +9,7 @@ const hd = new Holidays('US', 'TX');
  * 
  * Returns: { valid: boolean, reason?: string }
  */
-function isWithinBusinessHours() {
+function isWithinBusinessHours(startHour = 9, endHour = 17) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago',
     hour: 'numeric',
@@ -43,8 +43,8 @@ function isWithinBusinessHours() {
     return { valid: false, reason: `Public Holiday (${holidayName})` };
   }
   
-  // 3. Hours Check (9:00 AM - 4:59 PM)
-  if (hour < 9 || hour >= 17) {
+  // 3. Hours Check
+  if (hour < startHour || hour >= endHour) {
     return { valid: false, reason: `Outside business hours (${hour}:00 CT)` };
   }
   

@@ -1,9 +1,7 @@
 require('dotenv').config();
 const { ImapFlow } = require('imapflow');
 const simpleParser = require('mailparser').simpleParser;
-const CampaignDatabase = require('./campaignDb');
-
-const campaignDb = new CampaignDatabase();
+const campaignDb = require('./campaignDb');
 
 // Connect to 1 account and check INBOX
 async function checkAccount(id, user, pass, host, port) {

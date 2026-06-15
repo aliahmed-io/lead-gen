@@ -24,7 +24,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const settingsPath = path.resolve(process.cwd(), '../settings.json');
-    let newSettings: { delayMinMs?: number; delayMaxMs?: number; maxEmailsPerDay?: number } | null;
+    let newSettings: any;
     try {
       newSettings = await request.json();
     } catch {
@@ -34,18 +34,21 @@ export async function POST(request: Request) {
     if (typeof newSettings !== 'object' || newSettings === null) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
-    if (newSettings.delayMinMs !== undefined && typeof newSettings.delayMinMs !== 'number') {
-      return NextResponse.json({ error: 'delayMinMs must be a number' }, { status: 400 });
-    }
-    if (newSettings.delayMaxMs !== undefined && typeof newSettings.delayMaxMs !== 'number') {
-      return NextResponse.json({ error: 'delayMaxMs must be a number' }, { status: 400 });
-    }
-    if (newSettings.maxEmailsPerDay !== undefined && typeof newSettings.maxEmailsPerDay !== 'number') {
-      return NextResponse.json({ error: 'maxEmailsPerDay must be a number' }, { status: 400 });
+
+    let existingSettings = {};
+    if (fs.existsSync(settingsPath)) {
+      try {
+        existingSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      } catch {}
     }
 
-    fs.writeFileSync(settingsPath, JSON.stringify(newSettings, null, 2), 'utf8');
-    return NextResponse.json({ success: true, settings: newSettings });
+    const mergedSettings = { ...existingSettings, ...newSettings };
+    if ((existingSettings as any).accounts) {
+      (mergedSettings as any).accounts = (existingSettings as any).accounts;
+    }
+
+    fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2), 'utf8');
+    return NextResponse.json({ success: true, settings: mergedSettings });
   } catch {
     return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
   }
