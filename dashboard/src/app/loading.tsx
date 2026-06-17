@@ -4,15 +4,33 @@ import { motion } from "framer-motion";
 
 export default function Loading() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] p-10 max-w-lg mx-auto text-center">
-      <div className="relative w-16 h-16 mb-6">
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg-base)',
+      zIndex: 50,
+      fontFamily: 'var(--font-inter, sans-serif)',
+    }}>
+      <div style={{ position: 'relative', width: '64px', height: '64px', marginBottom: '24px' }}>
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          className="w-16 h-16 rounded-full border-4 border-white/10 border-t-blue-500"
+          style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            border: '4px solid var(--border-subtle)',
+            borderTopColor: 'var(--honey-600)',
+          }}
         />
       </div>
-      <h2 className="text-xl font-medium text-gray-300">Loading Dashboard...</h2>
+      <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: 'var(--font-serif)' }}>
+        Loading LeadGen.IO...
+      </h2>
     </div>
   );
 }

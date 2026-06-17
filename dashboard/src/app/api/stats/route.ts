@@ -47,7 +47,12 @@ export async function GET() {
       });
     }
 
-    let campaignData: any = { records: {}, dailyCounts: {} };
+    interface CampaignData {
+      records: Record<string, { status?: string; accountId?: number; }>;
+      dailyCounts: Record<string, Record<string, number>>;
+      activityLog: unknown[];
+    }
+    let campaignData: CampaignData = { records: {}, dailyCounts: {}, activityLog: [] };
     try {
       const campaignPath = path.resolve(process.cwd(), '../campaign_db.json');
       if (fs.existsSync(campaignPath)) {
@@ -103,7 +108,7 @@ export async function GET() {
 
       let count = 0;
       if (campaignData.dailyCounts) {
-        for (const accountCounts of Object.values(campaignData.dailyCounts) as any[]) {
+        for (const accountCounts of Object.values(campaignData.dailyCounts)) {
           count += accountCounts[dateStr] || 0;
         }
       }
@@ -113,7 +118,7 @@ export async function GET() {
     // 2. Follow-up stage breakdown
     let stage1 = 0;
     let stage2 = 0;
-    for (const r of Object.values(campaignData.records) as any[]) {
+    for (const r of Object.values(campaignData.records)) {
       if (r.status === 'followed_up_1') stage1++;
       if (r.status === 'followed_up_2') stage2++;
     }
@@ -123,9 +128,9 @@ export async function GET() {
     for (let i = 1; i <= 6; i++) {
       let aSent = 0;
       let aBounced = 0;
-      for (const r of Object.values(campaignData.records) as any[]) {
+      for (const r of Object.values(campaignData.records)) {
         if (r.accountId === i) {
-          if (['sent', 'followed_up_1', 'followed_up_2', 'interested', 'completed_no_interest'].includes(r.status)) {
+          if (['sent', 'followed_up_1', 'followed_up_2', 'interested', 'completed_no_interest'].includes(String(r.status))) {
             aSent++;
           }
           if (r.status === 'bounced') {
@@ -157,8 +162,8 @@ export async function GET() {
 
     cache.set('stats', responseData);
     return NextResponse.json(responseData);
-  } catch (err: any) {
-    console.error('Error in stats route:', err.message);
+  } catch (err: unknown) {
+    console.error('Error in stats route:', (err as Error).message);
     return NextResponse.json({ error: 'Failed to read stats' }, { status: 500 });
   }
 }

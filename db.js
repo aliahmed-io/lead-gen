@@ -29,7 +29,7 @@ class LeadsDatabase {
     this.dbPath = dbPath || DB_FILE;
     /** @private @type {number} unsaved mutation counter */
     this._dirtyCount = 0;
-    /** @type {{businesses: Record<string,StoredBusiness>, completedQueries: string[], metadata: unknown}} */
+    /** @type {{businesses: Record<string,StoredBusiness>, completedQueries: string[], metadata: Record<string, any>}} */
     this.data = this._load();
   }
 
@@ -38,7 +38,7 @@ class LeadsDatabase {
   /**
    * Load existing database from disk or create a fresh one.
    * @private
-   * @returns {{businesses: Record<string,StoredBusiness>, completedQueries: string[], metadata: unknown}}
+   * @returns {{businesses: Record<string,StoredBusiness>, completedQueries: string[], metadata: Record<string, any>}}
    */
   _load() {
     try {

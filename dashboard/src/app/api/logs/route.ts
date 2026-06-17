@@ -38,7 +38,7 @@ export async function GET() {
     }).reverse(); // Newest first
 
     return NextResponse.json({ logs: parsedLogs });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to read logs' }, { status: 500 });
   }
 }

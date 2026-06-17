@@ -15,7 +15,7 @@ function getSettings() {
   return {};
 }
 
-function saveSettings(settings: any) {
+function saveSettings(settings: Record<string, unknown>) {
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
 }
 
@@ -38,7 +38,11 @@ export async function GET() {
     const settings = getSettings();
     const storedAccounts = settings.accounts || [];
 
-    let campaignData: any = { records: {}, dailyCounts: {} };
+    interface CampaignData {
+      records: Record<string, { accountId?: string | number; status?: string; sentAt?: number; followedUp1At?: number; followedUp2At?: number; }>;
+      dailyCounts: Record<string, Record<string, number>>;
+    }
+    let campaignData: CampaignData = { records: {}, dailyCounts: {} };
     if (fs.existsSync(campaignDbPath)) {
       try {
         campaignData = JSON.parse(fs.readFileSync(campaignDbPath, 'utf8'));
@@ -56,9 +60,9 @@ export async function GET() {
       let lastActiveAt: number | null = null;
       const accountId = acc.id;
 
-      for (const record of Object.values(campaignData.records) as any[]) {
+      for (const record of Object.values(campaignData.records)) {
         if (String(record.accountId) === String(accountId)) {
-          if (['sent', 'followed_up_1', 'followed_up_2', 'interested', 'completed_no_interest'].includes(record.status)) {
+          if (['sent', 'followed_up_1', 'followed_up_2', 'interested', 'completed_no_interest'].includes(String(record.status))) {
             totalSent++;
           }
           if (record.status === 'bounced') {
@@ -96,8 +100,8 @@ export async function GET() {
     }
 
     return NextResponse.json(accounts);
-  } catch (err: any) {
-    console.error('Error calculating account health:', err.message);
+  } catch (err: unknown) {
+    console.error('Error calculating account health:', (err as Error).message);
     return NextResponse.json({ error: 'Failed to retrieve accounts health' }, { status: 500 });
   }
 }
@@ -118,7 +122,6 @@ export async function POST(request: Request) {
       imapPort?: string;
     } = {};
     for (const field of allowedFields) {
-      const key = field as keyof typeof sanitized;
       if (body[field] !== undefined && typeof body[field] === 'string') {
         (sanitized as Record<string, string>)[field] = body[field].trim();
       }
@@ -140,9 +143,10 @@ export async function POST(request: Request) {
     saveSettings(settings);
 
     // Return account without password
-    const { password: _p, ...safeAccount } = newAccount;
+    const safeAccount = { ...newAccount };
+    delete safeAccount.password;
     return NextResponse.json(safeAccount);
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Failed to save account' }, { status: 500 });
   }
 }
@@ -155,11 +159,11 @@ export async function DELETE(request: Request) {
 
     const settings = getSettings();
     if (settings.accounts) {
-      settings.accounts = settings.accounts.filter((a: any) => String(a.id) !== id);
+      settings.accounts = (settings.accounts as Record<string, unknown>[]).filter((a) => String(a.id) !== id);
       saveSettings(settings);
     }
     return NextResponse.json({ success: true });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 });
   }
 }

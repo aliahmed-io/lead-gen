@@ -1,24 +1,53 @@
 'use client';
+import React from 'react';
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Filter,
-  CheckCircle,
-  XCircle,
-  Mail,
-  UserCheck,
-  UserMinus,
-  Globe,
-  MapPin,
-  ListFilter,
-  ChevronDown,
-  ChevronUp,
+  Search, ChevronLeft, ChevronRight, UserCheck, UserMinus,
+  ChevronDown, ChevronUp, Download, SlidersHorizontal,
+  Users, X, ShieldCheck, AlertTriangle, CheckCircle, ArrowUpDown
 } from 'lucide-react';
 import { LeadRecord } from '@/types';
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'All Statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'followed_up', label: 'Followed Up' },
+  { value: 'bounced', label: 'Bounced' },
+  { value: 'interested', label: 'Interested' },
+  { value: 'completed_no_interest', label: 'Opted Out' },
+];
+
+const PLATFORM_OPTIONS = [
+  { value: 'all', label: 'All Platforms' },
+  { value: 'Shopify', label: 'Shopify' },
+  { value: 'WooCommerce', label: 'WooCommerce' },
+  { value: 'WordPress', label: 'WordPress' },
+  { value: 'Magento', label: 'Magento' },
+  { value: 'Other', label: 'Other' },
+];
+
+const STATE_OPTIONS = [
+  { value: 'all', label: 'All States' },
+  { value: 'TX', label: 'Texas' },
+  { value: 'FL', label: 'Florida' },
+  { value: 'CA', label: 'California' },
+  { value: 'NY', label: 'New York' },
+  { value: 'NC', label: 'N. Carolina' },
+];
+
+function statusStyle(s: string | undefined): { bg: string; color: string; border: string; label: string } {
+  const v = s || 'pending';
+  if (v === 'interested')              return { bg: 'var(--success-bg)',  color: 'var(--success)', border: 'rgba(74, 109, 75, 0.15)',  label: 'Interested' };
+  if (v === 'followed_up_1')           return { bg: 'rgba(161, 136, 107, 0.08)',  color: 'var(--text-secondary)', border: 'rgba(161, 136, 107, 0.15)',  label: 'Follow-up 1' };
+  if (v === 'followed_up_2')           return { bg: 'rgba(161, 136, 107, 0.08)',  color: 'var(--text-secondary)', border: 'rgba(161, 136, 107, 0.15)',  label: 'Follow-up 2' };
+  if (v === 'sent')                    return { bg: 'var(--honey-100)',   color: 'var(--honey-600)', border: 'var(--honey-glow)',   label: 'Sent' };
+  if (v === 'bounced')                 return { bg: 'var(--danger-bg)',    color: 'var(--danger)', border: 'rgba(181, 78, 69, 0.15)',    label: 'Bounced' };
+  if (v === 'completed_no_interest')   return { bg: 'var(--bg-neutral-muted)', color: 'var(--text-secondary)', border: 'var(--border-subtle)', label: 'Opted Out' };
+  return                                      { bg: 'var(--bg-neutral-muted)', color: 'var(--text-secondary)', border: 'var(--border-subtle)', label: v };
+}
 
 export default function Leads() {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
@@ -26,454 +55,729 @@ export default function Leads() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [limit] = useState(50);
-
-  // Filters state
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [platform, setPlatform] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
-
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Sort States
+  const [sortBy, setSortBy] = useState('activity');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Row selection & expansion state
+  // Selection States
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
-  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
-  const [bulkLoading, setBulkLoading] = useState(false);
+  const [selectingAllMatching, setSelectingAllMatching] = useState(false);
 
-  // Fetch paginated and filtered leads
+  // Bulk / Export States
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+  // Verification Report Modal States
+  const [verificationResults, setVerificationResults] = useState<{ email: string; valid: boolean; reason: string }[] | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const fetchLeads = () => {
     setLoading(true);
-    const query = new URLSearchParams({
-      page: String(page),
-      limit: String(limit),
-      status,
-      platform,
-      state: stateFilter,
+    const q = new URLSearchParams({ 
+      page: String(page), 
+      limit: String(limit), 
+      status, 
+      platform, 
+      state: stateFilter, 
       search: debouncedSearch,
+      sortBy,
+      sortOrder
     });
-
-    fetch(`/api/leads?${query.toString()}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to fetch leads from database');
-        return res.json();
-      })
-      .then((data) => {
-        setLeads(data.records || []);
-        setTotal(data.total || 0);
-        setTotalPages(data.totalPages || 0);
-        setError(null);
-      })
-      .catch((err) => setError(err.message))
+    fetch(`/api/leads?${q}`)
+      .then(r => { if (!r.ok) throw new Error('Failed to fetch leads'); return r.json(); })
+      .then(d => { setLeads(d.records || []); setTotal(d.total || 0); setTotalPages(d.totalPages || 0); setError(null); })
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   };
 
-  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => { fetchLeads(); }, [page, status, platform, stateFilter, debouncedSearch, sortBy, sortOrder]);
 
-  // Debounced search trigger
-  useEffect(() => {
-    const delayDebounce = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 400);
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+    setPage(1);
+  };
 
-    return () => clearTimeout(delayDebounce);
-  }, [search]);
-
-  // Re-fetch when page or filters change
-  useEffect(() => {
-    fetchLeads();
-  }, [page, status, platform, stateFilter, debouncedSearch]);
-
-  // Handle bulk actions
-  const handleBulkAction = async (action: 'unsubscribe' | 'mark_interested') => {
-    if (selectedEmails.length === 0) return;
+  const handleBulkAction = async (action: 'unsubscribe' | 'mark_interested' | 'verify') => {
+    if (!selectedEmails.length) return;
     setBulkLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, emails: selectedEmails }),
+      const res = await fetch('/api/leads', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ action, emails: selectedEmails }) 
       });
-      if (!res.ok) throw new Error('Bulk action failed');
-      const data = await res.json();
-      if (data.success) {
+      if (!res.ok) throw new Error(`${action} bulk action failed`);
+      const d = await res.json();
+      
+      if (action === 'verify' && d.results) {
+        setVerificationResults(d.results);
+        setSelectedEmails([]);
+        fetchLeads();
+      } else if (d.success) {
         setSelectedEmails([]);
         fetchLeads();
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (e: unknown) { 
+      setError((e as Error).message); 
+    } finally { 
+      setBulkLoading(false); 
+    }
+  };
+
+  // Checkbox functions
+  const allCurrentPageSelected = leads.length > 0 && leads.every(l => !l.email || selectedEmails.includes(l.email));
+  
+  const handleSelectAll = (checked: boolean) => {
+    const pageEmails = leads.map(l => l.email).filter((e): e is string => !!e);
+    if (checked) {
+      setSelectedEmails(prev => Array.from(new Set([...prev, ...pageEmails])));
+    } else {
+      setSelectedEmails(prev => prev.filter(e => !pageEmails.includes(e)));
+      setSelectingAllMatching(false);
+    }
+  };
+
+  const handleSelectRow = (email: string, checked: boolean) => {
+    setSelectedEmails(prev => checked ? [...prev, email] : prev.filter(e => e !== email));
+  };
+
+  const toggleSelectRow = (email: string) => {
+    setSelectedEmails(prev => prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]);
+  };
+
+  const selectAllMatchingLeads = async () => {
+    setBulkLoading(true);
+    try {
+      const q = new URLSearchParams({ 
+        status, 
+        platform, 
+        state: stateFilter, 
+        search: debouncedSearch, 
+        limit: '100000', // Retrieve all records
+        sortBy,
+        sortOrder
+      });
+      const res = await fetch(`/api/leads?${q}`);
+      if (res.ok) {
+        const d = await res.json();
+        const allEmails = (d.records || []).map((r: LeadRecord) => r.email).filter((e: string | undefined): e is string => !!e);
+        setSelectedEmails(allEmails);
+        setSelectingAllMatching(true);
+      }
+    } catch (e) {
+      console.error('Failed to select all leads:', e);
     } finally {
       setBulkLoading(false);
     }
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const emailsOnPage = leads.map((l) => l.email).filter((e): e is string => !!e);
-      setSelectedEmails(emailsOnPage);
-    } else {
-      setSelectedEmails([]);
-    }
-  };
-
-  const handleSelectRow = (email: string, checked: boolean) => {
-    if (checked) {
-      setSelectedEmails((prev) => [...prev, email]);
-    } else {
-      setSelectedEmails((prev) => prev.filter((e) => e !== email));
-    }
-  };
-
-  const toggleExpandRow = (email: string) => {
-    setExpandedEmail((prev) => (prev === email ? null : email));
-  };
-
-  const getStatusBadge = (s: string | undefined) => {
-    const statusVal = s || 'found';
-    if (statusVal === 'interested') return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-    if (statusVal.startsWith('followed_up')) return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
-    if (statusVal === 'sent') return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
-    if (statusVal === 'bounced') return 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
-    return 'bg-gray-500/10 text-gray-400 border border-gray-500/20';
-  };
-
-  const exportToCSV = () => {
-    if (!leads.length) return;
-    const headers = ['Business Name', 'Email', 'Platform', 'Status', 'Website', 'State', 'City', 'Sent At', 'Replied At'];
-    const rows = leads.map(l => [
-      l.businessName || '',
-      l.email || '',
-      l.platform || '',
-      l.status || '',
-      l.website || '',
-      l.state || '',
-      l.city || '',
-      l.sentAt || '',
-      l.repliedAt || ''
-    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+  // Export functions
+  const triggerCSVDownload = (records: LeadRecord[], filename: string) => {
+    const headers = ['Business Name', 'Email', 'Platform', 'Status', 'Website', 'State', 'City', 'Sent At', 'Replied At', 'FollowUp1 At', 'FollowUp2At', 'Completed At'];
+    const rows = records.map(l => [
+      l.businessName, l.email, l.platform, l.status, l.website, l.state, l.city, 
+      l.sentAt ? new Date(l.sentAt).toISOString() : '', 
+      l.repliedAt ? new Date(l.repliedAt).toISOString() : '',
+      l.followedUp1At ? new Date(l.followedUp1At).toISOString() : '',
+      l.followedUp2At ? new Date(l.followedUp2At).toISOString() : '',
+      l.completedAt ? new Date(l.completedAt).toISOString() : ''
+    ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
     
-    const csvContent = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'leads_export.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const csv = [headers.join(','), ...rows].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = filename;
+    a.click();
+    setShowExportMenu(false);
+  };
+
+  const exportSelected = () => {
+    const selectedRecords = leads.filter(l => l.email && selectedEmails.includes(l.email));
+    triggerCSVDownload(selectedRecords, `selected_leads_${selectedRecords.length}.csv`);
+  };
+
+  const exportFiltered = async () => {
+    setBulkLoading(true);
+    try {
+      const q = new URLSearchParams({ 
+        status, 
+        platform, 
+        state: stateFilter, 
+        search: debouncedSearch, 
+        limit: '100000', // Fetch all matching leads
+        sortBy,
+        sortOrder
+      });
+      const res = await fetch(`/api/leads?${q}`);
+      if (res.ok) {
+        const d = await res.json();
+        triggerCSVDownload(d.records || [], 'leads_export_filtered_all.csv');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const activeFilters = [status !== 'all' && status, platform !== 'all' && platform, stateFilter !== 'all' && stateFilter].filter(Boolean);
+
+  // Formatting helpers for single line display
+  const formatTableDate = (timestamp: number | null | undefined) => {
+    if (!timestamp) return <span style={{ color: 'var(--text-disabled)' }}>—</span>;
+    return new Date(timestamp).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const formatLocation = (city: string | undefined, state: string | undefined) => {
+    if (!city && !state) return <span style={{ color: 'var(--text-disabled)' }}>—</span>;
+    if (city && state) return `${city}, ${state}`;
+    return city || state || '—';
+  };
+
+  const renderWebsite = (url: string | undefined) => {
+    if (!url) return <span style={{ color: 'var(--text-disabled)' }}>—</span>;
+    const displayUrl = url.replace(/^(https?:\/\/)?(www\.)?/, '');
+    const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+    return (
+      <a 
+        href={fullUrl} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        style={{ color: 'var(--honey-600)', textDecoration: 'none', fontWeight: 700 }}
+        onClick={e => e.stopPropagation()}
+      >
+        {displayUrl}
+      </a>
+    );
+  };
+
+  // Header column definitions
+  const columns = [
+    { label: 'Business Name', field: 'businessName', width: '220px' },
+    { label: 'Email Address', field: 'email', width: '220px' },
+    { label: 'Website', field: 'website', width: '180px' },
+    { label: 'Location', field: 'city', width: '160px' },
+    { label: 'Platform', field: 'platform', width: '120px' },
+    { label: 'Campaign Status', field: 'status', width: '140px' },
+    { label: 'Sent At', field: 'sentAt', width: '150px' },
+    { label: 'Follow-Up 1', field: 'followedUp1At', width: '150px' },
+    { label: 'Follow-Up 2', field: 'followedUp2At', width: '150px' },
+    { label: 'Replied At', field: 'repliedAt', width: '150px' },
+    { label: 'Completed At', field: 'completedAt', width: '150px' },
+    { label: 'Last Updated', field: 'updatedAt', width: '150px' }
+  ];
+
+  // Render Sort Indicator next to active headers
+  const renderSortIndicator = (field: string) => {
+    if (sortBy !== field) return <ArrowUpDown size={11} style={{ opacity: 0.3, marginLeft: '6px' }} />;
+    return sortOrder === 'asc' ? 
+      <ChevronUp size={12} style={{ color: 'var(--honey-600)', marginLeft: '4px' }} /> : 
+      <ChevronDown size={12} style={{ color: 'var(--honey-600)', marginLeft: '4px' }} />;
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      {/* Title */}
-      <div className="flex items-center justify-between">
+    <div style={{ padding: '32px', maxWidth: '1600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', fontFamily: 'var(--font-inter)' }}>
+
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Leads Database</h1>
-          <p className="text-gray-400 text-sm mt-1">Browse, filter, and execute bulk actions on your verified contacts.</p>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
+            Leads Database
+          </h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {total.toLocaleString()} contacts · interactive sort and verify console
+          </p>
         </div>
-        <button
-          onClick={exportToCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl transition-colors cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          Export CSV
-        </button>
-      </div>
-
-      {error && <p className="text-rose-400 text-sm">{error}</p>}
-
-      {/* Filter Bar */}
-      <div className="glass-panel p-5 rounded-2xl space-y-4">
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          {/* Search Box */}
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search by company, email, status, website..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 transition-colors"
-            />
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <span className="text-gray-500 text-xs font-semibold shrink-0 uppercase tracking-wider">Status</span>
-            <select
-              value={status}
-              onChange={(e) => { setPage(1); setStatus(e.target.value); }}
-              className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer w-full md:w-auto"
-            >
-              <option value="all">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="sent">Sent</option>
-              <option value="followed_up">Followed Up</option>
-              <option value="bounced">Bounced</option>
-              <option value="interested">Interested</option>
-              <option value="completed_no_interest">Opted Out</option>
-            </select>
-          </div>
-
-          {/* Platform Filter */}
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <span className="text-gray-500 text-xs font-semibold shrink-0 uppercase tracking-wider">Platform</span>
-            <select
-              value={platform}
-              onChange={(e) => { setPage(1); setPlatform(e.target.value); }}
-              className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer w-full md:w-auto"
-            >
-              <option value="all">All Platforms</option>
-              <option value="Shopify">Shopify</option>
-              <option value="WooCommerce">WooCommerce</option>
-              <option value="WordPress">WordPress</option>
-              <option value="Magento">Magento</option>
-              <option value="Other">Other / Custom</option>
-            </select>
-          </div>
-
-          {/* State Filter */}
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <span className="text-gray-500 text-xs font-semibold shrink-0 uppercase tracking-wider">State</span>
-            <select
-              value={stateFilter}
-              onChange={(e) => { setPage(1); setStateFilter(e.target.value); }}
-              className="bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer w-full md:w-auto"
-            >
-              <option value="all">All States</option>
-              <option value="TX">Texas (TX)</option>
-              <option value="FL">Florida (FL)</option>
-              <option value="CA">California (CA)</option>
-              <option value="NY">New York (NY)</option>
-              <option value="NC">North Carolina (NC)</option>
-            </select>
-          </div>
+        
+        {/* Dropdown Export Options */}
+        <div style={{ position: 'relative' }}>
+          <button 
+            onClick={() => setShowExportMenu(!showExportMenu)} 
+            className="btn btn-secondary" 
+            style={{ gap: '6px' }}
+          >
+            <Download size={14} /> Export CSV <ChevronDown size={12} />
+          </button>
+          
+          <AnimatePresence>
+            {showExportMenu && (
+              <>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }} onClick={() => setShowExportMenu(false)} />
+                <motion.div 
+                  initial={{ opacity: 0, y: 5 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  exit={{ opacity: 0, y: 5 }}
+                  style={{
+                    position: 'absolute', right: 0, marginTop: '6px', zIndex: 50,
+                    background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
+                    borderRadius: '12px', padding: '6px', width: '220px',
+                    boxShadow: '0 6px 20px rgba(44, 34, 25, 0.08)'
+                  }}
+                >
+                  <button 
+                    onClick={exportFiltered} 
+                    style={{
+                      width: '100%', padding: '10px 12px', border: 'none', background: 'none',
+                      textAlign: 'left', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)',
+                      borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+                    }}
+                    className="hover:bg-[var(--honey-50)]"
+                  >
+                    <Download size={12} /> Export Filtered ({total})
+                  </button>
+                  <button 
+                    onClick={exportSelected} 
+                    disabled={selectedEmails.length === 0}
+                    style={{
+                      width: '100%', padding: '10px 12px', border: 'none', background: 'none',
+                      textAlign: 'left', fontSize: '12px', fontWeight: 600, color: selectedEmails.length ? 'var(--text-primary)' : 'var(--text-disabled)',
+                      borderRadius: '8px', cursor: selectedEmails.length ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: '8px'
+                    }}
+                    className={selectedEmails.length ? "hover:bg-[var(--honey-50)]" : ""}
+                  >
+                    <CheckCircle size={12} /> Export Selected ({selectedEmails.length})
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* Bulk Action Toolbar */}
+      {/* ── Error ──────────────────────────────────────────────────── */}
+      {error && (
+        <div style={{ padding: '12px 16px', background: 'var(--danger-bg)', border: '1px solid rgba(181, 78, 69, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <AlertTriangle size={14} /> {error}
+        </div>
+      )}
+
+      {/* ── Filter Bar ─────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        {/* Search */}
+        <div style={{ position: 'relative', flex: '1', minWidth: '240px' }}>
+          <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+          <input
+            type="text" placeholder="Search by name, email, website…"
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="input" style={{ paddingLeft: '36px' }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '10px' }}>
+          <SlidersHorizontal size={13} style={{ color: 'var(--text-secondary)' }} />
+          <span className="section-label" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Filters</span>
+        </div>
+
+        {[
+          { value: status, set: (v: string) => { setStatus(v); setPage(1); }, opts: STATUS_OPTIONS, label: 'Filter by Status' },
+          { value: platform, set: (v: string) => { setPlatform(v); setPage(1); }, opts: PLATFORM_OPTIONS, label: 'Filter by Platform' },
+          { value: stateFilter, set: (v: string) => { setStateFilter(v); setPage(1); }, opts: STATE_OPTIONS, label: 'Filter by State' },
+        ].map((f, i) => (
+          <select key={i} value={f.value} onChange={e => f.set(e.target.value)}
+            aria-label={f.label}
+            className="input" style={{ width: 'auto', minWidth: '120px', padding: '8px 32px 8px 12px' }}>
+            {f.opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        ))}
+
+        {activeFilters.length > 0 && (
+          <button onClick={() => { setStatus('all'); setPlatform('all'); setStateFilter('all'); setPage(1); }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--honey-600)', cursor: 'pointer', background: 'none', border: 'none', padding: '4px 8px', fontWeight: 600 }}>
+            <X size={12} /> Clear Filters
+          </button>
+        )}
+      </div>
+
+      {/* ── Bulk Action Bar ─────────────────────────────────────────── */}
       <AnimatePresence>
         {selectedEmails.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-blue-500/10 border border-blue-500/20 px-5 py-4 rounded-xl text-blue-400 text-xs font-bold"
-          >
-            <div className="flex items-center gap-2">
-              <ListFilter size={16} />
-              <span>Selected {selectedEmails.length} leads for bulk modification</span>
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px',
+              background: 'var(--honey-50)', border: '1px solid var(--border-default)',
+              borderRadius: '12px', gap: '16px', flexWrap: 'wrap',
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="badge badge-amber">{selectedEmails.length}</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                {selectingAllMatching ? "all matching leads selected" : "leads selected"}
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => handleBulkAction('mark_interested')}
-                disabled={bulkLoading}
-                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Verify emails action */}
+              <button 
+                onClick={() => handleBulkAction('verify')} 
+                disabled={bulkLoading} 
+                className="btn"
+                style={{ background: 'var(--honey-100)', color: 'var(--honey-700)', border: '1px solid var(--honey-200)', padding: '7px 14px', gap: '6px' }}
               >
-                <UserCheck size={14} /> Mark Interested
+                <ShieldCheck size={13} /> Verify Emails
               </button>
-              <button
-                onClick={() => handleBulkAction('unsubscribe')}
-                disabled={bulkLoading}
-                className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <UserMinus size={14} /> Unsubscribe (Opt-out)
+              
+              <button onClick={() => handleBulkAction('mark_interested')} disabled={bulkLoading} className="btn"
+                style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid rgba(74, 109, 75, 0.15)', padding: '7px 14px' }}>
+                <UserCheck size={13} /> Mark Interested
               </button>
-              <button
-                onClick={() => setSelectedEmails([])}
-                className="text-gray-400 hover:text-white px-2 py-1 transition-colors"
+              
+              <button onClick={() => handleBulkAction('unsubscribe')} disabled={bulkLoading} className="btn btn-danger" style={{ padding: '7px 14px' }}>
+                <UserMinus size={13} /> Unsubscribe
+              </button>
+
+              <div style={{ height: '16px', width: '1px', background: 'var(--border-strong)', margin: '0 4px' }} />
+
+              <button 
+                onClick={() => { setSelectedEmails([]); setSelectingAllMatching(false); }} 
+                className="btn btn-secondary"
+                style={{ padding: '7px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                Clear Selection
+                <X size={11} /> Cancel Selection
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Leads Table Card */}
-      <div className="glass-panel rounded-2xl overflow-hidden border border-white/5">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
+      {/* ── All Selection matching banner ─────────────────────────── */}
+      <AnimatePresence>
+        {allCurrentPageSelected && !selectingAllMatching && total > leads.length && (
+          <motion.div 
+            initial={{ opacity: 0, y: -4 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -4 }}
+            style={{
+              background: 'var(--bg-neutral-muted)', border: '1px solid var(--border-subtle)',
+              borderRadius: '10px', padding: '10px 16px', fontSize: '12px', color: 'var(--text-secondary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+            }}
+          >
+            <span>All {leads.length} leads on this page are selected.</span>
+            <button 
+              onClick={selectAllMatchingLeads} 
+              disabled={bulkLoading}
+              style={{
+                background: 'none', border: 'none', padding: 0,
+                color: 'var(--honey-600)', fontWeight: 700, textDecoration: 'underline',
+                cursor: 'pointer'
+              }}
+            >
+              Select all {total.toLocaleString()} leads in database matching filters
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Table (Scrollable Spreadsheet) ─────────────────────────── */}
+      <div style={{ 
+        background: 'var(--bg-surface)', 
+        border: '1px solid var(--border-default)', 
+        borderRadius: '16px', 
+        overflow: 'hidden', 
+        boxShadow: '0 4px 20px rgba(44, 34, 25, 0.015)',
+      }}>
+        {/* Horizontal Scroll wrapper */}
+        <div style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' }}>
             <thead>
-              <tr className="border-b border-white/5 bg-white/[0.01]">
-                <th className="p-4 w-12 text-center">
-                  <input
-                    type="checkbox"
-                    checked={leads.length > 0 && selectedEmails.length === leads.length}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="w-4.5 h-4.5 border border-white/10 rounded cursor-pointer accent-blue-500"
+              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-neutral-muted)' }}>
+                {/* Checkbox Header Column */}
+                <th style={{ padding: '12px 16px', width: '50px', zIndex: 10, position: 'sticky', left: 0, background: 'var(--bg-neutral-muted)' }}>
+                  <input type="checkbox"
+                    checked={allCurrentPageSelected}
+                    onChange={e => handleSelectAll(e.target.checked)}
+                    style={{ cursor: 'pointer', accentColor: 'var(--honey-500)', width: '14px', height: '14px' }}
+                    aria-label="Select all leads"
                   />
                 </th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Business Name</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Email Address</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Platform</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 w-16 text-center" />
+                {columns.map((h, i) => (
+                  <th 
+                    key={i} 
+                    className="section-label" 
+                    onClick={() => handleSort(h.field)}
+                    style={{ 
+                      padding: '12px 16px', 
+                      fontSize: '10px', 
+                      fontWeight: 800, 
+                      color: sortBy === h.field ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      width: h.width,
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      {h.label}
+                      {renderSortIndicator(h.field)}
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 text-sm">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-16 text-center text-gray-400">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-t-2 border-blue-500 mb-3" />
-                    <p className="text-xs">Loading Leads Database...</p>
+                  <td colSpan={12} style={{ padding: '64px', textAlign: 'center' }}>
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                      style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid var(--border-default)', borderTopColor: 'var(--honey-500)', margin: '0 auto 12px' }} />
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Loading leads…</p>
                   </td>
                 </tr>
-              ) : leads.length > 0 ? (
-                leads.map((lead, idx) => {
-                  const isSelected = lead.email ? selectedEmails.includes(lead.email) : false;
-                  const isExpanded = lead.email ? expandedEmail === lead.email : false;
-
-                  return (
-                    <>
-                      <tr
-                        key={lead.email || idx}
-                        className={`hover:bg-white/[0.02] transition-colors cursor-pointer ${
-                          isExpanded ? 'bg-white/[0.01]' : ''
-                        }`}
-                        onClick={() => lead.email && toggleExpandRow(lead.email)}
-                      >
-                        <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
-                          {lead.email && (
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => handleSelectRow(lead.email!, e.target.checked)}
-                              className="w-4.5 h-4.5 border border-white/10 rounded cursor-pointer accent-blue-500"
-                            />
-                          )}
-                        </td>
-                        <td className="px-6 py-4 font-bold text-gray-200">
-                          {lead.businessName || 'Unknown Store'}
-                        </td>
-                        <td className="px-6 py-4 text-gray-400">{lead.email}</td>
-                        <td className="px-6 py-4 text-gray-400">{lead.platform || 'Other'}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border ${getStatusBadge(lead.status)}`}>
-                            {lead.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center text-gray-500">
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </td>
-                      </tr>
-
-                      {/* Expandable Details Drawer */}
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <tr className="bg-white/[0.01]">
-                            <td colSpan={6} className="px-10 py-6 border-t border-b border-white/5">
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs text-gray-400 overflow-hidden"
-                              >
-                                {/* Column 1: Core Details */}
-                                <div className="space-y-3">
-                                  <h4 className="text-white font-bold uppercase tracking-wider text-[10px]">Business Profile</h4>
-                                  <p className="flex items-center gap-2">
-                                    <Globe size={14} className="text-gray-500" />
-                                    {lead.website ? (
-                                      <a
-                                        href={lead.website}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-400 hover:underline hover:text-blue-300"
-                                      >
-                                        {lead.website}
-                                      </a>
-                                    ) : (
-                                      'No website found'
-                                    )}
-                                  </p>
-                                  <p className="flex items-center gap-2">
-                                    <MapPin size={14} className="text-gray-500" />
-                                    {lead.city && lead.state ? `${lead.city}, ${lead.state}` : lead.state || 'Location missing'}
-                                  </p>
-                                </div>
-
-                                {/* Column 2: Platform & Status */}
-                                <div className="space-y-3">
-                                  <h4 className="text-white font-bold uppercase tracking-wider text-[10px]">E-commerce Engine</h4>
-                                  <p>
-                                    <span className="font-semibold text-gray-500">Tech Stack:</span> {lead.platform || 'Unknown platform'}
-                                  </p>
-                                  <p>
-                                    <span className="font-semibold text-gray-500">Campaign Status:</span>{' '}
-                                    <span className="capitalize">{lead.status}</span>
-                                  </p>
-                                </div>
-
-                                {/* Column 3: Timestamps */}
-                                <div className="space-y-3">
-                                  <h4 className="text-white font-bold uppercase tracking-wider text-[10px]">Activity Timestamps</h4>
-                                  {lead.sentAt && (
-                                    <p>
-                                      <span className="font-semibold text-gray-500">Sent Outreach:</span>{' '}
-                                      {new Date(lead.sentAt).toLocaleString()}
-                                    </p>
-                                  )}
-                                  {lead.repliedAt && (
-                                    <p>
-                                      <span className="font-semibold text-gray-500">Last Replied:</span>{' '}
-                                      {new Date(lead.repliedAt).toLocaleString()}
-                                    </p>
-                                  )}
-                                  {(!lead.sentAt && !lead.repliedAt) && <p className="text-gray-500">No activity logged.</p>}
-                                </div>
-                              </motion.div>
-                            </td>
-                          </tr>
-                        )}
-                      </AnimatePresence>
-                    </>
-                  );
-                })
-              ) : (
+              ) : leads.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-16 text-center text-gray-500">
-                    No leads found matching current filter rules.
+                  <td colSpan={12} style={{ padding: '64px', textAlign: 'center' }}>
+                    <Users size={32} style={{ color: 'var(--text-disabled)', margin: '0 auto 12px', display: 'block' }} />
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No leads match your filters.</p>
                   </td>
                 </tr>
-              )}
+              ) : leads.map((lead, idx) => {
+                const isSelected = lead.email ? selectedEmails.includes(lead.email) : false;
+                const st = statusStyle(lead.status);
+
+                return (
+                  <tr
+                    key={lead.email || idx}
+                    onClick={() => lead.email && toggleSelectRow(lead.email)}
+                    style={{
+                      borderBottom: '1px solid var(--border-subtle)',
+                      cursor: 'pointer',
+                      transition: 'background 0.12s',
+                      background: isSelected ? 'var(--honey-50)' : undefined,
+                    }}
+                    onMouseEnter={e => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'var(--bg-neutral-muted)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = isSelected ? 'var(--honey-50)' : '';
+                    }}
+                  >
+                    {/* Checkbox column (Sticky for nice scroll) */}
+                    <td style={{ 
+                      padding: '12px 16px', 
+                      width: '50px', 
+                      zIndex: 9, 
+                      position: 'sticky', 
+                      left: 0, 
+                      background: isSelected ? 'var(--honey-50)' : 'var(--bg-surface)',
+                      borderRight: '1px solid var(--border-subtle)'
+                    }} onClick={e => e.stopPropagation()}>
+                      {lead.email && (
+                        <input type="checkbox" checked={isSelected}
+                          onChange={e => handleSelectRow(lead.email!, e.target.checked)}
+                          style={{ cursor: 'pointer', accentColor: 'var(--honey-500)', width: '14px', height: '14px' }}
+                          aria-label={`Select lead ${lead.businessName || lead.email}`}
+                        />
+                      )}
+                    </td>
+
+                    {/* Business Name */}
+                    <td style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {lead.businessName || 'Unknown'}
+                    </td>
+
+                    {/* Email */}
+                    <td style={{ padding: '12px 16px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {lead.email}
+                    </td>
+
+                    {/* Website */}
+                    <td style={{ padding: '12px 16px', fontSize: '12px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {renderWebsite(lead.website)}
+                    </td>
+
+                    {/* Location */}
+                    <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {formatLocation(lead.city, lead.state)}
+                    </td>
+
+                    {/* Platform */}
+                    <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {lead.platform || 'Other'}
+                    </td>
+
+                    {/* Campaign Status */}
+                    <td style={{ padding: '12px 16px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        padding: '2px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: 700,
+                        background: st.bg, color: st.color, border: `1px solid ${st.border}`,
+                      }}>
+                        {st.label}
+                      </span>
+                    </td>
+
+                    {/* Sent At */}
+                    <td style={{ padding: '12px 16px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      {formatTableDate(lead.sentAt)}
+                    </td>
+
+                    {/* Follow Up 1 At */}
+                    <td style={{ padding: '12px 16px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      {formatTableDate(lead.followedUp1At)}
+                    </td>
+
+                    {/* Follow Up 2 At */}
+                    <td style={{ padding: '12px 16px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      {formatTableDate(lead.followedUp2At)}
+                    </td>
+
+                    {/* Replied At */}
+                    <td style={{ padding: '12px 16px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      {formatTableDate(lead.repliedAt)}
+                    </td>
+
+                    {/* Completed At */}
+                    <td style={{ padding: '12px 16px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      {formatTableDate(lead.completedAt)}
+                    </td>
+
+                    {/* Updated At */}
+                    <td style={{ padding: '12px 16px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      {formatTableDate(lead.updatedAt)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination Toolbar */}
+        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-white/5 px-6 py-4.5 bg-white/[0.01]">
-            <span className="text-xs text-gray-500 font-medium">
-              Showing <span className="text-gray-300 font-bold">{leads.length}</span> of{' '}
-              <span className="text-gray-300 font-bold">{total.toLocaleString()}</span> leads
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-neutral-muted)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Showing <strong style={{ color: 'var(--text-primary)' }}>{leads.length}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{total.toLocaleString()}</strong>
             </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                disabled={page === 1 || loading}
-                className="p-2 border border-white/10 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <ChevronLeft size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1 || loading} className="btn btn-secondary" style={{ padding: '6px 10px' }} title="Previous Page" aria-label="Previous Page">
+                <ChevronLeft size={14} />
               </button>
-              <span className="text-xs text-gray-400 font-semibold px-2">
-                Page <span className="text-white font-bold">{page}</span> of{' '}
-                <span className="text-white font-bold">{totalPages}</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', minWidth: '80px', textAlign: 'center', fontWeight: 600 }}>
+                {page} / {totalPages}
               </span>
-              <button
-                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                disabled={page === totalPages || loading}
-                className="p-2 border border-white/10 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <ChevronRight size={16} />
+              <button onClick={() => setPage(p => Math.min(p + 1, totalPages))} disabled={page === totalPages || loading} className="btn btn-secondary" style={{ padding: '6px 10px' }} title="Next Page" aria-label="Next Page">
+                <ChevronRight size={14} />
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {/* ── Verification Report Modal ──────────────────────────────── */}
+      <AnimatePresence>
+        {verificationResults && (
+          <div className="overlay flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="glass-panel-raised p-6 rounded-2xl max-w-xl w-full space-y-4"
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            >
+              <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldCheck size={20} className="text-[var(--honey-600)]" /> Email Verification Report
+                </h2>
+                <button 
+                  onClick={() => setVerificationResults(null)} 
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Summary Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ padding: '12px', background: 'var(--success-bg)', borderRadius: '12px', border: '1px solid rgba(74, 109, 75, 0.15)', textAlign: 'center' }}>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--success)' }}>
+                    {verificationResults.filter(r => r.valid).length}
+                  </span>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--success)', textTransform: 'uppercase', marginTop: '2px' }}>Deliverable</div>
+                </div>
+                <div style={{ padding: '12px', background: 'var(--danger-bg)', borderRadius: '12px', border: '1px solid rgba(181, 78, 69, 0.15)', textAlign: 'center' }}>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--danger)' }}>
+                    {verificationResults.filter(r => !r.valid).length}
+                  </span>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', marginTop: '2px' }}>Undeliverable</div>
+                </div>
+              </div>
+
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                ℹ️ Undeliverable emails have been automatically set to <span style={{ fontWeight: 700, color: 'var(--danger)' }}>Bounced</span> in the database to prevent domain reputation damage.
+              </p>
+
+              {/* Detailed Scroll List */}
+              <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: '10px', background: 'var(--bg-neutral-muted)', padding: '10px' }} className="space-y-2">
+                {verificationResults.map((r, i) => (
+                  <div key={i} style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+                    padding: '8px 10px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                    borderRadius: '8px', fontSize: '12px'
+                  }}>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.email}
+                    </span>
+                    <span style={{ 
+                      fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', flexShrink: 0,
+                      background: r.valid ? 'var(--success-bg)' : 'var(--danger-bg)',
+                      color: r.valid ? 'var(--success)' : 'var(--danger)',
+                      border: `1px solid ${r.valid ? 'rgba(74, 109, 75, 0.15)' : 'rgba(181, 78, 69, 0.15)'}`
+                    }} title={r.reason}>
+                      {r.valid ? 'Deliverable' : 'Invalid'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '10px', borderTop: '1px solid var(--border-subtle)' }}>
+                <button 
+                  onClick={() => setVerificationResults(null)} 
+                  className="btn btn-primary"
+                  style={{ padding: '8px 20px', fontSize: '13px' }}
+                >
+                  Acknowledge Report
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Global verification loading overlay */}
+      {bulkLoading && (
+        <div className="overlay flex flex-col items-center justify-center p-4 z-50" style={{ background: 'rgba(250, 248, 245, 0.8)' }}>
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+            style={{ width: '40px', height: '40px', borderRadius: '50%', border: '3px solid var(--border-default)', borderTopColor: 'var(--honey-500)', marginBottom: '16px' }} />
+          <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)' }}>Processing Request...</h2>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Performing validation & database operations.</p>
+        </div>
+      )}
+
     </div>
   );
 }

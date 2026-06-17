@@ -1,18 +1,66 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Save, AlertCircle, ShieldAlert, Clock, Mail, CheckCircle } from 'lucide-react';
-import { Settings } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Save, AlertCircle, ShieldAlert, Clock, Mail, CheckCircle,
+  Zap, Link2, RefreshCw,
+} from 'lucide-react';
+
+const Section = ({
+  icon, label, accent, children,
+}: {
+  icon: React.ReactNode; label: string; accent: string; children: React.ReactNode;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+    style={{
+      background: 'var(--bg-surface)', borderRadius: '16px',
+      border: '1px solid var(--border-default)',
+      overflow: 'hidden',
+      boxShadow: '0 4px 16px rgba(44, 34, 25, 0.01)',
+    }}
+  >
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '12px',
+      padding: '16px 24px', borderBottom: '1px solid var(--border-subtle)',
+      background: `linear-gradient(90deg, ${accent}0b 0%, transparent 60%)`,
+      borderTop: `2px solid ${accent}`,
+    }}>
+      <div style={{
+        width: '28px', height: '28px', borderRadius: '8px',
+        background: 'var(--bg-neutral-muted)', border: '1px solid var(--border-subtle)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: accent,
+      }}>
+        {icon}
+      </div>
+      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: 'var(--font-inter)' }}>
+        {label}
+      </span>
+    </div>
+    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {children}
+    </div>
+  </motion.div>
+);
+
+const Field = ({ label, hint, children }: { label: React.ReactNode; hint?: string; children: React.ReactNode }) => (
+  <div>
+    <label className="section-label" style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>{label}</label>
+    {children}
+    {hint && <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.5 }}>{hint}</p>}
+  </div>
+);
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
-    delayMinMs: 300000,
-    delayMaxMs: 1200000,
-    maxEmailsPerDay: 30,
+    delayMinMs: 240000,
+    delayMaxMs: 336000,
+    maxEmailsPerDay: 100,
     startHour: 9,
     endHour: 17,
-    bounceThreshold: 5,
+    bounceThreshold: 3,
     followUpDays: 3,
     footerText: 'If you no longer wish to receive emails from us, please reply with "unsubscribe".',
     physicalAddress: '123 Business St, Suite 100, Austin, TX 78701',
@@ -24,227 +72,188 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetch('/api/settings')
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch settings');
-        return res.json();
-      })
-      .then((data) => {
-        setSettings((prev) => ({
-          ...prev,
-          ...data,
-        }));
-      })
-      .catch((err) => setError(err.message));
+      .then(r => { if (!r.ok) throw new Error('Failed to load settings'); return r.json(); })
+      .then(d => setSettings(prev => ({ ...prev, ...d })))
+      .catch(e => setError((e as Error).message));
   }, []);
 
   const saveSettings = async () => {
-    setSaving(true);
-    setSaved(false);
-    setError(null);
+    setSaving(true); setSaved(false); setError(null);
     try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
+      const res = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
       if (!res.ok) throw new Error('Failed to save settings');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (err: any) {
-      setError(err.message || 'Error occurred while saving configurations.');
-    } finally {
-      setSaving(false);
-    }
+    } catch (e: unknown) { setError((e as Error).message); } finally { setSaving(false); }
   };
 
   const hours = Array.from({ length: 24 }, (_, i) => ({
     value: i,
-    label: i === 0 ? '12:00 AM (Midnight)' : i === 12 ? '12:00 PM (Noon)' : i > 12 ? `${i - 12}:00 PM` : `${i}:00 AM`,
+    label: i === 0 ? '12:00 AM' : i === 12 ? '12:00 PM' : i > 12 ? `${i - 12}:00 PM` : `${i}:00 AM`,
   }));
 
+  const msToMin = (ms: number) => Math.round(ms / 60000);
+  const bounceColor = settings.bounceThreshold <= 3 ? 'var(--success)' : settings.bounceThreshold <= 6 ? 'var(--warning)' : 'var(--danger)';
+
+
+
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
-      {/* Title */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Configuration Panel</h1>
-          <p className="text-gray-400 text-sm mt-1">Configure schedule filters, bounce safety parameters, and CAN-SPAM regulatory details.</p>
-        </div>
+    <div style={{ padding: '32px', maxWidth: '760px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '100px', fontFamily: 'var(--font-inter)' }}>
+
+      {/* ── Header ───────────────────────────────────────────────── */}
+      <div style={{ marginBottom: '8px' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>Configuration</h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          Schedule, safety thresholds, compliance, and integrations.
+        </p>
       </div>
 
-      {error && (
-        <div className="glass-panel border-rose-500/20 bg-rose-500/5 p-4 rounded-xl flex items-center gap-3 text-rose-400 text-sm">
-          <AlertCircle size={18} className="shrink-0" />
-          <span>{error}</span>
+      {/* ── Alerts ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {error && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--danger-bg)', border: '1px solid rgba(181, 78, 69, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--danger)' }}>
+            <AlertCircle size={15} style={{ flexShrink: 0 }} /> {error}
+          </motion.div>
+        )}
+        {saved && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid rgba(74, 109, 75, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--success)' }}>
+            <CheckCircle size={15} style={{ flexShrink: 0 }} /> Settings saved — all changes are live.
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Section 1: Schedule ─────────────────────────────────── */}
+      <Section icon={<Clock size={14} />} label="Sending Schedule" accent="var(--honey-500)">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <Field label="Start Hour" hint="When sending begins (Central Time)">
+            <select className="input" value={settings.startHour}
+              onChange={e => setSettings({ ...settings, startHour: parseInt(e.target.value, 10) })}>
+              {hours.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
+            </select>
+          </Field>
+          <Field label="End Hour" hint="When sending stops for the day">
+            <select className="input" value={settings.endHour}
+              onChange={e => setSettings({ ...settings, endHour: parseInt(e.target.value, 10) })}>
+              {hours.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
+            </select>
+          </Field>
         </div>
-      )}
-
-      {saved && (
-        <div className="glass-panel border-emerald-500/20 bg-emerald-500/5 p-4 rounded-xl flex items-center gap-3 text-emerald-400 text-sm">
-          <CheckCircle size={18} className="shrink-0" />
-          <span>Configuration saved successfully! All updates are live.</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', background: 'var(--honey-50)', borderRadius: '10px', border: '1px solid var(--border-default)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <Clock size={14} style={{ color: 'var(--honey-600)', flexShrink: 0 }} />
+          <span>
+            Emails send only Mon–Fri between{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>{hours.find(h => h.value === settings.startHour)?.label}</strong> and{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>{hours.find(h => h.value === settings.endHour)?.label}</strong>{' '}
+            Central Time (CT). Holidays auto-pause.
+          </span>
         </div>
-      )}
+      </Section>
 
-      <div className="space-y-6">
-        {/* Section 1: Scheduler Schedule */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-6 rounded-2xl space-y-6">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <Clock size={16} className="text-blue-400" /> Campaign Sending Schedule
-          </h3>
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Start Sending Hour</label>
-              <select
-                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
-                value={settings.startHour}
-                onChange={(e) => setSettings({ ...settings, startHour: parseInt(e.target.value, 10) })}
-              >
-                {hours.map((h) => (
-                  <option key={h.value} value={h.value}>{h.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">End Sending Hour</label>
-              <select
-                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
-                value={settings.endHour}
-                onChange={(e) => setSettings({ ...settings, endHour: parseInt(e.target.value, 10) })}
-              >
-                {hours.map((h) => (
-                  <option key={h.value} value={h.value}>{h.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">Emails will only send within these business hours in the target timezone (Central Time (CT)).</p>
-        </motion.div>
-
-        {/* Section 2: Limits & Delays */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-panel p-6 rounded-2xl space-y-6">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <Mail size={16} className="text-purple-400" /> Mailbox Sending Speed
-          </h3>
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Max Outreach Emails Per Day (Per Account)</label>
-            <input
-              type="number"
-              className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500"
+      {/* ── Section 2: Sending Speed ────────────────────────────── */}
+      <Section icon={<Mail size={14} />} label="Sending Speed" accent="#8B7355">
+        <Field label="Max Emails Per Day (per account)"
+          hint="Each SMTP account is throttled independently. Warmup mode overrides this.">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <input type="number" min={1} max={500} className="input" style={{ maxWidth: '120px' }}
               value={settings.maxEmailsPerDay}
-              onChange={(e) => setSettings({ ...settings, maxEmailsPerDay: parseInt(e.target.value) || 0 })}
-            />
-            <p className="text-xs text-gray-500 mt-2">Enforces daily limits. Keeps sending thresholds low to prevent mailbox flags.</p>
+              onChange={e => setSettings({ ...settings, maxEmailsPerDay: parseInt(e.target.value) || 0 })} />
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>emails / account / day</span>
           </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Min Send Delay (ms)</label>
-              <input
-                type="number"
-                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500"
-                value={settings.delayMinMs}
-                onChange={(e) => setSettings({ ...settings, delayMinMs: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Max Send Delay (ms)</label>
-              <input
-                type="number"
-                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500"
-                value={settings.delayMaxMs}
-                onChange={(e) => setSettings({ ...settings, delayMaxMs: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Section 3: Safety Controls */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-panel p-6 rounded-2xl space-y-6">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <ShieldAlert size={16} className="text-rose-400" /> Account Safety Controls
-          </h3>
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 flex justify-between">
-              <span>Bounce Auto-Pause Threshold</span>
-              <span className="text-white font-mono">{settings.bounceThreshold}%</span>
-            </label>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
-              value={settings.bounceThreshold}
-              onChange={(e) => setSettings({ ...settings, bounceThreshold: parseInt(e.target.value) || 5 })}
-            />
-            <p className="text-xs text-gray-500 mt-2">Automatically suspends a mailbox's campaign sends if the bounce rate crosses this ratio.</p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Follow-up Sequence Interval (Days)</label>
-            <input
-              type="number"
-              className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500"
-              value={settings.followUpDays}
-              onChange={(e) => setSettings({ ...settings, followUpDays: parseInt(e.target.value) || 3 })}
-            />
-            <p className="text-xs text-gray-500 mt-2">Amount of time the system waits between sending outreach stages to unanswered leads.</p>
-          </div>
-        </motion.div>
-
-        {/* Section 4: CAN-SPAM Footer */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-panel p-6 rounded-2xl space-y-6">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            Footer regulatory info (CAN-SPAM compliance)
-          </h3>
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Unsubscribe / Opt-out Text</label>
-            <textarea
-              className="w-full h-20 bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
-              value={settings.footerText}
-              onChange={(e) => setSettings({ ...settings, footerText: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Physical Office Address</label>
-            <input
-              type="text"
-              className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500"
-              value={settings.physicalAddress}
-              onChange={(e) => setSettings({ ...settings, physicalAddress: e.target.value })}
-            />
-          </div>
-        </motion.div>
-
-        {/* Section 5: Webhooks */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-panel p-6 rounded-2xl space-y-6">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            Webhook Integrations
-          </h3>
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Webhook URL (Slack/Discord/Zapier)</label>
-            <input
-              type="url"
-              className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500"
-              value={(settings as any).webhookUrl || ''}
-              onChange={(e) => setSettings({ ...settings, webhookUrl: e.target.value })}
-              placeholder="https://hooks.slack.com/services/..."
-            />
-            <p className="text-xs text-gray-500 mt-2">Get notified when a new lead is found or an email bounces.</p>
-          </div>
-        </motion.div>
-
-        {/* Save Bar */}
-        <div className="flex items-center justify-end gap-4 pt-4">
-          <button
-            onClick={saveSettings}
-            disabled={saving}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-lg shadow-blue-600/20"
-          >
-            <Save size={18} /> {saving ? 'Applying Settings...' : 'Save Configuration'}
-          </button>
+        </Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <Field label="Min Delay Between Sends"
+            hint={`≈ ${msToMin(settings.delayMinMs)} min`}>
+            <input type="number" min={0} className="input"
+              value={settings.delayMinMs}
+              onChange={e => setSettings({ ...settings, delayMinMs: parseInt(e.target.value) || 0 })} />
+          </Field>
+          <Field label="Max Delay Between Sends"
+            hint={`≈ ${msToMin(settings.delayMaxMs)} min`}>
+            <input type="number" min={0} className="input"
+              value={settings.delayMaxMs}
+              onChange={e => setSettings({ ...settings, delayMaxMs: parseInt(e.target.value) || 0 })} />
+          </Field>
         </div>
+      </Section>
+
+      {/* ── Section 3: Safety ───────────────────────────────────── */}
+      <Section icon={<ShieldAlert size={14} />} label="Account Safety Controls" accent="var(--danger)">
+        <Field label={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Bounce Auto-Pause Threshold</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: bounceColor, fontWeight: 700 }}>
+              {settings.bounceThreshold}%
+            </span>
+          </div>
+        } hint="Mailboxes exceeding this bounce rate are automatically suspended.">
+          <div style={{ position: 'relative', marginTop: '4px' }}>
+            <input type="range" min={1} max={10} value={settings.bounceThreshold}
+              onChange={e => setSettings({ ...settings, bounceThreshold: parseInt(e.target.value) })}
+              style={{ width: '100%', height: '4px', borderRadius: '99px', appearance: 'none', cursor: 'pointer', accentColor: bounceColor, background: `linear-gradient(90deg, ${bounceColor} ${settings.bounceThreshold * 10}%, var(--border-default) ${settings.bounceThreshold * 10}%)` }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--success)', fontWeight: 600 }}>1% Safe</span>
+              <span style={{ fontSize: '10px', color: 'var(--warning)', fontWeight: 600 }}>5% Warning</span>
+              <span style={{ fontSize: '10px', color: 'var(--danger)', fontWeight: 600 }}>10% Critical</span>
+            </div>
+          </div>
+        </Field>
+
+        <Field label="Follow-up Wait Interval (Days)"
+          hint="Days between initial email and first follow-up, and between follow-ups.">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <input type="number" min={1} max={30} className="input" style={{ maxWidth: '100px' }}
+              value={settings.followUpDays}
+              onChange={e => setSettings({ ...settings, followUpDays: parseInt(e.target.value) || 3 })} />
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>days between stages</span>
+          </div>
+        </Field>
+      </Section>
+
+      {/* ── Section 4: CAN-SPAM ─────────────────────────────────── */}
+      <Section icon={<RefreshCw size={14} />} label="CAN-SPAM Compliance" accent="var(--warning)">
+        <Field label="Unsubscribe Footer Text"
+          hint="Appended to every outbound email. Required by CAN-SPAM.">
+          <textarea className="input" rows={3} style={{ resize: 'vertical', fontFamily: 'inherit' }}
+            value={settings.footerText}
+            onChange={e => setSettings({ ...settings, footerText: e.target.value })} />
+        </Field>
+        <Field label="Physical Office Address"
+          hint="Required by law. Displayed in the email footer.">
+          <input type="text" className="input"
+            value={settings.physicalAddress}
+            onChange={e => setSettings({ ...settings, physicalAddress: e.target.value })} />
+        </Field>
+      </Section>
+
+      {/* ── Section 5: Webhooks ─────────────────────────────────── */}
+      <Section icon={<Link2 size={14} />} label="Webhook Integrations" accent="var(--success)">
+        <Field label="Webhook URL"
+          hint="POST notification is sent to this URL when a lead replies with interest. Works with Slack, Discord, Zapier, n8n.">
+          <input type="url" className="input" placeholder="https://hooks.slack.com/services/..."
+            value={settings.webhookUrl || ''}
+            onChange={e => setSettings({ ...settings, webhookUrl: e.target.value })} />
+        </Field>
+        {settings.webhookUrl && (
+          <div style={{ padding: '10px 14px', background: 'var(--success-bg)', borderRadius: '8px', border: '1px solid rgba(74, 109, 75, 0.15)', fontSize: '12px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+            <Zap size={12} /> Webhook active — interested leads will trigger a notification.
+          </div>
+        )}
+      </Section>
+
+      {/* ── Sticky Save Bar ─────────────────────────────────────── */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 'var(--sidebar-w)', right: 0, zIndex: 40,
+        padding: '16px 32px',
+        background: 'linear-gradient(0deg, var(--bg-base) 60%, transparent)',
+        display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+      }}>
+        <button onClick={saveSettings} disabled={saving} className="btn btn-primary" style={{ padding: '10px 24px', fontSize: '14px' }}>
+          <Save size={15} />
+          {saving ? 'Saving…' : 'Save Configuration'}
+        </button>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 export async function GET() {
-  const defaultSettings = { delayMinMs: 300000, delayMaxMs: 1200000, maxEmailsPerDay: 30 };
+  const defaultSettings = { delayMinMs: 240000, delayMaxMs: 336000, maxEmailsPerDay: 100, bounceThreshold: 3 };
   try {
     const settingsPath = path.resolve(process.cwd(), '../settings.json');
     if (!fs.existsSync(settingsPath)) {
@@ -24,7 +24,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const settingsPath = path.resolve(process.cwd(), '../settings.json');
-    let newSettings: any;
+    let newSettings: Record<string, unknown>;
     try {
       newSettings = await request.json();
     } catch {
@@ -43,8 +43,8 @@ export async function POST(request: Request) {
     }
 
     const mergedSettings = { ...existingSettings, ...newSettings };
-    if ((existingSettings as any).accounts) {
-      (mergedSettings as any).accounts = (existingSettings as any).accounts;
+    if ((existingSettings as Record<string, unknown>).accounts) {
+      (mergedSettings as Record<string, unknown>).accounts = (existingSettings as Record<string, unknown>).accounts;
     }
 
     fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2), 'utf8');

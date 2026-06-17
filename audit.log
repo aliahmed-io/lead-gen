@@ -1,0 +1,98 @@
+[INFO] 2026-06-15T06:48:35.760Z - ======================================================
+[INFO] 2026-06-15T06:48:35.762Z - 🤖 MASTER SCHEDULER ONLINE
+[INFO] 2026-06-15T06:48:35.762Z - ======================================================
+[INFO] 2026-06-15T06:48:35.763Z -  - Sender Queue:     Runs immediately, then checks hourly
+[INFO] 2026-06-15T06:48:35.763Z -  - IMAP Scanner:     Scheduled every hour
+[INFO] 2026-06-15T06:48:35.764Z -  - Follow-ups:       Scheduled daily at 9:15 AM (Texas Time)
+[INFO] 2026-06-15T06:48:35.764Z -  - Safety Controls:  Auto-pauses on Nights, Weekends, and Holidays
+[INFO] 2026-06-15T06:48:35.764Z - ======================================================
+
+[INFO] 2026-06-15T06:48:36.148Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-15T06:48:36.149Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-15T22:11:04.309Z - ======================================================
+[INFO] 2026-06-15T22:11:04.311Z - 🤖 MASTER SCHEDULER ONLINE
+[INFO] 2026-06-15T22:11:04.311Z - ======================================================
+[INFO] 2026-06-15T22:11:04.312Z -  - Sender Queue:     Runs immediately, then checks hourly
+[INFO] 2026-06-15T22:11:04.312Z -  - IMAP Scanner:     Scheduled every hour
+[INFO] 2026-06-15T22:11:04.312Z -  - Follow-ups:       Scheduled daily at 9:15 AM (Texas Time)
+[INFO] 2026-06-15T22:11:04.313Z -  - Safety Controls:  Auto-pauses on Nights, Weekends, and Holidays
+[INFO] 2026-06-15T22:11:04.313Z - ======================================================
+
+[INFO] 2026-06-15T22:11:04.529Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-15T22:11:04.530Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-15T22:11:04.309Z - ======================================================
+[INFO] 2026-06-15T22:11:04.311Z - 🤖 MASTER SCHEDULER ONLINE
+[INFO] 2026-06-15T22:11:04.311Z - ======================================================
+[INFO] 2026-06-15T22:11:04.312Z -  - Sender Queue:     Runs immediately, then checks hourly
+[INFO] 2026-06-15T22:11:04.312Z -  - IMAP Scanner:     Scheduled every hour
+[INFO] 2026-06-15T22:11:04.312Z -  - Follow-ups:       Scheduled daily at 9:15 AM (Texas Time)
+[INFO] 2026-06-15T22:11:04.312Z -  - Safety Controls:  Auto-pauses on Nights, Weekends, and Holidays
+[INFO] 2026-06-15T22:11:04.313Z - ======================================================
+
+[INFO] 2026-06-15T22:11:04.517Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-15T22:11:04.519Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-15T23:00:00.183Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-15T23:00:00.182Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-15T23:00:00.190Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-15T23:00:00.191Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-15T23:00:00.625Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-15T23:00:00.627Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-15T23:00:00.194Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-15T23:00:00.196Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-15T23:00:00.658Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-15T23:00:00.660Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-16T12:51:59.224Z - ======================================================
+[INFO] 2026-06-16T12:51:59.225Z - 🤖 MASTER SCHEDULER ONLINE
+[INFO] 2026-06-16T12:51:59.225Z - ======================================================
+[INFO] 2026-06-16T12:51:59.225Z -  - Sender Queue:     Runs immediately, then checks hourly
+[INFO] 2026-06-16T12:51:59.226Z -  - IMAP Scanner:     Scheduled every hour
+[INFO] 2026-06-16T12:51:59.226Z -  - Follow-ups:       Scheduled daily at 9:15 AM (Texas Time)
+[INFO] 2026-06-16T12:51:59.226Z -  - Safety Controls:  Auto-pauses on Nights, Weekends, and Holidays
+[INFO] 2026-06-16T12:51:59.227Z - ======================================================
+
+[INFO] 2026-06-16T12:51:59.518Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-16T12:51:59.519Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-16T12:51:59.224Z - ======================================================
+[INFO] 2026-06-16T12:51:59.226Z - 🤖 MASTER SCHEDULER ONLINE
+[INFO] 2026-06-16T12:51:59.226Z - ======================================================
+[INFO] 2026-06-16T12:51:59.226Z -  - Sender Queue:     Runs immediately, then checks hourly
+[INFO] 2026-06-16T12:51:59.226Z -  - IMAP Scanner:     Scheduled every hour
+[INFO] 2026-06-16T12:51:59.226Z -  - Follow-ups:       Scheduled daily at 9:15 AM (Texas Time)
+[INFO] 2026-06-16T12:51:59.227Z -  - Safety Controls:  Auto-pauses on Nights, Weekends, and Holidays
+[INFO] 2026-06-16T12:51:59.227Z - ======================================================
+
+[INFO] 2026-06-16T12:51:59.533Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-16T12:51:59.535Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-16T12:59:31.308Z - ======================================================
+[INFO] 2026-06-16T12:59:31.309Z - 🤖 MASTER SCHEDULER ONLINE
+[INFO] 2026-06-16T12:59:31.309Z - ======================================================
+[INFO] 2026-06-16T12:59:31.309Z -  - Sender Queue:     Runs immediately, then checks hourly
+[INFO] 2026-06-16T12:59:31.309Z -  - IMAP Scanner:     Scheduled every hour
+[INFO] 2026-06-16T12:59:31.309Z -  - Follow-ups:       Scheduled daily at 9:15 AM (Texas Time)
+[INFO] 2026-06-16T12:59:31.310Z -  - Safety Controls:  Auto-pauses on Nights, Weekends, and Holidays
+[INFO] 2026-06-16T12:59:31.310Z - ======================================================
+
+[INFO] 2026-06-16T12:59:31.438Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-16T12:59:31.439Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-16T13:00:00.094Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-16T13:00:00.097Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-16T13:00:00.098Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-16T13:00:00.101Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-16T13:00:00.438Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-16T13:00:00.439Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-16T13:00:00.099Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-16T13:00:00.101Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-16T13:00:00.447Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-16T13:00:00.449Z - ❌ No SMTP accounts found in .env file! Skipping sender module.

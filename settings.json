@@ -1,8 +1,8 @@
 {
-  "delayMinMs": 300000,
-  "delayMaxMs": 1200000,
-  "maxEmailsPerDay": 30,
-  "startHour": 8,
-  "endHour": 18,
-  "bounceThreshold": 0.05
+  "delayMinMs": 240000,
+  "delayMaxMs": 336000,
+  "maxEmailsPerDay": 100,
+  "startHour": 9,
+  "endHour": 17,
+  "bounceThreshold": 3
 }

@@ -2,23 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  Send,
-  Users,
-  CheckCircle,
-  XCircle,
-  TrendingUp,
-  Play,
-  Pause as PauseIcon,
-  Square,
-  AlertCircle,
-  Activity,
-  ShieldAlert,
-  ArrowRight,
-  RefreshCw,
+  Send, Users, CheckCircle, XCircle, TrendingUp,
+  Play, Pause as PauseIcon, Square, AlertCircle,
+  Activity, ShieldAlert, ArrowRight, RefreshCw,
+  Zap,
 } from 'lucide-react';
 import { EnhancedStats, CampaignState, AccountHealth } from '@/types';
+
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
+const stagger = { show: { transition: { staggerChildren: 0.06 } } };
 
 export default function Overview() {
   const [stats, setStats] = useState<EnhancedStats | null>(null);
@@ -30,35 +24,27 @@ export default function Overview() {
 
   const fetchData = async () => {
     try {
-      const [statsRes, campaignRes, accountsRes] = await Promise.all([
-        fetch('/api/stats'),
-        fetch('/api/campaign'),
-        fetch('/api/accounts'),
+      const [sr, cr, ar] = await Promise.all([
+        fetch('/api/stats'), fetch('/api/campaign'), fetch('/api/accounts'),
       ]);
-
-      if (!statsRes.ok || !campaignRes.ok || !accountsRes.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
-      const statsData = await statsRes.json();
-      const campaignData = await campaignRes.json();
-      const accountsData = await accountsRes.json();
-
-      setStats(statsData);
-      setCampaignState(campaignData);
-      setAccounts(accountsData);
+      if (!sr.ok || !cr.ok || !ar.ok) throw new Error('Failed to fetch dashboard data');
+      setStats(await sr.json());
+      setCampaignState(await cr.json());
+      setAccounts(await ar.json());
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while loading dashboard metrics.');
+    } catch (e: unknown) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 8000);
-    return () => clearInterval(interval);
+    Promise.resolve().then(() => {
+      fetchData();
+    });
+    const iv = setInterval(fetchData, 8000);
+    return () => clearInterval(iv);
   }, []);
 
   const handleCampaignAction = async (action: 'pause' | 'resume' | 'stop', reason?: string) => {
@@ -69,264 +55,271 @@ export default function Overview() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, reason }),
       });
-      if (!res.ok) throw new Error('Failed to update campaign status');
-      const data = await res.json();
-      if (data.success) {
-        setCampaignState(data.state);
-        fetchData();
-      }
-    } catch (err: any) {
-      setError(err.message);
+      if (!res.ok) throw new Error('Campaign action failed');
+      const d = await res.json();
+      if (d.success) { setCampaignState(d.state); fetchData(); }
+    } catch (e: unknown) {
+      setError((e as Error).message);
     } finally {
       setActionLoading(false);
     }
   };
 
+  const fmt = (n?: number) => (n ?? 0).toLocaleString();
+  const status = campaignState?.status ?? 'running';
+
+  // ── Loading skeleton ──────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] p-10 max-w-lg mx-auto text-center">
-        <div className="relative w-16 h-16 mb-6">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-            className="w-16 h-16 rounded-full border-4 border-white/10 border-t-blue-500"
-          />
-        </div>
-        <h2 className="text-xl font-medium text-gray-300">Synchronizing Command Center...</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '16px' }}>
+        <motion.div
+          animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+          style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid var(--border-default)', borderTopColor: 'var(--honey-500)' }}
+        />
+        <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontFamily: 'var(--font-inter)' }}>Loading dashboard…</span>
       </div>
     );
   }
 
-  // Formatting stats
-  const formatNum = (num: number | undefined) => (num !== undefined ? num.toLocaleString() : '0');
+  // ── Metrics ───────────────────────────────────────────────────────
+  const totalLeads = stats?.total ?? 0;
+  const sentCount  = stats?.sent ?? 0;
+  const s1 = stats?.followUpBreakdown?.stage1 ?? 0;
+  const s2 = stats?.followUpBreakdown?.stage2 ?? 0;
+  const replied = stats?.replied ?? 0;
+  const volumes = stats?.dailyVolume ?? [];
+  const maxVol = Math.max(...volumes.map(v => v.count), 1);
 
-  const cards = [
-    { title: 'Total Leads', value: formatNum(stats?.total), icon: Users, color: 'text-blue-400', bg: 'from-blue-500/10 to-transparent' },
-    { title: 'Total Sent', value: formatNum(stats?.sent), icon: Send, color: 'text-purple-400', bg: 'from-purple-500/10 to-transparent' },
-    { title: 'Interested', value: formatNum(stats?.replied), icon: CheckCircle, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-transparent' },
-    { title: 'Bounced', value: formatNum(stats?.bounced), icon: XCircle, color: 'text-rose-400', bg: 'from-rose-500/10 to-transparent' },
-    { title: 'Conversion Rate', value: `${stats?.conversion || 0}%`, icon: TrendingUp, color: 'text-amber-400', bg: 'from-amber-500/10 to-transparent' },
+  const statCards = [
+    { label: 'Total Leads',   value: fmt(stats?.total),            delta: null,  icon: Users,         accent: 'var(--honey-500)', glow: 'var(--honey-glow)' },
+    { label: 'Emails Sent',   value: fmt(stats?.sent),             delta: null,  icon: Send,           accent: '#8B7355',          glow: 'rgba(139,115,85,0.08)' },
+    { label: 'Interested',    value: fmt(stats?.replied),           delta: null,  icon: CheckCircle,    accent: 'var(--success)',   glow: 'var(--success-bg)' },
+    { label: 'Bounced',       value: fmt(stats?.bounced),           delta: null,  icon: XCircle,        accent: 'var(--danger)',    glow: 'var(--danger-bg)' },
+    { label: 'Reply Rate',    value: `${stats?.conversion ?? 0}%`, delta: null,  icon: TrendingUp,     accent: 'var(--warning)',   glow: 'var(--warning-bg)' },
   ];
 
-  // Daily volume chart calculations
-  const volumes = stats?.dailyVolume || [];
-  const maxVolume = Math.max(...volumes.map((v) => v.count), 1);
-
-  // Funnel calculations
-  const totalLeads = stats?.total || 1;
-  const sentCount = stats?.sent || 0;
-  const stage1Count = stats?.followUpBreakdown?.stage1 || 0;
-  const stage2Count = stats?.followUpBreakdown?.stage2 || 0;
-  const repliedCount = stats?.replied || 0;
-
-  const funnelStages = [
-    { name: 'Pending Leads', count: totalLeads - sentCount, color: 'bg-blue-600/30 text-blue-400 border-blue-500/20' },
-    { name: 'Outreach Sent', count: sentCount, color: 'bg-indigo-600/30 text-indigo-400 border-indigo-500/20' },
-    { name: 'Follow-up Stage 1', count: stage1Count, color: 'bg-purple-600/30 text-purple-400 border-purple-500/20' },
-    { name: 'Follow-up Stage 2', count: stage2Count, color: 'bg-pink-600/30 text-pink-400 border-pink-500/20' },
-    { name: 'Interested Replies', count: repliedCount, color: 'bg-emerald-600/30 text-emerald-400 border-emerald-500/20' },
+  const funnelRows = [
+    { name: 'Pending',      count: Math.max(totalLeads - sentCount, 0), color: 'var(--honey-500)' },
+    { name: 'Sent',         count: sentCount,                            color: '#8B7355' },
+    { name: 'Follow-up 1',  count: s1,                                   color: '#A1886B' },
+    { name: 'Follow-up 2',  count: s2,                                   color: '#C69D6E' },
+    { name: 'Interested',   count: replied,                              color: 'var(--success)' },
   ];
 
-  const status = campaignState?.status || 'running';
-  const statusColors = {
-    running: {
-      text: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
-      dot: 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)] animate-pulse',
-      banner: 'border-emerald-500/20 bg-gradient-to-r from-emerald-500/5 to-transparent',
-    },
-    paused: {
-      text: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
-      dot: 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.7)]',
-      banner: 'border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-transparent',
-    },
-    stopped: {
-      text: 'text-rose-400 border-rose-500/20 bg-rose-500/5',
-      dot: 'bg-rose-500 shadow-[0_0_12px_rgba(239,68,68,0.7)]',
-      banner: 'border-rose-500/20 bg-gradient-to-r from-rose-500/5 to-transparent',
-    },
+  const statusMeta = {
+    running: { label: 'Live',    color: 'var(--success)', bg: 'var(--success-bg)',  border: 'rgba(74, 109, 75, 0.15)' },
+    paused:  { label: 'Paused',  color: 'var(--warning)', bg: 'var(--warning-bg)', border: 'rgba(198, 120, 43, 0.15)' },
+    stopped: { label: 'Stopped', color: 'var(--danger)', bg: 'var(--danger-bg)',  border: 'rgba(181, 78, 69, 0.15)' },
   }[status];
 
-  // Helper to format activity status
-  const formatStatus = (s: string) => {
+  const fmtStatus = (s: string) => {
     if (s === 'followed_up_1') return 'Follow-up 1';
     if (s === 'followed_up_2') return 'Follow-up 2';
     if (s === 'completed_no_interest') return 'Opted Out';
-    return s;
+    return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
-  const getStatusBadgeColor = (s: string) => {
-    if (s === 'interested') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-    if (s.startsWith('followed_up')) return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-    if (s === 'sent') return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-    if (s === 'bounced') return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-    return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+  const activityBadge = (s: string) => {
+    if (s === 'interested')        return { bg: 'var(--success-bg)', color: 'var(--success)', border: 'rgba(74, 109, 75, 0.15)' };
+    if (s.startsWith('followed'))  return { bg: 'rgba(161, 136, 107, 0.08)', color: 'var(--text-secondary)', border: 'rgba(161, 136, 107, 0.15)' };
+    if (s === 'sent')              return { bg: 'var(--honey-100)',  color: 'var(--honey-600)', border: 'var(--honey-glow)' };
+    if (s === 'bounced')           return { bg: 'var(--danger-bg)',   color: 'var(--danger)', border: 'rgba(181, 78, 69, 0.15)' };
+    return                                { bg: 'var(--bg-neutral-muted)', color: 'var(--text-secondary)', border: 'var(--border-subtle)' };
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+    <div style={{ padding: '32px', maxWidth: '1280px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Campaign Command Center</h1>
-          <p className="text-gray-400 text-sm mt-1">Real-time control and unified metrics for your cold outreach systems.</p>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+            Campaign Overview
+          </h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'var(--font-inter)' }}>
+            Real-time metrics and controls for your outreach system.
+          </p>
         </div>
         <button
           onClick={fetchData}
-          className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+          className="btn btn-secondary"
+          style={{ padding: '8px', borderRadius: '10px' }}
+          aria-label="Refresh"
         >
-          <RefreshCw size={18} className={actionLoading ? 'animate-spin' : ''} />
+          <RefreshCw size={15} className={actionLoading ? 'animate-spin' : ''} />
         </button>
       </div>
 
+      {/* ── Error ──────────────────────────────────────────────────── */}
       {error && (
-        <div className="glass-panel border-rose-500/20 bg-rose-500/5 p-4 rounded-xl flex items-center gap-3 text-rose-400 text-sm">
-          <AlertCircle size={18} className="shrink-0" />
-          <span>{error}</span>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px',
+          background: 'var(--danger-bg)', border: '1px solid rgba(181, 78, 69, 0.18)',
+          borderRadius: '12px', fontSize: '13px', color: 'var(--danger)', fontFamily: 'var(--font-inter)'
+        }}>
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
         </div>
       )}
 
-      {/* Campaign Control Banner */}
-      <div className={`border rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 transition-all ${statusColors.banner}`}>
-        <div className="flex items-center gap-4.5">
-          <span className={`w-3.5 h-3.5 rounded-full ${statusColors.dot}`} />
+      {/* ── Campaign Control Banner ─────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px',
+          padding: '18px 24px', borderRadius: '16px',
+          background: statusMeta.bg, border: `1px solid ${statusMeta.border}`,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+            background: 'var(--bg-surface)', border: `1px solid ${statusMeta.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(44, 34, 25, 0.02)',
+          }}>
+            <Zap size={16} style={{ color: statusMeta.color }} />
+          </div>
           <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              Campaign is <span className="capitalize">{status}</span>
-            </h2>
-            <p className="text-gray-400 text-sm mt-0.5">
-              {status === 'running' && 'Outreach automation is running actively. Emails are sending according to schedule.'}
-              {status === 'paused' && `Outreach is temporarily paused. Reason: ${campaignState?.pauseReason || 'None specified'}.`}
-              {status === 'stopped' && 'Outreach is fully stopped. Manual action is required to reactivate sending.'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', fontFamily: 'var(--font-inter)' }}>
+                Campaign is {status === 'running' ? 'running' : status}
+              </span>
+              <span className="badge" style={{ background: statusMeta.bg, color: statusMeta.color, borderColor: statusMeta.border }}>
+                <span style={{
+                  width: '6px', height: '6px', borderRadius: '50%', background: statusMeta.color, display: 'inline-block',
+                  animation: status === 'running' ? 'pulse-glow 2s ease-in-out infinite' : undefined,
+                }} />
+                {statusMeta.label}
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', fontFamily: 'var(--font-inter)' }}>
+              {status === 'running' && 'Sending emails on schedule across all active accounts.'}
+              {status === 'paused' && `Paused — ${campaignState?.pauseReason ?? 'No reason specified.'}`}
+              {status === 'stopped' && 'Campaign stopped. Click resume to restart outreach.'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, fontFamily: 'var(--font-inter)' }}>
           {status !== 'running' && (
-            <button
-              onClick={() => handleCampaignAction('resume')}
-              disabled={actionLoading}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-lg shadow-emerald-600/20"
-            >
-              <Play size={16} fill="white" /> Resume Campaign
+            <button onClick={() => handleCampaignAction('resume')} disabled={actionLoading} className="btn btn-primary">
+              <Play size={14} fill="white" /> Resume
             </button>
           )}
-
           {status === 'running' && (
-            <button
-              onClick={() => handleCampaignAction('pause', 'Paused via control center')}
-              disabled={actionLoading}
-              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white px-5 py-3 rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-lg shadow-amber-600/20"
-            >
-              <PauseIcon size={16} fill="white" /> Pause Campaign
+            <button onClick={() => handleCampaignAction('pause', 'Paused via dashboard')} disabled={actionLoading}
+              style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 16px', borderRadius:'10px', fontSize:'13px', fontWeight:600, cursor:'pointer', border:'1px solid rgba(198, 120, 43, 0.2)', background:'var(--warning-bg)', color:'var(--warning)', transition:'all 0.15s' }}>
+              <PauseIcon size={14} fill="var(--warning)" /> Pause
             </button>
           )}
-
           {status !== 'stopped' && (
-            <button
-              onClick={() => handleCampaignAction('stop')}
-              disabled={actionLoading}
-              className="flex items-center gap-2 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 px-5 py-3 rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              <Square size={14} fill="currentColor" /> Stop
+            <button onClick={() => handleCampaignAction('stop')} disabled={actionLoading} className="btn btn-danger" style={{ padding: '8px 14px' }}>
+              <Square size={12} fill="currentColor" /> Stop
             </button>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Main Stat Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-        {cards.map((card, i) => (
-          <motion.div
-            key={card.title}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className={`glass-panel p-6 rounded-2xl bg-gradient-to-b ${card.bg} hover:bg-white/[0.04] transition-all relative overflow-hidden group`}
+      {/* ── Stat Cards ─────────────────────────────────────────────── */}
+      <motion.div variants={stagger} initial="hidden" animate="show"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+        {statCards.map((c) => (
+          <motion.div key={c.label} variants={fadeUp} transition={{ duration: 0.3 }}
+            className="stat-card"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{card.title}</h3>
-              <card.icon className={`w-5 h-5 ${card.color} group-hover:scale-110 transition-transform`} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <span className="section-label" style={{ fontSize: '10px' }}>{c.label}</span>
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: c.glow, border: `1px solid ${c.accent}1c`,
+              }}>
+                <c.icon size={14} style={{ color: c.accent }} />
+              </div>
             </div>
-            <p className="text-3xl font-extrabold text-white tracking-tight">
-              {stats === null ? '-' : card.value}
-            </p>
+            <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.04em', lineHeight: 1, fontFamily: 'var(--font-serif)' }}>
+              {c.value}
+            </div>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
 
-      {/* Daily Send Volume & Follow-up Funnel Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Daily Send Volume Chart (CSS) */}
-        <div className="glass-panel p-6 rounded-2xl lg:col-span-7 flex flex-col h-[380px]">
-          <div className="mb-6 flex items-center justify-between">
+      {/* ── Charts Row ─────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '16px', fontFamily: 'var(--font-inter)' }}>
+
+        {/* Volume Chart */}
+        <div className="card" style={{ padding: '24px', height: '300px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
             <div>
-              <h3 className="text-base font-bold text-white">Sending Volume</h3>
-              <p className="text-gray-400 text-xs mt-0.5">Daily emails sent across all accounts for the last 14 days.</p>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', fontFamily: 'var(--font-serif)' }}>Send Volume</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Daily emails — last 14 days</div>
             </div>
-            <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded-full font-semibold">
-              Central Time (CT)
-            </span>
+            <span className="badge badge-gray">CT timezone</span>
           </div>
 
-          {/* Chart Core */}
-          <div className="flex-1 flex items-end gap-3.5 pb-2 border-b border-white/5">
-            {volumes.map((vol, idx) => {
-              const pct = (vol.count / maxVolume) * 100;
-              const dateObj = new Date(vol.date + 'T00:00:00');
-              const shortDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
+          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '5px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', position: 'relative' }}>
+            {/* Y-axis grid */}
+            {[0, 25, 50, 75, 100].map(pct => (
+              <div key={pct} style={{
+                position: 'absolute', left: 0, right: 0, top: `${100 - pct}%`,
+                borderTop: '1px solid var(--border-subtle)', pointerEvents: 'none',
+              }} />
+            ))}
+            {volumes.map((v, i) => {
+              const pct = (v.count / maxVol) * 100;
+              const d = new Date(v.date + 'T12:00:00');
+              const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              const isRecent = i >= volumes.length - 3;
               return (
-                <div key={vol.date} className="flex-1 flex flex-col items-center h-full justify-end group relative">
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full mb-2 bg-gray-900 border border-white/10 text-white text-[10px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-150 transform translate-y-1 group-hover:translate-y-0 shadow-xl z-10 whitespace-nowrap">
-                    <span className="font-bold">{vol.count}</span> sends ({shortDate})
-                  </div>
-
-                  {/* Visual Bar */}
-                  <div
-                    style={{ height: `${Math.max(pct, 3)}%` }}
-                    className="w-full bg-gradient-to-t from-blue-600 to-purple-500 rounded-t-md group-hover:from-blue-500 group-hover:to-purple-400 transition-all shadow-[0_0_8px_rgba(59,130,246,0.2)]"
-                  />
+                <div key={v.date} title={`${v.count} sends — ${label}`}
+                  style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end', cursor: 'pointer', position: 'relative', zIndex: 10 }}
+                >
+                  <div style={{
+                    width: '100%',
+                    height: `${Math.max(pct, 3)}%`,
+                    borderRadius: '4px 4px 2px 2px',
+                    background: isRecent
+                      ? 'linear-gradient(180deg, var(--honey-200) 0%, var(--honey-500) 100%)'
+                      : 'linear-gradient(180deg, rgba(110, 97, 83, 0.25) 0%, rgba(110, 97, 83, 0.1) 100%)',
+                    transition: 'all 0.2s',
+                  }} />
                 </div>
               );
             })}
           </div>
 
-          {/* X-axis Labels */}
-          <div className="flex justify-between mt-3 px-1">
-            {volumes.length > 0 && (
-              <>
-                <span className="text-[10px] text-gray-500 font-medium">{new Date(volumes[0].date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                <span className="text-[10px] text-gray-500 font-medium">Halfway</span>
-                <span className="text-[10px] text-gray-500 font-medium">{new Date(volumes[volumes.length - 1].date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-              </>
-            )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+            {[0, 6, 13].map(i => volumes[i] && (
+              <span key={i} style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                {new Date(volumes[i].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Follow-up Funnel */}
-        <div className="glass-panel p-6 rounded-2xl lg:col-span-5 flex flex-col h-[380px]">
-          <div>
-            <h3 className="text-base font-bold text-white">Outreach Pipeline</h3>
-            <p className="text-gray-400 text-xs mt-0.5">Conversion breakdown through stages of lead campaign lifecycle.</p>
-          </div>
+        {/* Funnel */}
+        <div className="card" style={{ padding: '24px', height: '300px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', fontFamily: 'var(--font-serif)', marginBottom: '4px' }}>Pipeline</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>Outreach stage breakdown</div>
 
-          <div className="flex-1 flex flex-col justify-center space-y-4.5 mt-4">
-            {funnelStages.map((stage, i) => {
-              const pct = totalLeads > 0 ? ((stage.count / totalLeads) * 100).toFixed(1) : '0';
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
+            {funnelRows.map((row) => {
+              const pct = totalLeads > 0 ? (row.count / totalLeads) * 100 : 0;
               return (
-                <div key={stage.name} className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-semibold text-gray-300">{stage.name}</span>
-                    <span className="text-gray-400 font-mono">
-                      {formatNum(stage.count)} ({pct}%)
+                <div key={row.name}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>{row.name}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      {row.count.toLocaleString()} · {pct.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="w-full h-2.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                    <div
-                      style={{ width: `${Math.max(parseFloat(pct), 1)}%` }}
-                      className={`h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500`}
+                  <div className="progress-track">
+                    <motion.div
+                      className="progress-fill"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.max(pct, 1)}%` }}
+                      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                      style={{ background: `linear-gradient(90deg, ${row.color}bb, ${row.color})` }}
                     />
                   </div>
                 </div>
@@ -336,117 +329,102 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Account Health & Activity Logs Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Account Health Summary */}
-        <div className="glass-panel p-6 rounded-2xl lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between">
+      {/* ── Bottom Row: Accounts + Activity ─────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '16px', fontFamily: 'var(--font-inter)' }}>
+
+        {/* Account Health */}
+        <div className="card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <div>
-              <h3 className="text-base font-bold text-white">Active Sending Accounts</h3>
-              <p className="text-gray-400 text-xs mt-0.5">Real-time health and safety limits per SMTP/IMAP mailbox.</p>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)' }}>Mailbox Health</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Active SMTP accounts</div>
             </div>
-            {accounts.some((a) => a.healthScore === 'critical') && (
-              <span className="flex items-center gap-1 text-[11px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-full">
-                <ShieldAlert size={12} /> Auto-Pause Warning
-              </span>
+            {accounts.some(a => a.healthScore === 'critical') && (
+              <span className="badge badge-red"><ShieldAlert size={10} /> Auto-Pause Risk</span>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {accounts.slice(0, 4).map((account) => {
-              const dotColor =
-                account.healthScore === 'good'
-                  ? 'bg-emerald-500'
-                  : account.healthScore === 'warning'
-                  ? 'bg-amber-500'
-                  : 'bg-rose-500 animate-pulse';
-
-              return (
-                <div
-                  key={account.id}
-                  className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-3 hover:bg-white/[0.04] transition-all"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-200 truncate max-w-[80%]">
-                      {account.email}
-                    </span>
-                    <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>
-                      <p className="text-gray-500 font-semibold">SENT TODAY</p>
-                      <p className="text-white font-bold font-mono mt-0.5">
-                        {account.sentToday} <span className="text-gray-600 font-normal">sends</span>
-                      </p>
+          {accounts.length === 0 ? (
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+              No accounts configured. <Link href="/accounts" style={{ color: 'var(--honey-500)', textDecoration: 'none', fontWeight: 600 }}>Add one →</Link>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+              {accounts.slice(0, 6).map(acc => {
+                const hColor = acc.healthScore === 'good' ? 'var(--success)' : acc.healthScore === 'warning' ? 'var(--warning)' : 'var(--danger)';
+                return (
+                  <div key={acc.id} style={{
+                    padding: '14px 16px', borderRadius: '12px',
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                    display: 'flex', flexDirection: 'column', gap: '10px',
+                    transition: 'border-color 0.15s',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                        {acc.email}
+                      </span>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: hColor, flexShrink: 0 }} />
                     </div>
-                    <div>
-                      <p className="text-gray-500 font-semibold">BOUNCE RATE</p>
-                      <p
-                        className={`font-bold font-mono mt-0.5 ${
-                          account.bounceRate > 0.05
-                            ? 'text-rose-400'
-                            : account.bounceRate > 0.03
-                            ? 'text-amber-400'
-                            : 'text-emerald-400'
-                        }`}
-                      >
-                        {(account.bounceRate * 100).toFixed(1)}%
-                      </p>
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                      <div>
+                        <div className="section-label" style={{ fontSize: '9px' }}>Today</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{acc.sentToday}</div>
+                      </div>
+                      <div>
+                        <div className="section-label" style={{ fontSize: '9px' }}>Bounce</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 700, color: hColor, marginTop: '2px' }}>{(acc.bounceRate * 100).toFixed(1)}%</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
-          <div className="text-center pt-2">
-            <Link
-              href="/accounts"
-              className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-semibold hover:underline"
-            >
-              Manage all email accounts <ArrowRight size={14} />
+          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
+            <Link href="/accounts" style={{ fontSize: '12px', color: 'var(--honey-600)', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none', fontWeight: 700 }}>
+              Manage all mailboxes <ArrowRight size={12} />
             </Link>
           </div>
         </div>
 
-        {/* Recent Activity Feed */}
-        <div className="glass-panel p-6 rounded-2xl lg:col-span-5 flex flex-col h-[320px]">
-          <div className="mb-4">
-            <h3 className="text-base font-bold text-white">Live Activity Feed</h3>
-            <p className="text-gray-400 text-xs mt-0.5">Real-time trace logs of campaign status mutations.</p>
+        {/* Activity Feed */}
+        <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', maxHeight: '320px' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', marginBottom: '4px' }}>
+            Activity Feed
           </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>Live status changes</div>
 
-          <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
-            {stats?.recentActivity && stats.recentActivity.length > 0 ? (
-              stats.recentActivity.map((act, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-start justify-between gap-3 text-xs border-b border-white/5 pb-2.5 last:border-0"
-                >
-                  <div className="space-y-0.5 truncate max-w-[70%]">
-                    <p className="text-gray-300 font-semibold truncate">{act.email}</p>
-                    <p className="text-[10px] text-gray-500">
-                      {new Date(act.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {act.from && (
-                      <>
-                        <span className="text-[10px] text-gray-500 capitalize">{formatStatus(act.from)}</span>
-                        <ArrowRight size={10} className="text-gray-600" />
-                      </>
-                    )}
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadgeColor(act.to)}`}>
-                      {formatStatus(act.to)}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {stats?.recentActivity?.length ? (
+              stats.recentActivity.map((act, i) => {
+                const badge = activityBadge(act.to);
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px',
+                    paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)',
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {act.email}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                        {new Date(act.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '99px', flexShrink: 0,
+                      background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`,
+                    }}>
+                      {fmtStatus(act.to)}
                     </span>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center py-10">
-                <Activity className="w-8 h-8 text-gray-600 mb-2" />
-                <p className="text-xs text-gray-500">No recent campaign activity found.</p>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '8px' }}>
+                <Activity size={24} style={{ opacity: 0.3 }} />
+                <span style={{ fontSize: '12px' }}>No activity yet</span>
               </div>
             )}
           </div>

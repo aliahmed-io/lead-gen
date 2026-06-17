@@ -25,8 +25,8 @@ export async function GET() {
       pauseReason: data.pauseReason || null,
       stoppedAt: data.stoppedAt || null,
     });
-  } catch (err: any) {
-    console.error('Error reading campaign state:', err.message);
+  } catch (err: unknown) {
+    console.error('Error reading campaign state:', (err as Error).message);
     return NextResponse.json(DEFAULT_STATE);
   }
 }
@@ -64,8 +64,8 @@ export async function POST(request: Request) {
     fs.renameSync(tempPath, statePath);
 
     return NextResponse.json({ success: true, state: currentState });
-  } catch (err: any) {
-    console.error('Error writing campaign state:', err.message);
+  } catch (err: unknown) {
+    console.error('Error writing campaign state:', (err as Error).message);
     return NextResponse.json({ error: 'Failed to update campaign state' }, { status: 500 });
   }
 }
