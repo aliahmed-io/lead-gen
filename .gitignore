@@ -4,6 +4,7 @@ package-lock.json
 
 # Environment variables
 .env
+*.env
 
 # Databases & Output Files
 leads.xlsx
@@ -11,6 +12,9 @@ leads_db.json
 leads_db.json.tmp
 campaign_db.json
 campaign_db.json.tmp
+settings.json
+inbox_db.json
+inbox_db.json.tmp
 
 # OS generated files
 .DS_Store

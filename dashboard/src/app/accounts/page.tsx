@@ -10,6 +10,12 @@ import {
   Send,
   Clock,
   RefreshCw,
+  ServerCrash,
+  CheckCircle,
+  XCircle,
+  Activity,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { AccountHealth, Settings } from '@/types';
 
@@ -22,6 +28,23 @@ export default function Accounts() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAccount, setNewAccount] = useState({ email: '', password: '', smtpHost: '', imapHost: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dnsResults, setDnsResults] = useState<Record<string, any>>({});
+  const [dnsLoading, setDnsLoading] = useState<Record<string, boolean>>({});
+  const [dnsExpanded, setDnsExpanded] = useState<Record<string, boolean>>({});
+
+  const checkDns = async (email: string) => {
+    setDnsLoading(prev => ({ ...prev, [email]: true }));
+    try {
+      const res = await fetch(`/api/accounts/dns?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      setDnsResults(prev => ({ ...prev, [email]: data }));
+      setDnsExpanded(prev => ({ ...prev, [email]: true }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDnsLoading(prev => ({ ...prev, [email]: false }));
+    }
+  };
 
   const handleAddAccount = async () => {
     if (!newAccount.email || !newAccount.password || !newAccount.smtpHost || !newAccount.imapHost) {
@@ -236,6 +259,49 @@ export default function Accounts() {
                 <ShieldAlert size={14} />
               </button>
 
+              {/* DNS Status Panel */}
+              {dnsResults[account.email] && (
+                <div className="mt-2 mb-2 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl text-xs">
+                  <div 
+                    className="flex justify-between items-center cursor-pointer"
+                    onClick={() => setDnsExpanded(p => ({ ...p, [account.email]: !p[account.email] }))}
+                  >
+                    <div className="flex items-center gap-2">
+                      {dnsResults[account.email].overall === 'good' && <span className="flex items-center gap-1 text-[var(--success)] font-bold"><CheckCircle size={14}/> DNS Healthy</span>}
+                      {dnsResults[account.email].overall === 'warning' && <span className="flex items-center gap-1 text-[var(--warning)] font-bold"><AlertTriangle size={14}/> Warnings</span>}
+                      {dnsResults[account.email].overall === 'fail' && <span className="flex items-center gap-1 text-[var(--danger)] font-bold"><XCircle size={14}/> DNS Failing</span>}
+                    </div>
+                    {dnsExpanded[account.email] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </div>
+                  
+                  {dnsExpanded[account.email] && (
+                    <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] space-y-2">
+                      <div className="flex justify-between items-start">
+                        <span className="font-mono font-bold text-[var(--text-secondary)] w-12">SPF</span>
+                        <div className="flex-1 flex gap-2">
+                          {dnsResults[account.email].spf?.pass ? <CheckCircle size={14} className="text-[var(--success)] shrink-0"/> : <XCircle size={14} className="text-[var(--danger)] shrink-0"/>}
+                          <span className="text-[var(--text-muted)] text-[10px] break-words">{dnsResults[account.email].spf?.warning || 'Pass'}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-start">
+                        <span className="font-mono font-bold text-[var(--text-secondary)] w-12">DMARC</span>
+                        <div className="flex-1 flex gap-2">
+                          {dnsResults[account.email].dmarc?.pass ? <CheckCircle size={14} className="text-[var(--success)] shrink-0"/> : <XCircle size={14} className="text-[var(--danger)] shrink-0"/>}
+                          <span className="text-[var(--text-muted)] text-[10px] break-words">{dnsResults[account.email].dmarc?.warning || `Policy: ${dnsResults[account.email].dmarc?.policy}`}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-start">
+                        <span className="font-mono font-bold text-[var(--text-secondary)] w-12">MX</span>
+                        <div className="flex-1 flex gap-2">
+                          {dnsResults[account.email].mx?.pass ? <CheckCircle size={14} className="text-[var(--success)] shrink-0"/> : <XCircle size={14} className="text-[var(--danger)] shrink-0"/>}
+                          <span className="text-[var(--text-muted)] text-[10px] break-words">{dnsResults[account.email].mx?.warning || 'Pass'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Progress and Limits */}
               <div className="space-y-2 my-2">
                 <div className="flex justify-between text-xs font-semibold">
@@ -281,9 +347,19 @@ export default function Accounts() {
               </div>
 
               {/* Last Active Timestamp */}
-              <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)] pt-2.5 mt-2 border-t border-[var(--border-subtle)]">
-                <Clock size={11} />
-                <span>Last active: {formatDate(account.lastActiveAt)}</span>
+              <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pt-2.5 mt-2 border-t border-[var(--border-subtle)]">
+                <div className="flex items-center gap-1.5">
+                  <Clock size={11} />
+                  <span>Last active: {formatDate(account.lastActiveAt)}</span>
+                </div>
+                <button
+                  onClick={() => checkDns(account.email)}
+                  disabled={dnsLoading[account.email]}
+                  className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors"
+                >
+                  <Activity size={11} className={dnsLoading[account.email] ? "animate-spin" : ""} />
+                  {dnsLoading[account.email] ? 'Checking...' : 'Check DNS'}
+                </button>
               </div>
             </motion.div>
           );

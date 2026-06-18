@@ -3,10 +3,58 @@ import fs from 'fs';
 import path from 'path';
 import { AccountHealth } from '@/types';
 
+// ─── Crypto (inline to avoid cross-module TS issues) ───────────────
+import crypto from 'crypto';
+
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 16;
+const TAG_LENGTH = 16;
+
+function getKey(): Buffer {
+  const key = process.env.ENCRYPTION_KEY;
+  if (!key) throw new Error('ENCRYPTION_KEY not set in .env');
+  return crypto.createHash('sha256').update(key).digest();
+}
+
+function encryptPassword(text: string): string {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const key = getKey();
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+  const tag = (cipher as ReturnType<typeof crypto.createCipheriv> & { getAuthTag(): Buffer }).getAuthTag();
+  return Buffer.concat([iv, tag, encrypted]).toString('base64');
+}
+
+function looksEncrypted(value: string): boolean {
+  try {
+    return Buffer.from(value, 'base64').length > IV_LENGTH + TAG_LENGTH;
+  } catch {
+    return false;
+  }
+}
+
+// ─── Rate Limiting (in-memory, per IP) ─────────────────────────────
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return true;
+  entry.count++;
+  return false;
+}
+
+// ─── File Paths ─────────────────────────────────────────────────────
 const settingsPath = path.resolve(process.cwd(), '../settings.json');
 const campaignDbPath = path.resolve(process.cwd(), '../campaign_db.json');
 
-function getSettings() {
+function getSettings(): Record<string, unknown> {
   if (fs.existsSync(settingsPath)) {
     try {
       return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
@@ -16,10 +64,11 @@ function getSettings() {
 }
 
 function saveSettings(settings: Record<string, unknown>) {
+  // Never save to a git-tracked path — double-check .gitignore
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
 }
 
-function getTodayDateString() {
+function getTodayDateString(): string {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago',
     year: 'numeric',
@@ -33,15 +82,28 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
-export async function GET() {
+// ─── GET — Account Health ───────────────────────────────────────────
+export async function GET(request: Request) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  if (isRateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   try {
     const settings = getSettings();
-    const storedAccounts = settings.accounts || [];
+    const storedAccounts = (settings.accounts as Record<string, unknown>[]) || [];
 
     interface CampaignData {
-      records: Record<string, { accountId?: string | number; status?: string; sentAt?: number; followedUp1At?: number; followedUp2At?: number; }>;
+      records: Record<string, {
+        accountId?: string | number;
+        status?: string;
+        sentAt?: number;
+        followedUp1At?: number;
+        followedUp2At?: number;
+      }>;
       dailyCounts: Record<string, Record<string, number>>;
     }
+
     let campaignData: CampaignData = { records: {}, dailyCounts: {} };
     if (fs.existsSync(campaignDbPath)) {
       try {
@@ -55,10 +117,10 @@ export async function GET() {
     const accounts: AccountHealth[] = [];
 
     for (const acc of storedAccounts) {
+      const accountId = acc.id as string;
       let totalSent = 0;
       let bounceCount = 0;
       let lastActiveAt: number | null = null;
-      const accountId = acc.id;
 
       for (const record of Object.values(campaignData.records)) {
         if (String(record.accountId) === String(accountId)) {
@@ -69,11 +131,8 @@ export async function GET() {
             bounceCount++;
             totalSent++;
           }
-
           const ts = record.sentAt || record.followedUp1At || record.followedUp2At;
-          if (ts && (lastActiveAt === null || ts > lastActiveAt)) {
-            lastActiveAt = ts;
-          }
+          if (ts && (lastActiveAt === null || ts > lastActiveAt)) lastActiveAt = ts;
         }
       }
 
@@ -81,15 +140,12 @@ export async function GET() {
       const bounceRate = totalSent > 0 ? bounceCount / totalSent : 0;
 
       let healthScore: 'good' | 'warning' | 'critical' = 'good';
-      if (bounceRate > 0.05) {
-        healthScore = 'critical';
-      } else if (bounceRate > 0.03) {
-        healthScore = 'warning';
-      }
+      if (bounceRate > 0.05) healthScore = 'critical';
+      else if (bounceRate > 0.03) healthScore = 'warning';
 
       accounts.push({
         id: accountId,
-        email: acc.email,
+        email: acc.email as string,
         sentToday,
         totalSent,
         bounceCount,
@@ -106,24 +162,21 @@ export async function GET() {
   }
 }
 
+// ─── POST — Add Account ─────────────────────────────────────────────
 export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  if (isRateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   try {
     const body = await request.json();
 
-    // Strict whitelist — only accept known fields to prevent settings.json injection
     const allowedFields = ['email', 'password', 'smtpHost', 'imapHost', 'smtpPort', 'imapPort'];
-    const sanitized: {
-      id?: string;
-      email?: string;
-      password?: string;
-      smtpHost?: string;
-      imapHost?: string;
-      smtpPort?: string;
-      imapPort?: string;
-    } = {};
+    const sanitized: Record<string, string> = {};
     for (const field of allowedFields) {
       if (body[field] !== undefined && typeof body[field] === 'string') {
-        (sanitized as Record<string, string>)[field] = body[field].trim();
+        sanitized[field] = body[field].trim();
       }
     }
 
@@ -131,27 +184,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
+    // Basic email format check
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitized.email)) {
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
+    }
+
+    // Encrypt password before storing — never store plain text
+    const encryptedPassword = looksEncrypted(sanitized.password)
+      ? sanitized.password  // already encrypted, don't double-encrypt
+      : encryptPassword(sanitized.password);
+
     const settings = getSettings();
-    const accounts = settings.accounts || [];
+    const accounts = (settings.accounts as Record<string, unknown>[]) || [];
+
+    // Prevent duplicate accounts
+    const alreadyExists = accounts.some(a => String(a.email).toLowerCase() === sanitized.email.toLowerCase());
+    if (alreadyExists) {
+      return NextResponse.json({ error: 'Account already exists' }, { status: 409 });
+    }
 
     const newAccount = {
       id: Date.now().toString(),
-      ...sanitized,
+      email: sanitized.email,
+      password: encryptedPassword,  // encrypted
+      smtpHost: sanitized.smtpHost || 'smtp.gmail.com',
+      imapHost: sanitized.imapHost || 'imap.gmail.com',
+      smtpPort: sanitized.smtpPort || '465',
+      imapPort: sanitized.imapPort || '993',
     };
 
     settings.accounts = [...accounts, newAccount];
     saveSettings(settings);
 
-    // Return account without password
-    const safeAccount = { ...newAccount };
-    delete safeAccount.password;
+    // Never return password in response
+    const { password: _removed, ...safeAccount } = newAccount;
     return NextResponse.json(safeAccount);
   } catch {
     return NextResponse.json({ error: 'Failed to save account' }, { status: 500 });
   }
 }
 
+// ─── DELETE — Remove Account ────────────────────────────────────────
 export async function DELETE(request: Request) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  if (isRateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -159,7 +238,7 @@ export async function DELETE(request: Request) {
 
     const settings = getSettings();
     if (settings.accounts) {
-      settings.accounts = (settings.accounts as Record<string, unknown>[]).filter((a) => String(a.id) !== id);
+      settings.accounts = (settings.accounts as Record<string, unknown>[]).filter(a => String(a.id) !== id);
       saveSettings(settings);
     }
     return NextResponse.json({ success: true });

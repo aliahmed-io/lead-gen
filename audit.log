@@ -96,3 +96,35 @@
 ✅ IMAP Scan Complete!
 [INFO] 2026-06-16T13:00:00.447Z - 📂 Loaded database: 11720 businesses, 462 completed queries
 [INFO] 2026-06-16T13:00:00.449Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-16T22:00:00.095Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-16T22:00:00.105Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-16T22:00:00.098Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-16T22:00:00.101Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-16T22:00:00.393Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-16T22:00:00.395Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-16T22:00:00.108Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-16T22:00:00.110Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-16T22:00:00.412Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-16T22:00:00.414Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-17T03:00:00.107Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-17T03:00:00.107Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-17T03:00:00.112Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-17T03:00:00.116Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-17T03:00:00.508Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-17T03:00:00.509Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-17T03:00:00.111Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-17T03:00:00.114Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-17T03:00:00.528Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-17T03:00:00.531Z - ❌ No SMTP accounts found in .env file! Skipping sender module.

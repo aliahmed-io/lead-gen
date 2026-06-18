@@ -1,4 +1,11 @@
 {
+  "sequence": [
+    { "step": 0, "templateKey": "initial",   "delayDays": 0 },
+    { "step": 1, "templateKey": "followup1",  "delayDays": 4 },
+    { "step": 2, "templateKey": "followup2",  "delayDays": 5 },
+    { "step": 3, "templateKey": "followup3",  "delayDays": 6 },
+    { "step": 4, "templateKey": "breakup",    "delayDays": 7 }
+  ],
   "delayMinMs": 240000,
   "delayMaxMs": 336000,
   "maxEmailsPerDay": 100,

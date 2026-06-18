@@ -8,6 +8,7 @@ const path = require('path');
 const { verifyEmail } = require('./verifier');
 const { isWithinBusinessHours } = require('./timeUtils');
 const campaignState = require('./campaignState');
+const { decrypt, isEncrypted } = require('./cryptoUtils');
 
 const SENDER_DISPLAY_NAME = 'Ali | Aethelon Labs';
 const CAN_SPAM_FOOTER = [
@@ -30,16 +31,35 @@ function getSettings() {
 }
 
 /**
- * Builds the array of SMTP transporter objects from settings.accounts or .env configuration.
- *
- * @returns {Array<{ id: number, user: string, transporter: object }>}
+ * Safely decrypts a password field.
+ * If it looks encrypted, decrypt it. If it is plain text (legacy), use as-is
+ * and log a warning so you know to re-save it encrypted.
+ */
+function safeDecryptPassword(password) {
+  if (!password) return '';
+  if (isEncrypted(password)) {
+    try {
+      return decrypt(password);
+    } catch (e) {
+      console.error('Failed to decrypt password:', e.message);
+      return '';
+    }
+  }
+  // Plain text fallback — warn loudly
+  console.warn('⚠️  WARNING: Plain text password detected. Re-add this account through the dashboard to encrypt it.');
+  return password;
+}
+
+/**
+ * Builds the array of SMTP transporter objects.
+ * Credentials are decrypted at runtime — never stored decrypted.
  */
 function buildTransporters() {
   const settings = getSettings();
   if (settings.accounts && settings.accounts.length > 0) {
     return settings.accounts.map(acc => {
       const user = acc.user || acc.email;
-      const pass = acc.pass || acc.password;
+      const pass = safeDecryptPassword(acc.pass || acc.password);
       const host = acc.smtpHost || acc.host || 'smtp.gmail.com';
       const port = parseInt(String(acc.smtpPort || acc.port || '465'), 10);
       return {
@@ -55,19 +75,20 @@ function buildTransporters() {
     });
   }
 
+  // .env fallback
   const result = [];
   for (let i = 1; i <= 6; i++) {
     const user = process.env[`EMAIL_${i}_USER`];
     if (user) {
       result.push({
         id: i,
-        user: user,
+        user,
         transporter: nodemailer.createTransport({
           host: process.env[`EMAIL_${i}_SMTP_HOST`] || 'smtp.gmail.com',
           port: parseInt(process.env[`EMAIL_${i}_SMTP_PORT`] || '465', 10),
           secure: true,
           auth: {
-            user: user,
+            user,
             pass: process.env[`EMAIL_${i}_PASS`],
           },
         }),

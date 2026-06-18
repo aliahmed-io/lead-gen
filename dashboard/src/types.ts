@@ -55,7 +55,7 @@ export interface CampaignState {
 }
 
 export interface AccountHealth {
-  id: number;
+  id: string | number;
   email: string;
   sentToday: number;
   totalSent: number;
@@ -80,6 +80,6 @@ export interface PaginatedLeads {
 export interface EnhancedStats extends Stats {
   dailyVolume: DailyVolume[];
   followUpBreakdown: { stage1: number; stage2: number };
-  accountBreakdown: { accountId: number; sent: number; bounced: number }[];
+  accountBreakdown: { accountId: string | number; sent: number; bounced: number }[];
   recentActivity: { email: string; from: string | null; to: string; at: number }[];
 }

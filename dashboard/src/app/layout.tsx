@@ -4,7 +4,7 @@ import './globals.css';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, Mail, Settings, Activity, Terminal, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, Mail, Settings, Activity, Terminal, Shield, UserMinus } from 'lucide-react';
 import { CampaignState } from '@/types';
 import { Inter, JetBrains_Mono, Playfair_Display } from 'next/font/google';
 
@@ -29,6 +29,7 @@ const playfair = Playfair_Display({
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [campaignState, setCampaignState] = useState<CampaignState | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const fetchStatus = () => {
@@ -37,15 +38,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         .then((d: CampaignState) => setCampaignState(d))
         .catch(() => {});
     };
+    const fetchInbox = () => {
+      fetch('/api/inbox')
+        .then(r => { if (r.ok) return r.json(); throw new Error(); })
+        .then(d => setUnreadCount(d.unreadCount || 0))
+        .catch(() => {});
+    };
     fetchStatus();
+    fetchInbox();
     const iv = setInterval(fetchStatus, 5000);
-    return () => clearInterval(iv);
+    const iv2 = setInterval(fetchInbox, 15000);
+    return () => { clearInterval(iv); clearInterval(iv2); };
   }, []);
 
   const navItems = [
     { name: 'Overview',        href: '/',          icon: LayoutDashboard },
+    { name: 'Inbox',           href: '/inbox',     icon: Mail, badge: unreadCount > 0 ? unreadCount : null },
+    { name: 'Campaigns',       href: '/sequences', icon: Activity },
     { name: 'Lead Generation', href: '/leadgen',   icon: Activity },
     { name: 'Leads Database',  href: '/leads',     icon: Users },
+    { name: 'Unsubscribes',    href: '/unsubscribes', icon: UserMinus },
     { name: 'Email Templates', href: '/templates', icon: Mail },
     { name: 'Accounts',        href: '/accounts',  icon: Shield },
     { name: 'Audit Logs',      href: '/logs',      icon: Terminal },
@@ -129,9 +141,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   key={item.href}
                   href={item.href}
                   className={`nav-item ${isActive ? 'active' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                 >
-                  <item.icon size={16} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.5 }} />
-                  <span>{item.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <item.icon size={16} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.5 }} />
+                    <span>{item.name}</span>
+                  </div>
+                  {item.badge ? (
+                    <span style={{
+                      background: 'var(--honey-500)',
+                      color: 'white',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: '99px',
+                      lineHeight: 1
+                    }}>
+                      {item.badge}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}

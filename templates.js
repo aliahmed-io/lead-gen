@@ -43,5 +43,23 @@ module.exports = {
       subject: parseTemplate(tpl.subject, data),
       text: parseTemplate(tpl.text, data)
     };
+  },
+
+  getEmail: (templateKey, data) => {
+    // Map sequence definition keys to the actual keys in templates.json
+    const keyMap = {
+      'initial': 'initial',
+      'followup1': 'followUp1',
+      'followup2': 'followUp2',
+      'followup3': 'followUp3',
+      'breakup': 'breakup'
+    };
+    
+    const actualKey = keyMap[templateKey] || templateKey;
+    const tpl = getTemplates()[actualKey] || {};
+    return {
+      subject: parseTemplate(tpl.subject || `Default Subject (${templateKey})`, data),
+      text: parseTemplate(tpl.text || `Default Text (${templateKey})`, data)
+    };
   }
 };

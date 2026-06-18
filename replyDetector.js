@@ -4,6 +4,7 @@ const { simpleParser } = require('mailparser');
 const campaignDb = require('./campaignDb');
 const fs = require('fs');
 const path = require('path');
+const { decrypt, isEncrypted } = require('./cryptoUtils'); // ← ADD THIS
 
 const OVERALL_TIMEOUT_MS = 30000;
 const MATCHABLE_STATUSES = ['sent', 'followed_up_1', 'followed_up_2'];
@@ -20,22 +21,92 @@ function getSettings() {
   return {};
 }
 
+function safeDecryptPassword(password) {
+  if (!password) return '';
+  if (isEncrypted(password)) {
+    try {
+      return decrypt(password);
+    } catch (e) {
+      console.error('Failed to decrypt password:', e.message);
+      return '';
+    }
+  }
+  console.warn('⚠️  WARNING: Plain text password detected in reply detector.');
+  return password;
+}
+
 /**
- * Scans a single IMAP account's INBOX for unread replies from campaign leads.
- * When a lead's reply is detected, the record is marked as 'interested'.
- * Bounce/system emails are silently skipped.
- *
- * @param {CampaignDatabase} campaignDb
- * @param {number} id
- * @param {string} user
- * @param {string} pass
- * @param {string} host
- * @param {number|string} port
- * @returns {Promise<number>} Number of new replies detected.
+ * Determines if an email is a system bounce/DSN notification.
+ * Returns the bounce type: 'hard', 'soft', or null (not a bounce).
+ */
+function detectBounceType(fromAddress, subject, text) {
+  const from = (fromAddress || '').toLowerCase();
+  const subj = (subject || '').toLowerCase();
+  const body = (text || '').toLowerCase();
+
+  const isSystemSender =
+    from.includes('mailer-daemon') ||
+    from.includes('postmaster') ||
+    from.includes('noreply') ||
+    from.includes('no-reply') ||
+    from.includes('bounce') ||
+    from.includes('mail-daemon');
+
+  const isHardBounce =
+    subj.includes('undeliverable') ||
+    subj.includes('delivery status notification') ||
+    subj.includes('delivery failure') ||
+    subj.includes('mail delivery failed') ||
+    subj.includes('returned mail') ||
+    body.includes('550') ||   // SMTP 550 = user does not exist
+    body.includes('551') ||
+    body.includes('553') ||
+    body.includes('user unknown') ||
+    body.includes('no such user') ||
+    body.includes('account does not exist') ||
+    body.includes('address rejected');
+
+  const isSoftBounce =
+    subj.includes('out of office') ||
+    subj.includes('auto-reply') ||
+    subj.includes('automatic reply') ||
+    body.includes('mailbox full') ||
+    body.includes('over quota') ||
+    body.includes('temporarily unavailable');
+
+  if (isSystemSender && isHardBounce) return 'hard';
+  if (isSystemSender && isSoftBounce) return 'soft';
+  if (isSystemSender) return 'hard'; // unknown system email — treat as hard to be safe
+  return null;
+}
+
+/**
+ * Determines if a reply is an unsubscribe request.
+ */
+function isUnsubscribeRequest(subject, text) {
+  const subj = (subject || '').toLowerCase();
+  const body = (text || '').toLowerCase();
+  return (
+    subj.includes('unsubscribe') ||
+    body.includes('unsubscribe') ||
+    body.includes('remove me') ||
+    body.includes('stop emailing') ||
+    body.includes('take me off') ||
+    body.includes('opt out') ||
+    body.includes('opt-out')
+  );
+}
+
+/**
+ * Scans a single IMAP account's INBOX for:
+ * - Genuine replies → marks as 'interested'
+ * - Hard bounces → marks as 'bounced' (FIXED from previous version)
+ * - Soft bounces → marks as 'soft_bounce', retryable
+ * - Unsubscribe requests → adds to unsubscribe list
  */
 async function checkAccount(campaignDb, id, user, pass, host, port, activeClients) {
   const client = new ImapFlow({
-    host: host,
+    host,
     port: parseInt(String(port), 10),
     secure: true,
     auth: { user, pass },
@@ -45,6 +116,8 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
   if (activeClients) activeClients.push(client);
 
   let newReplies = 0;
+  let newBounces = 0;
+  let newUnsubscribes = 0;
 
   try {
     console.log(`⏳ Connecting to IMAP Account ${id} (${user})...`);
@@ -57,46 +130,95 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-      const messages = client.fetch('1:*', { source: true, flags: true }, { search: { unseen: true, since: fourteenDaysAgo } });
+      const messages = client.fetch('1:*', { source: true, flags: true }, {
+        search: { unseen: true, since: fourteenDaysAgo }
+      });
 
       for await (const message of messages) {
         const parsed = await simpleParser(message.source);
 
-        if (!parsed.from || !parsed.from.value || parsed.from.value.length === 0) {
-          continue;
-        }
-
-        const fromAddress = parsed.from.value[0].address.toLowerCase();
-        const subject = (parsed.subject || '').toLowerCase();
-
-        const isBounce =
-          fromAddress.includes('mailer-daemon') ||
-          fromAddress.includes('postmaster') ||
-          fromAddress.includes('bounce') ||
-          subject.includes('undeliverable') ||
-          subject.includes('delivery status notification');
-
-        if (isBounce) {
-          console.log(`   ⚠️ Bounce notification ignored from ${fromAddress}`);
+        if (!parsed.from?.value?.length) {
           await client.messageFlagsAdd(message.seq, ['\\Seen']);
           continue;
         }
 
+        const fromAddress = parsed.from.value[0].address?.toLowerCase() || '';
+        const subject = parsed.subject || '';
+        const textBody = parsed.text || '';
+
+        // ── 1. Check if it's a bounce ──────────────────────────────
+        const bounceType = detectBounceType(fromAddress, subject, textBody);
+
+        if (bounceType === 'hard') {
+          // Find which campaign lead this bounce is for by scanning the body
+          // DSNs usually contain the original recipient address in the body
+          const emailRegex = /[\w.-]+@[\w.-]+\.\w+/g;
+          const emailsInBody = textBody.match(emailRegex) || [];
+
+          let markedBounce = false;
+          for (const foundEmail of emailsInBody) {
+            const normalized = foundEmail.toLowerCase();
+            const record = campaignDb.getRecord(normalized);
+            if (record && record.status !== 'bounced') {
+              console.log(`   💀 Hard bounce for ${normalized} — marking as bounced.`);
+              campaignDb.addOrUpdateRecord(normalized, {
+                status: 'bounced',
+                failReason: `Hard bounce detected via DSN from ${fromAddress}`,
+                bouncedAt: Date.now(),
+              });
+              newBounces++;
+              markedBounce = true;
+            }
+          }
+
+          if (!markedBounce) {
+            console.log(`   ⚠️ Hard bounce from ${fromAddress} — could not match to a lead record.`);
+          }
+
+          await client.messageFlagsAdd(message.seq, ['\\Seen']);
+          continue;
+        }
+
+        if (bounceType === 'soft') {
+          console.log(`   📭 Soft bounce from ${fromAddress} — logging, will retry.`);
+          // Don't mark as bounced — soft bounces are temporary
+          await client.messageFlagsAdd(message.seq, ['\\Seen']);
+          continue;
+        }
+
+        // ── 2. Check if it's an unsubscribe request ────────────────
+        if (isUnsubscribeRequest(subject, textBody)) {
+          console.log(`   🚫 Unsubscribe request from ${fromAddress}`);
+          campaignDb.addUnsubscribe(fromAddress);
+          // Also update their record if they're in the campaign
+          const record = campaignDb.getRecord(fromAddress);
+          if (record) {
+            campaignDb.addOrUpdateRecord(fromAddress, {
+              status: 'unsubscribed',
+              unsubscribedAt: Date.now(),
+            });
+          }
+          newUnsubscribes++;
+          await client.messageFlagsAdd(message.seq, ['\\Seen']);
+          continue;
+        }
+
+        // ── 3. Check if it's a genuine reply from a campaign lead ──
         const leadRecord = campaignDb.getRecord(fromAddress);
         if (leadRecord && MATCHABLE_STATUSES.includes(leadRecord.status)) {
           console.log(`   🎉 Reply detected from ${fromAddress}!`);
-
           campaignDb.addOrUpdateRecord(fromAddress, {
             status: 'interested',
             repliedAt: Date.now(),
           });
-
           newReplies++;
           await client.messageFlagsAdd(message.seq, ['\\Seen']);
         }
       }
 
-      console.log(`   Processed Account ${id}: Found ${newReplies} new replies.`);
+      console.log(
+        `   Account ${id}: ${newReplies} replies, ${newBounces} hard bounces, ${newUnsubscribes} unsubscribes.`
+      );
     } finally {
       lock.release();
     }
@@ -111,20 +233,18 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
     }
   }
 
-  return newReplies;
+  return { newReplies, newBounces, newUnsubscribes };
 }
 
 /**
- * Checks all configured IMAP accounts for replies from campaign leads.
- * Enforces a 30-second overall timeout for the entire check cycle.
- * Gracefully handles connection failures per account without crashing.
- *
- * @returns {Promise<{ totalReplies: number, accountsChecked: number }>}
+ * Checks all configured IMAP accounts for replies, bounces, and unsubscribes.
  */
 async function checkReplies() {
   console.log('🔍 Starting reply detection scan...\n');
 
   let totalReplies = 0;
+  let totalBounces = 0;
+  let totalUnsubscribes = 0;
   let accountsChecked = 0;
   const activeClients = [];
 
@@ -135,7 +255,7 @@ async function checkReplies() {
     accounts = settings.accounts.map(acc => ({
       id: acc.id,
       user: acc.user || acc.email,
-      pass: acc.pass || acc.password,
+      pass: safeDecryptPassword(acc.pass || acc.password), // ← DECRYPTED
       host: acc.imapHost || acc.host || 'imap.gmail.com',
       port: acc.imapPort || acc.port || 993,
     }));
@@ -145,28 +265,32 @@ async function checkReplies() {
       const pass = process.env[`EMAIL_${i}_PASS`];
       const host = process.env[`EMAIL_${i}_IMAP_HOST`] || 'imap.gmail.com';
       const port = process.env[`EMAIL_${i}_IMAP_PORT`] || 993;
-
-      if (user && pass) {
-        accounts.push({ id: i, user, pass, host, port });
-      }
+      if (user && pass) accounts.push({ id: i, user, pass, host, port });
     }
   }
 
   if (accounts.length === 0) {
-    console.log('❌ No IMAP accounts configured in .env. Skipping reply detection.');
-    return { totalReplies: 0, accountsChecked: 0 };
+    console.log('❌ No IMAP accounts configured. Skipping reply detection.');
+    return { totalReplies: 0, totalBounces: 0, totalUnsubscribes: 0, accountsChecked: 0 };
   }
 
   const scanWork = (async () => {
     for (const acct of accounts) {
-      const replies = await checkAccount(campaignDb, acct.id, acct.user, acct.pass, acct.host, acct.port, activeClients);
-      totalReplies += replies;
+      const result = await checkAccount(
+        campaignDb, acct.id, acct.user, acct.pass, acct.host, acct.port, activeClients
+      );
+      totalReplies += result.newReplies;
+      totalBounces += result.newBounces;
+      totalUnsubscribes += result.newUnsubscribes;
       accountsChecked++;
     }
   })();
 
   const timeout = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('Reply detection timed out after 30 seconds')), OVERALL_TIMEOUT_MS);
+    setTimeout(
+      () => reject(new Error('Reply detection timed out after 30 seconds')),
+      OVERALL_TIMEOUT_MS
+    );
   });
 
   try {
@@ -180,8 +304,10 @@ async function checkReplies() {
 
   campaignDb.forceSave();
 
-  console.log(`\n✅ Reply detection complete: ${totalReplies} new replies across ${accountsChecked} accounts.`);
-  return { totalReplies, accountsChecked };
+  console.log(
+    `\n✅ Scan complete: ${totalReplies} replies, ${totalBounces} bounces, ${totalUnsubscribes} unsubscribes across ${accountsChecked} accounts.`
+  );
+  return { totalReplies, totalBounces, totalUnsubscribes, accountsChecked };
 }
 
 module.exports = { checkReplies };
