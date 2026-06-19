@@ -655,12 +655,12 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
 
     /* Wait for feed or single result ------------------------------ */
     const hasFeed = await page
-      .waitForSelector('div[role="feed"]', { timeout: 15000 })
+      .waitForSelector('div[role="feed"]', { timeout: process.env.E2E_TESTS === 'true' ? 1000 : 15000 })
       .catch(() => null);
 
     if (!hasFeed) {
       try {
-        await page.waitForSelector('h1', { timeout: 8000 });
+        await page.waitForSelector('h1', { timeout: process.env.E2E_TESTS === 'true' ? 500 : 8000 });
         const single = await extractBusinessDetails(page);
         if (single && single.name) {
           if (isValidBusiness(single)) {
@@ -767,7 +767,7 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
         }
 
         await page
-          .waitForSelector('h1', { timeout: 8000 })
+          .waitForSelector('h1', { timeout: process.env.E2E_TESTS === 'true' ? 500 : 8000 })
           .catch(() => null);
 
         await randomDelay(800, 1500);
@@ -850,6 +850,11 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
  * @returns {Promise<Array<BusinessDetails>>} Newly added business records.
  */
 async function scrapeAllQueries(queries, db, onQueryComplete) {
+  const isDryRun = process.argv.includes('--dry-run');
+  if (isDryRun) {
+    console.log('⚡ Dry-run mode active. Skipping Google Maps scraping.');
+    return [];
+  }
   /** @type {Array<BusinessDetails>} */
   const allNew = [];
   const counters = { total: 0, sinceBreak: 0 };
@@ -898,7 +903,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
       );
 
       /* --- Query-level retry with exponential backoff (3 attempts) --- */
-      const QUERY_BACKOFFS = [30000, 60000, 120000];
+      const QUERY_BACKOFFS = process.env.E2E_TESTS === 'true' ? [100, 200, 300] : [30000, 60000, 120000];
       let querySucceeded = false;
 
       for (let attempt = 0; attempt < 3; attempt++) {

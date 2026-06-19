@@ -176,7 +176,7 @@ function createKeepAliveScript() {
  * Safe to call multiple times — only activates once.
  */
 function preventSleep() {
-  if (isActive) return;
+  if (isActive || process.env.E2E_TESTS === 'true') return;
 
   if (process.platform === 'win32') {
     /* ── Save originals ──────────────────────────────────────── */

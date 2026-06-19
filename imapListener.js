@@ -23,10 +23,13 @@ async function checkAccount(id, user, pass, host, port) {
       console.log(`\u2705 Connected. Scanning UNSEEN messages in Account ${id}...`);
       
       // We search for UNSEEN messages. You can also search for SINCE a certain date.
-      const messages = client.fetch('1:*', { source: true, flags: true }, { search: { unseen: true } });
+      const uids = await client.search({ unseen: true });
       
       let newReplies = 0;
-      for await (let message of messages) {
+      if (uids && uids.length > 0) {
+        const messages = client.fetch(uids.join(','), { source: true, flags: true });
+        
+        for await (let message of messages) {
         // Parse raw email
         const parsed = await simpleParser(message.source);
         const fromAddress = parsed.from.value[0].address.toLowerCase();
@@ -64,6 +67,7 @@ async function checkAccount(id, user, pass, host, port) {
           // Optionally mark the message as read so we don't process it again
           await client.messageFlagsAdd(message.seq, ['\\Seen']);
         }
+      }
       }
       
       console.log(`   Processed Account ${id}: Found ${newReplies} new replies.`);

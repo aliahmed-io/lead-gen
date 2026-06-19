@@ -39,7 +39,6 @@ const DISPOSABLE_DOMAINS = [
   'tempinbox.com',
   'mailcatch.com',
   'meltmail.com',
-  'fakeinbox.com', // duplicate in original, kept for safety
 ];
 
 const ROLE_PREFIXES = [
@@ -49,7 +48,6 @@ const ROLE_PREFIXES = [
   'do-not-reply@',
   'mailer-daemon@',
   'postmaster@',
-  'postmaster@', // duplicate in original
 ];
 
 function isValidSyntax(email: string) {
@@ -67,16 +65,21 @@ function isRoleBasedEmail(email: string) {
 }
 
 async function hasValidMxRecord(domain: string) {
+  let timeoutId: NodeJS.Timeout | undefined;
   try {
     const mxLookup = dns.resolveMx(domain);
     const timeout = new Promise<MxRecord[]>((_, reject) => {
-      setTimeout(() => reject(new Error('DNS lookup timed out')), DNS_TIMEOUT_MS);
+      timeoutId = setTimeout(() => reject(new Error('DNS lookup timed out')), DNS_TIMEOUT_MS);
     });
 
     const records = await Promise.race([mxLookup, timeout]);
     return records && records.length > 0;
   } catch {
     return false;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 }
 

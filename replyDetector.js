@@ -130,11 +130,12 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-      const messages = client.fetch('1:*', { source: true, flags: true }, {
-        search: { unseen: true, since: fourteenDaysAgo }
-      });
+      const uids = await client.search({ unseen: true, since: fourteenDaysAgo });
 
-      for await (const message of messages) {
+      if (uids && uids.length > 0) {
+        const messages = client.fetch(uids.join(','), { source: true, flags: true });
+
+        for await (const message of messages) {
         const parsed = await simpleParser(message.source);
 
         if (!parsed.from?.value?.length) {
@@ -146,6 +147,26 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
         const subject = parsed.subject || '';
         const textBody = parsed.text || '';
 
+        const inReplyTo = parsed.inReplyTo;
+        const references = parsed.references;
+
+        let leadRecord = campaignDb.getRecord(fromAddress);
+        if (!leadRecord) {
+          if (inReplyTo) {
+            leadRecord = campaignDb.getRecordByMessageId(inReplyTo);
+          }
+          if (!leadRecord && references) {
+            if (Array.isArray(references)) {
+              for (const ref of references) {
+                leadRecord = campaignDb.getRecordByMessageId(ref);
+                if (leadRecord) break;
+              }
+            } else if (typeof references === 'string') {
+              leadRecord = campaignDb.getRecordByMessageId(references);
+            }
+          }
+        }
+
         // ── 1. Check if it's a bounce ──────────────────────────────
         const bounceType = detectBounceType(fromAddress, subject, textBody);
 
@@ -154,10 +175,15 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
           // DSNs usually contain the original recipient address in the body
           const emailRegex = /[\w.-]+@[\w.-]+\.\w+/g;
           const emailsInBody = textBody.match(emailRegex) || [];
+          
+          // Exclude the sender's own email to avoid false bounces
+          const senderEmail = (user || '').toLowerCase();
 
           let markedBounce = false;
           for (const foundEmail of emailsInBody) {
             const normalized = foundEmail.toLowerCase();
+            if (normalized === senderEmail) continue;
+
             const record = campaignDb.getRecord(normalized);
             if (record && record.status !== 'bounced') {
               console.log(`   💀 Hard bounce for ${normalized} — marking as bounced.`);
@@ -204,16 +230,16 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
         }
 
         // ── 3. Check if it's a genuine reply from a campaign lead ──
-        const leadRecord = campaignDb.getRecord(fromAddress);
         if (leadRecord && MATCHABLE_STATUSES.includes(leadRecord.status)) {
-          console.log(`   🎉 Reply detected from ${fromAddress}!`);
-          campaignDb.addOrUpdateRecord(fromAddress, {
+          console.log(`   🎉 Reply detected from ${fromAddress} (matched to ${leadRecord.email})!`);
+          campaignDb.addOrUpdateRecord(leadRecord.email, {
             status: 'interested',
             repliedAt: Date.now(),
           });
           newReplies++;
           await client.messageFlagsAdd(message.seq, ['\\Seen']);
         }
+      }
       }
 
       console.log(
@@ -286,8 +312,9 @@ async function checkReplies() {
     }
   })();
 
+  let timeoutId;
   const timeout = new Promise((_, reject) => {
-    setTimeout(
+    timeoutId = setTimeout(
       () => reject(new Error('Reply detection timed out after 30 seconds')),
       OVERALL_TIMEOUT_MS
     );
@@ -299,6 +326,10 @@ async function checkReplies() {
     console.warn(`⚠️ ${err.message}. Returning partial results.`);
     for (const client of activeClients) {
       try { await client.logout(); } catch (e) {}
+    }
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
     }
   }
 

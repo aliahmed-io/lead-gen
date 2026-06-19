@@ -16,18 +16,23 @@ const OUTPUT_FILE = 'leads.xlsx';
 /** @type {string} Path for the JSON database file */
 const DB_FILE = path.resolve(__dirname, 'leads_db.json');
 
+const isE2E = process.env.E2E_TESTS === 'true';
+
+const delayArg = process.argv.find(arg => arg.startsWith('--delay='));
+const delayVal = delayArg ? parseInt(delayArg.split('=')[1] || '', 10) : null;
+
 /* ------------------------------------------------------------------ */
 /*  Scraping limits                                                   */
 /* ------------------------------------------------------------------ */
 
 /** @type {number} Maximum results to collect per search query (stops earlier if feed exhausted) */
-const MAX_RESULTS_PER_QUERY = 300;
+const MAX_RESULTS_PER_QUERY = isE2E ? 2 : 300;
 
 /** @type {number} Concurrent website visits for email extraction (axios phase) */
-const CONCURRENCY = 10;
+const CONCURRENCY = isE2E ? 2 : 10;
 
 /** @type {number} Concurrent pages for Playwright email fallback */
-const PLAYWRIGHT_EMAIL_CONCURRENCY = 5;
+const PLAYWRIGHT_EMAIL_CONCURRENCY = isE2E ? 2 : 5;
 
 /** @type {boolean} Run Playwright browser in headless mode */
 const HEADLESS = true;
@@ -40,34 +45,34 @@ const USE_PLAYWRIGHT_FALLBACK = true;
 /* ------------------------------------------------------------------ */
 
 /** @type {number} Minimum random delay between individual results (ms) */
-const RESULT_DELAY_MIN = 500;
+const RESULT_DELAY_MIN = delayVal !== null ? delayVal : (isE2E ? 0 : 500);
 
 /** @type {number} Maximum random delay between individual results (ms) */
-const RESULT_DELAY_MAX = 1000;
+const RESULT_DELAY_MAX = delayVal !== null ? delayVal : (isE2E ? 0 : 1000);
 
 /** @type {number} Minimum delay between search queries (ms) */
-const QUERY_DELAY_MIN = 1000;
+const QUERY_DELAY_MIN = delayVal !== null ? delayVal : (isE2E ? 0 : 1000);
 
 /** @type {number} Maximum delay between search queries (ms) */
-const QUERY_DELAY_MAX = 2000;
+const QUERY_DELAY_MAX = delayVal !== null ? delayVal : (isE2E ? 0 : 2000);
 
 /** @type {number} Take a break after this many total results scraped */
-const BREAK_AFTER_RESULTS = 500;
+const BREAK_AFTER_RESULTS = isE2E ? 10000 : 500;
 
 /** @type {number} Minimum break duration (ms) — 5 seconds */
-const BREAK_DURATION_MIN = 5000;
+const BREAK_DURATION_MIN = isE2E ? 0 : 5000;
 
 /** @type {number} Maximum break duration (ms) — 10 seconds */
-const BREAK_DURATION_MAX = 10000;
+const BREAK_DURATION_MAX = isE2E ? 0 : 10000;
 
 /** @type {number} Website timeout in milliseconds */
-const WEBSITE_TIMEOUT = 5000;
+const WEBSITE_TIMEOUT = isE2E ? 1000 : 5000;
 
 /** @type {number} Playwright page timeout for email fallback (ms) */
-const PLAYWRIGHT_PAGE_TIMEOUT = 5000;
+const PLAYWRIGHT_PAGE_TIMEOUT = isE2E ? 1000 : 5000;
 
 /** @type {number} Timeout for Google Maps page loads (ms) */
-const MAPS_PAGE_TIMEOUT = 35000;
+const MAPS_PAGE_TIMEOUT = isE2E ? 2000 : 35000;
 
 /** @type {number} Delay between sub-page requests on the same domain (ms min) */
 const SAME_DOMAIN_DELAY_MIN = 0;
@@ -111,7 +116,7 @@ const VIEWPORTS = [
 /*  Search queries — Texas, Florida, North Carolina                   */
 /* ------------------------------------------------------------------ */
 
-const SEARCH_QUERIES = [
+const ALL_QUERIES = [
   // ─── Texas — Furniture ──────────────────────────────────────────
   'furniture store Texas',
   'furniture store Houston TX',
@@ -624,6 +629,10 @@ const SEARCH_QUERIES = [
   'furniture store Garrison NC',
   'home decor store Garrison NC',
 ];
+
+const queryArg = process.argv.find(arg => arg.startsWith('--query='));
+const queryVal = queryArg ? (queryArg.split('=')[1] || '').replace(/^["']|["']$/g, '') : null;
+const SEARCH_QUERIES = queryVal ? [queryVal] : (isE2E ? ['test query'] : ALL_QUERIES);
 
 /* ------------------------------------------------------------------ */
 /*  Email scanning                                                    */

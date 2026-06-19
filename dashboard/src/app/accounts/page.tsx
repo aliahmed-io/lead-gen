@@ -10,7 +10,6 @@ import {
   Send,
   Clock,
   RefreshCw,
-  ServerCrash,
   CheckCircle,
   XCircle,
   Activity,
@@ -18,6 +17,13 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { AccountHealth, Settings } from '@/types';
+
+interface DnsCheckResult {
+  overall: 'good' | 'warning' | 'fail';
+  spf?: { pass: boolean; warning?: string };
+  dmarc?: { pass: boolean; policy?: string; warning?: string };
+  mx?: { pass: boolean; warning?: string };
+}
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<AccountHealth[]>([]);
@@ -28,7 +34,7 @@ export default function Accounts() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAccount, setNewAccount] = useState({ email: '', password: '', smtpHost: '', imapHost: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [dnsResults, setDnsResults] = useState<Record<string, any>>({});
+  const [dnsResults, setDnsResults] = useState<Record<string, DnsCheckResult>>({});
   const [dnsLoading, setDnsLoading] = useState<Record<string, boolean>>({});
   const [dnsExpanded, setDnsExpanded] = useState<Record<string, boolean>>({});
 

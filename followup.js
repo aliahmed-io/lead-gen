@@ -7,13 +7,19 @@ const path = require('path');
 const { isWithinBusinessHours } = require('./timeUtils');
 const campaignState = require('./campaignState');
 
-const SENDER_DISPLAY_NAME = 'Ali | Aethelon Labs';
-const CAN_SPAM_FOOTER = [
-  '',
-  '---',
-  'If you no longer wish to receive emails from us, please reply with "unsubscribe".',
-  `${SENDER_DISPLAY_NAME} | 123 Business St, Suite 100, Austin, TX 78701`,
-].join('\n');
+function getSenderDetails(settings) {
+  const displayName = settings.senderDisplayName || 'Sales Team';
+  const address = settings.physicalAddress || '123 Business St, City, State 12345';
+  return {
+    displayName,
+    footer: [
+      '',
+      '---',
+      'If you no longer wish to receive emails from us, please reply with "unsubscribe".',
+      `${displayName} | ${address}`,
+    ].join('\n')
+  };
+}
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
@@ -133,6 +139,7 @@ async function startFollowUps() {
   }
 
   const settings = getSettings();
+  const senderDetails = getSenderDetails(settings);
   const timeCheck = isWithinBusinessHours(settings.startHour, settings.endHour);
   if (!timeCheck.valid) {
     console.log(`🌙 Follow-up sequence pausing... ${timeCheck.reason}`);
@@ -178,6 +185,13 @@ async function startFollowUps() {
     const accountMaxEmails = (warmup && warmup.level) ? warmup.level * 10 : settings.maxEmailsPerDay;
 
     const dailyCount = campaignDb.getDailyCount(accountId);
+    const globalCount = campaignDb.getTotalDailyCount();
+
+    if (settings.maxDailyTotal && globalCount >= settings.maxDailyTotal) {
+      console.log(`⚠️ Global daily limit of ${settings.maxDailyTotal} reached. Stopping follow-ups.`);
+      break;
+    }
+
     if (dailyCount >= accountMaxEmails) {
       console.log(`⚠️ Account ${accountId} reached daily limit of ${accountMaxEmails}. Skipping follow-up for ${lead.email}.`);
       continue;
@@ -208,10 +222,13 @@ async function startFollowUps() {
     } else {
       try {
         const mailOptions = {
-          from: `"${SENDER_DISPLAY_NAME}" <${activeAccount.user}>`,
+          from: `"${senderDetails.displayName}" <${activeAccount.user}>`,
           to: lead.email,
           subject: emailData.subject,
-          text: emailData.text + CAN_SPAM_FOOTER,
+          text: emailData.text + senderDetails.footer,
+          headers: {
+            'List-Unsubscribe': `<mailto:${activeAccount.user}?subject=unsubscribe>`
+          }
         };
 
         if (lead.messageId) {

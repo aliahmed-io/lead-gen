@@ -64,7 +64,9 @@ export default function SettingsPage() {
     followUpDays: 3,
     footerText: 'If you no longer wish to receive emails from us, please reply with "unsubscribe".',
     physicalAddress: '123 Business St, Suite 100, Austin, TX 78701',
+    senderDisplayName: 'Ali | Aethelon Labs',
     webhookUrl: '',
+    maxDailyTotal: 600,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -80,7 +82,7 @@ export default function SettingsPage() {
   const saveSettings = async () => {
     setSaving(true); setSaved(false); setError(null);
     try {
-      const res = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+      const res = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
       if (!res.ok) throw new Error('Failed to save settings');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -153,15 +155,26 @@ export default function SettingsPage() {
 
       {/* ── Section 2: Sending Speed ────────────────────────────── */}
       <Section icon={<Mail size={14} />} label="Sending Speed" accent="#8B7355">
-        <Field label="Max Emails Per Day (per account)"
-          hint="Each SMTP account is throttled independently. Warmup mode overrides this.">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <input type="number" min={1} max={500} className="input" style={{ maxWidth: '120px' }}
-              value={settings.maxEmailsPerDay}
-              onChange={e => setSettings({ ...settings, maxEmailsPerDay: parseInt(e.target.value) || 0 })} />
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>emails / account / day</span>
-          </div>
-        </Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          <Field label="Max Emails Per Day (per account)"
+            hint="Each SMTP account is throttled independently. Warmup mode overrides this.">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <input type="number" min={1} max={500} className="input" style={{ maxWidth: '120px' }}
+                value={settings.maxEmailsPerDay}
+                onChange={e => setSettings({ ...settings, maxEmailsPerDay: parseInt(e.target.value) || 0 })} />
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>emails / account</span>
+            </div>
+          </Field>
+          <Field label="Global Daily Limit"
+            hint="Maximum total emails sent across ALL accounts in one day.">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <input type="number" min={1} max={5000} className="input" style={{ maxWidth: '120px' }}
+                value={settings.maxDailyTotal}
+                onChange={e => setSettings({ ...settings, maxDailyTotal: parseInt(e.target.value) || 0 })} />
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>total emails</span>
+            </div>
+          </Field>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <Field label="Min Delay Between Sends"
             hint={`≈ ${msToMin(settings.delayMinMs)} min`}>
@@ -213,7 +226,13 @@ export default function SettingsPage() {
       </Section>
 
       {/* ── Section 4: CAN-SPAM ─────────────────────────────────── */}
-      <Section icon={<RefreshCw size={14} />} label="CAN-SPAM Compliance" accent="var(--warning)">
+      <Section icon={<RefreshCw size={14} />} label="Sender Identity & Compliance" accent="var(--warning)">
+        <Field label="Sender Display Name"
+          hint="The name recipients see in their inbox (e.g., 'John | MyCompany').">
+          <input type="text" className="input"
+            value={settings.senderDisplayName}
+            onChange={e => setSettings({ ...settings, senderDisplayName: e.target.value })} />
+        </Field>
         <Field label="Unsubscribe Footer Text"
           hint="Appended to every outbound email. Required by CAN-SPAM.">
           <textarea className="input" rows={3} style={{ resize: 'vertical', fontFamily: 'inherit' }}

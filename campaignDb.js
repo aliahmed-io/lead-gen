@@ -24,6 +24,16 @@ class CampaignDatabase {
         if (!parsed.warmup) parsed.warmup = {};
         return parsed;
       } catch (err) {
+        if (err instanceof SyntaxError && fs.existsSync(DB_PATH)) {
+          const backupPath = DB_PATH + '.bak';
+          try {
+            fs.renameSync(DB_PATH, backupPath);
+            console.error(`⚠️ Database file corrupt. Renamed to ${backupPath}`);
+          } catch (renameErr) {
+            console.error(`⚠️ Failed to rename corrupt database: ${renameErr.message}`);
+          }
+          throw new Error(`Fatal: Campaign database JSON is corrupt: ${err.message}`);
+        }
         console.error('Error reading campaign_db.json. Starting fresh.', err.message);
         return { records: {}, dailyCounts: {}, unsubscribed: [], activityLog: [], abTests: {}, warmup: {} };
       }
@@ -71,6 +81,20 @@ class CampaignDatabase {
     return this.data.records[email] || null;
   }
 
+  getRecordByMessageId(messageId) {
+    if (!messageId) return null;
+    const targetId = String(messageId).trim();
+    // Some message IDs are wrapped in angle brackets
+    const cleanTargetId = targetId.replace(/^<|>$/g, '');
+    for (const record of Object.values(this.data.records)) {
+      if (record.messageId) {
+        const cleanRecordId = String(record.messageId).trim().replace(/^<|>$/g, '');
+        if (cleanRecordId === cleanTargetId) return record;
+      }
+    }
+    return null;
+  }
+
   getAllRecords() {
     return Object.values(this.data.records);
   }
@@ -100,6 +124,17 @@ class CampaignDatabase {
 
     const today = this.getTodayDateString();
     return this.data.dailyCounts[accountId][today] || 0;
+  }
+
+  getTotalDailyCount() {
+    let total = 0;
+    if (this.data.dailyCounts) {
+      const today = this.getTodayDateString();
+      for (const accountId in this.data.dailyCounts) {
+        total += (this.data.dailyCounts[accountId][today] || 0);
+      }
+    }
+    return total;
   }
 
   incrementDailyCount(accountId) {

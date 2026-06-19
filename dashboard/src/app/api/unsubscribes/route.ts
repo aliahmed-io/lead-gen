@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-// @ts-ignore
 import lockfile from 'proper-lockfile';
 
 interface CampaignRecord {

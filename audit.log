@@ -128,3 +128,223 @@
 ✅ IMAP Scan Complete!
 [INFO] 2026-06-17T03:00:00.528Z - 📂 Loaded database: 11720 businesses, 462 completed queries
 [INFO] 2026-06-17T03:00:00.531Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T14:00:00.089Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T14:00:00.089Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T14:00:00.099Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T14:00:00.106Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T14:00:00.515Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-18T14:00:00.517Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T14:00:00.096Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T14:00:00.104Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T14:00:00.536Z - 📂 Loaded database: 11720 businesses, 462 completed queries
+[INFO] 2026-06-18T14:00:00.538Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T14:15:00.040Z - 
+⏰ [CRON] Daily tick: Checking Follow-up Sequence...
+[INFO] 2026-06-18T14:15:00.051Z - 📊 Follow-Up Status:
+[INFO] 2026-06-18T14:15:00.052Z -    Total Candidates found: 0
+[INFO] 2026-06-18T14:15:00.053Z - 
+
+[INFO] 2026-06-18T14:15:00.053Z - ✅ No leads are ready for follow-up right now. Done.
+[INFO] 2026-06-18T14:15:00.064Z - 
+⏰ [CRON] Daily tick: Checking Follow-up Sequence...
+[INFO] 2026-06-18T14:15:00.070Z - 📊 Follow-Up Status:
+[INFO] 2026-06-18T14:15:00.070Z -    Total Candidates found: 0
+[INFO] 2026-06-18T14:15:00.070Z - 
+
+[INFO] 2026-06-18T14:15:00.070Z - ✅ No leads are ready for follow-up right now. Done.
+[INFO] 2026-06-18T15:00:00.063Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T15:00:00.063Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T15:00:00.066Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T15:00:00.070Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T15:00:00.100Z - 📂 Loaded database: 139 businesses, 1 completed queries
+[INFO] 2026-06-18T15:00:00.110Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T15:00:00.066Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T15:00:00.070Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T15:00:00.100Z - 📂 Loaded database: 139 businesses, 1 completed queries
+[INFO] 2026-06-18T15:00:00.109Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T16:00:00.056Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T16:00:00.057Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T16:00:00.057Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T16:00:00.057Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T16:00:00.061Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T16:00:00.060Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T16:00:00.060Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T16:00:00.062Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T16:28:05.702Z - ======================================================
+[INFO] 2026-06-18T16:28:05.702Z - 🤖 MASTER SCHEDULER ONLINE
+[INFO] 2026-06-18T16:28:05.702Z - ======================================================
+[INFO] 2026-06-18T16:28:05.702Z -  - Sender Queue:     Runs immediately, then checks hourly
+[INFO] 2026-06-18T16:28:05.702Z -  - IMAP Scanner:     Scheduled every hour
+[INFO] 2026-06-18T16:28:05.702Z -  - Follow-ups:       Scheduled daily at 9:15 AM (Texas Time)
+[INFO] 2026-06-18T16:28:05.702Z -  - Safety Controls:  Auto-pauses on Nights, Weekends, and Holidays
+[INFO] 2026-06-18T16:28:05.702Z - ======================================================
+
+[INFO] 2026-06-18T16:28:05.703Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T16:28:24.763Z - ======================================================
+[INFO] 2026-06-18T16:28:24.763Z - 🤖 MASTER SCHEDULER ONLINE
+[INFO] 2026-06-18T16:28:24.764Z - ======================================================
+[INFO] 2026-06-18T16:28:24.764Z -  - Sender Queue:     Runs immediately, then checks hourly
+[INFO] 2026-06-18T16:28:24.764Z -  - IMAP Scanner:     Scheduled every hour
+[INFO] 2026-06-18T16:28:24.764Z -  - Follow-ups:       Scheduled daily at 9:15 AM (Texas Time)
+[INFO] 2026-06-18T16:28:24.764Z -  - Safety Controls:  Auto-pauses on Nights, Weekends, and Holidays
+[INFO] 2026-06-18T16:28:24.764Z - ======================================================
+
+[INFO] 2026-06-18T16:28:24.764Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T17:00:00.127Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T17:00:00.138Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T17:00:00.131Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T17:00:00.132Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T17:00:00.135Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T17:00:00.144Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T17:00:00.146Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T17:00:00.149Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T18:00:00.080Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T18:00:00.089Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T18:00:00.082Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T18:00:00.082Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T18:00:00.086Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T18:00:00.090Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T18:00:00.090Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T18:00:00.102Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T19:00:00.048Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T19:00:00.051Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T19:00:00.053Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T19:00:00.053Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T19:00:00.065Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T19:00:00.056Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T19:00:00.061Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T19:00:00.063Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T20:00:00.093Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T20:00:00.095Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T20:00:00.094Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T20:00:00.096Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T20:00:00.099Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T20:00:00.100Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T20:00:00.101Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T20:00:00.103Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T21:00:00.062Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T21:00:00.063Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T21:00:00.063Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T21:00:00.066Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T21:00:00.093Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T21:00:00.094Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T21:00:00.094Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T21:00:00.097Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T22:00:00.104Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T22:00:00.105Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T22:00:00.105Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T22:00:00.107Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T22:00:00.126Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T22:00:00.127Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T22:00:00.127Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T22:00:00.129Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T23:00:00.109Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T23:00:00.120Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-18T23:00:00.110Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T23:00:00.110Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T23:00:00.112Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-18T23:00:00.121Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-18T23:00:00.121Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-18T23:00:00.123Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-19T00:00:00.083Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-19T00:00:00.090Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-19T00:00:00.083Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-19T00:00:00.085Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-19T00:00:00.086Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-19T00:00:00.092Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-19T00:00:00.092Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-19T00:00:00.093Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-19T01:00:00.068Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-19T01:00:00.075Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-19T01:00:00.069Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-19T01:00:00.070Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-19T01:00:00.077Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-19T01:00:00.075Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-19T01:00:00.076Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-19T01:00:00.079Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-19T12:00:00.107Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-19T12:00:00.107Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-06-19T12:00:00.111Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-19T12:00:00.112Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-19T12:00:00.116Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-06-19T12:00:00.111Z - 🔍 Starting IMAP Listener to scan for replies...
+
+[INFO] 2026-06-19T12:00:00.112Z - 
+✅ IMAP Scan Complete!
+[INFO] 2026-06-19T12:00:00.115Z - ❌ No SMTP accounts found in .env file! Skipping sender module.

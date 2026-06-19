@@ -17,9 +17,9 @@ export default function SequencesPage() {
   useEffect(() => {
     fetch('/api/settings')
       .then(r => r.ok ? r.json() : {})
-      .then((data: any) => {
+      .then((data: Record<string, unknown>) => {
         if (data.sequence && Array.isArray(data.sequence)) {
-          setSequence(data.sequence);
+          setSequence(data.sequence as SequenceStep[]);
         } else {
           // Default sequence fallback
           setSequence([
@@ -47,7 +47,7 @@ export default function SequencesPage() {
       } else {
         alert('Failed to save sequence');
       }
-    } catch (e) {
+    } catch {
       alert('Error saving sequence');
     } finally {
       setSaving(false);
@@ -91,13 +91,12 @@ export default function SequencesPage() {
   }
 
   // Calculate cumulative timeline days
-  let cumulativeDays = 0;
   const timelineNodes = sequence.map((s, i) => {
     if (i === 0) {
       return { step: i, day: 0, label: s.templateKey };
     }
-    cumulativeDays += s.delayDays;
-    return { step: i, day: cumulativeDays, label: s.templateKey };
+    const day = sequence.slice(1, i + 1).reduce((sum, step) => sum + step.delayDays, 0);
+    return { step: i, day, label: s.templateKey };
   });
 
   return (

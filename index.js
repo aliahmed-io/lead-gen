@@ -207,7 +207,7 @@ async function main() {
 /* ------------------------------------------------------------------ */
 
 const MAX_RESTARTS = 5;
-const RESTART_DELAY_MS = 30_000;
+const RESTART_DELAY_MS = process.env.E2E_TESTS === 'true' ? 100 : 30_000;
 
 (async () => {
   

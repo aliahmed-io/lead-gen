@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ChevronLeft, ChevronRight, UserCheck, UserMinus,
@@ -83,8 +83,10 @@ export default function Leads() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const fetchLeads = () => {
-    setLoading(true);
+  const fetchLeads = useCallback((showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     const q = new URLSearchParams({ 
       page: String(page), 
       limit: String(limit), 
@@ -98,14 +100,18 @@ export default function Leads() {
     fetch(`/api/leads?${q}`)
       .then(r => { if (!r.ok) throw new Error('Failed to fetch leads'); return r.json(); })
       .then(d => { setLeads(d.records || []); setTotal(d.total || 0); setTotalPages(d.totalPages || 0); setError(null); })
-      .catch(e => setError(e.message))
+      .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  };
+  }, [page, limit, status, platform, stateFilter, debouncedSearch, sortBy, sortOrder]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
-  useEffect(() => { fetchLeads(); }, [page, status, platform, stateFilter, debouncedSearch, sortBy, sortOrder]);
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      fetchLeads(false);
+    });
+  }, [fetchLeads]);
 
   const handleSort = (field: string) => {
+    setLoading(true);
     if (sortBy === field) {
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
@@ -383,7 +389,7 @@ export default function Leads() {
           <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
           <input
             type="text" placeholder="Search by name, email, website…"
-            value={search} onChange={e => setSearch(e.target.value)}
+            value={search} onChange={e => { setLoading(true); setSearch(e.target.value); }}
             className="input" style={{ paddingLeft: '36px' }}
           />
         </div>
@@ -394,9 +400,9 @@ export default function Leads() {
         </div>
 
         {[
-          { value: status, set: (v: string) => { setStatus(v); setPage(1); }, opts: STATUS_OPTIONS, label: 'Filter by Status' },
-          { value: platform, set: (v: string) => { setPlatform(v); setPage(1); }, opts: PLATFORM_OPTIONS, label: 'Filter by Platform' },
-          { value: stateFilter, set: (v: string) => { setStateFilter(v); setPage(1); }, opts: STATE_OPTIONS, label: 'Filter by State' },
+          { value: status, set: (v: string) => { setLoading(true); setStatus(v); setPage(1); }, opts: STATUS_OPTIONS, label: 'Filter by Status' },
+          { value: platform, set: (v: string) => { setLoading(true); setPlatform(v); setPage(1); }, opts: PLATFORM_OPTIONS, label: 'Filter by Platform' },
+          { value: stateFilter, set: (v: string) => { setLoading(true); setStateFilter(v); setPage(1); }, opts: STATE_OPTIONS, label: 'Filter by State' },
         ].map((f, i) => (
           <select key={i} value={f.value} onChange={e => f.set(e.target.value)}
             aria-label={f.label}
@@ -406,7 +412,7 @@ export default function Leads() {
         ))}
 
         {activeFilters.length > 0 && (
-          <button onClick={() => { setStatus('all'); setPlatform('all'); setStateFilter('all'); setPage(1); }}
+          <button onClick={() => { setLoading(true); setStatus('all'); setPlatform('all'); setStateFilter('all'); setPage(1); }}
             style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--honey-600)', cursor: 'pointer', background: 'none', border: 'none', padding: '4px 8px', fontWeight: 600 }}>
             <X size={12} /> Clear Filters
           </button>
@@ -674,13 +680,13 @@ export default function Leads() {
               Showing <strong style={{ color: 'var(--text-primary)' }}>{leads.length}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{total.toLocaleString()}</strong>
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1 || loading} className="btn btn-secondary" style={{ padding: '6px 10px' }} title="Previous Page" aria-label="Previous Page">
+              <button onClick={() => { setLoading(true); setPage(p => Math.max(p - 1, 1)); }} disabled={page === 1 || loading} className="btn btn-secondary" style={{ padding: '6px 10px' }} title="Previous Page" aria-label="Previous Page">
                 <ChevronLeft size={14} />
               </button>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', minWidth: '80px', textAlign: 'center', fontWeight: 600 }}>
                 {page} / {totalPages}
               </span>
-              <button onClick={() => setPage(p => Math.min(p + 1, totalPages))} disabled={page === totalPages || loading} className="btn btn-secondary" style={{ padding: '6px 10px' }} title="Next Page" aria-label="Next Page">
+              <button onClick={() => { setLoading(true); setPage(p => Math.min(p + 1, totalPages)); }} disabled={page === totalPages || loading} className="btn btn-secondary" style={{ padding: '6px 10px' }} title="Next Page" aria-label="Next Page">
                 <ChevronRight size={14} />
               </button>
             </div>

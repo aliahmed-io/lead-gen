@@ -12,13 +12,19 @@ const { isWithinBusinessHours } = require('./timeUtils');
 const campaignState = require('./campaignState');
 const { decrypt, isEncrypted } = require('./cryptoUtils');
 
-const SENDER_DISPLAY_NAME = 'Ali | Aethelon Labs';
-const CAN_SPAM_FOOTER = [
-  '',
-  '---',
-  'If you no longer wish to receive emails from us, please reply with "unsubscribe".',
-  `${SENDER_DISPLAY_NAME} | 123 Business St, Suite 100, Austin, TX 78701`,
-].join('\n');
+function getSenderDetails(settings) {
+  const displayName = settings.senderDisplayName || 'Sales Team';
+  const address = settings.physicalAddress || '123 Business St, City, State 12345';
+  return {
+    displayName,
+    footer: [
+      '',
+      '---',
+      'If you no longer wish to receive emails from us, please reply with "unsubscribe".',
+      `${displayName} | ${address}`,
+    ].join('\n')
+  };
+}
 
 // ─── Settings ───────────────────────────────────────────────────────
 
@@ -215,6 +221,7 @@ function getCustomSentence(platform) {
 async function runSequence() {
   const isDryRun = process.argv.includes('--dry-run');
   const settings = getSettings();
+  const senderDetails = getSenderDetails(settings);
   const sequence = settings.sequence || getDefaultSequence();
   const transporters = buildTransporters();
 
@@ -270,6 +277,7 @@ async function runSequence() {
   console.log(`   Ready to send now: ${readyQueue.length}`);
   console.log(`   Accounts available: ${transporters.length}`);
   console.log(`   Daily limit per account: ${settings.maxEmailsPerDay}`);
+  if (settings.maxDailyTotal) console.log(`   Global Daily Limit: ${settings.maxDailyTotal}`);
   console.log(`   Sequence steps: ${sequence.length}`);
   console.log(isDryRun ? '   ⚠️ DRY RUN MODE\n' : '\n');
 
@@ -303,6 +311,12 @@ async function runSequence() {
     const warmup = campaignDb.getWarmupStatus(account.id);
     const accountMax = warmup?.level ? warmup.level * 10 : settings.maxEmailsPerDay;
     const dailyCount = campaignDb.getDailyCount(account.id);
+    const globalCount = campaignDb.getTotalDailyCount();
+
+    if (settings.maxDailyTotal && globalCount >= settings.maxDailyTotal) {
+      console.log(`⚠️ Global daily limit of ${settings.maxDailyTotal} reached. Stopping.`);
+      break;
+    }
 
     if (dailyCount >= accountMax) {
       const allMaxed = transporters.every(t => {
@@ -388,10 +402,13 @@ async function runSequence() {
     } else {
       try {
         const info = await account.transporter.sendMail({
-          from: `"${SENDER_DISPLAY_NAME}" <${account.user}>`,
+          from: `"${senderDetails.displayName}" <${account.user}>`,
           to: record.email,
           subject: emailData.subject,
-          text: emailData.text + CAN_SPAM_FOOTER,
+          text: emailData.text + senderDetails.footer,
+          headers: {
+            'List-Unsubscribe': `<mailto:${account.user}?subject=unsubscribe>`
+          }
         });
 
         campaignDb.incrementDailyCount(account.id);
@@ -407,7 +424,7 @@ async function runSequence() {
           leadEmail: record.email,
           fromAddress: account.user,
           subject: emailData.subject,
-          textBody: emailData.text + CAN_SPAM_FOOTER,
+          textBody: emailData.text + senderDetails.footer,
           htmlBody: '',
           direction: 'outbound',
           accountId: account.id,

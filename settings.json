@@ -1,4 +1,6 @@
 {
+  "senderDisplayName": "Ali | Aethelon Labs",
+  "physicalAddress": "123 Business St, Suite 100, Austin, TX 78701",
   "sequence": [
     { "step": 0, "templateKey": "initial",   "delayDays": 0 },
     { "step": 1, "templateKey": "followup1",  "delayDays": 4 },
@@ -9,6 +11,7 @@
   "delayMinMs": 240000,
   "delayMaxMs": 336000,
   "maxEmailsPerDay": 100,
+  "maxDailyTotal": 600,
   "startHour": 9,
   "endHour": 17,
   "bounceThreshold": 3

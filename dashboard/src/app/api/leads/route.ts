@@ -16,7 +16,14 @@ export async function GET(request: Request) {
     const platformFilter = searchParams.get('platform');
     const stateFilter = searchParams.get('state');
     const searchQuery = searchParams.get('search')?.toLowerCase() || '';
-    const sortBy = searchParams.get('sortBy') || 'activity';
+    const allowedSortFields = [
+      'activity', 'businessName', 'email', 'website', 'city', 'state', 'platform', 'status',
+      'sentAt', 'followedUp1At', 'followedUp2At', 'repliedAt', 'completedAt', 'updatedAt'
+    ];
+    let sortBy = searchParams.get('sortBy') || 'activity';
+    if (!allowedSortFields.includes(sortBy)) {
+      sortBy = 'activity';
+    }
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     if (!fs.existsSync(dbPath)) {

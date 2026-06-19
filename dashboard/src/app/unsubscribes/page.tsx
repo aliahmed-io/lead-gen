@@ -23,15 +23,17 @@ export default function UnsubscribesPage() {
       const data = await res.json();
       setUnsubscribed(data.unsubscribed || []);
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUnsubscribes();
+    Promise.resolve().then(() => {
+      fetchUnsubscribes();
+    });
   }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -57,8 +59,8 @@ export default function UnsubscribesPage() {
       await fetchUnsubscribes();
 
       setTimeout(() => setSuccess(null), 4000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setSubmitting(false);
     }
@@ -81,8 +83,8 @@ export default function UnsubscribesPage() {
       await fetchUnsubscribes();
 
       setTimeout(() => setSuccess(null), 4000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setDeletingEmail(null);
     }

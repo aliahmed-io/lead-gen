@@ -1,21 +1,16 @@
-require('dotenv').config();
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
-function getKey() {
+function getKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY;
-  if (!key) throw new Error('ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.');
+  if (!key) throw new Error('ENCRYPTION_KEY is not set in environment.');
   return crypto.createHash('sha256').update(key).digest();
 }
 
-/**
- * Encrypts a plain text string using AES-256-GCM.
- * Returns a string prefixed with 'ENC:' followed by the base64-encoded: IV + AuthTag + CipherText
- */
-function encrypt(text) {
+export function encryptPassword(text: string): string {
   const iv = crypto.randomBytes(IV_LENGTH);
   const key = getKey();
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
@@ -25,12 +20,9 @@ function encrypt(text) {
   return `ENC:${base64}`;
 }
 
-/**
- * Decrypts an 'ENC:' prefixed base64-encoded AES-256-GCM encrypted string.
- */
-function decrypt(encryptedString) {
+export function decryptPassword(encryptedString: string): string {
   if (!isEncrypted(encryptedString)) {
-    throw new Error('Value is not an encrypted string (missing ENC: prefix).');
+    throw new Error('Value is not prefixed with ENC:');
   }
   const base64Data = encryptedString.slice(4);
   const buffer = Buffer.from(base64Data, 'base64');
@@ -43,11 +35,18 @@ function decrypt(encryptedString) {
   return decipher.update(encrypted).toString('utf8') + decipher.final('utf8');
 }
 
-/**
- * Returns true if the string is prefixed with 'ENC:' indicating it is an encrypted blob.
- */
-function isEncrypted(value) {
+export function isEncrypted(value: string): boolean {
   return typeof value === 'string' && value.startsWith('ENC:');
 }
 
-module.exports = { encrypt, decrypt, isEncrypted };
+export function safeDecryptPassword(password: string): string {
+  if (!password) return '';
+  if (isEncrypted(password)) {
+    try {
+      return decryptPassword(password);
+    } catch {
+      return '';
+    }
+  }
+  return password;
+}

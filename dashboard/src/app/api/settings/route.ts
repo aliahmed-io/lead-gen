@@ -39,8 +39,10 @@ export async function GET(request: Request) {
     
     // Strip passwords from accounts array
     if (data.accounts && Array.isArray(data.accounts)) {
-      data.accounts = data.accounts.map((acc: any) => {
-        const { pass, password, ...rest } = acc;
+      data.accounts = data.accounts.map((acc: Record<string, unknown>) => {
+        const rest = { ...acc };
+        delete rest.pass;
+        delete rest.password;
         return rest;
       });
     }
@@ -74,7 +76,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Cannot update accounts via this endpoint' }, { status: 403 });
     }
 
-    let existingSettings: any = {};
+    let existingSettings: Record<string, unknown> = {};
     if (fs.existsSync(settingsPath)) {
       try {
         existingSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
@@ -83,8 +85,9 @@ export async function PATCH(request: Request) {
 
     // Only allow specific keys
     const allowedKeys = [
-      'sequence', 'delayMinMs', 'delayMaxMs', 'maxEmailsPerDay',
-      'startHour', 'endHour', 'bounceThreshold', 'webhookUrl'
+      'sequence', 'delayMinMs', 'delayMaxMs', 'maxEmailsPerDay', 'maxDailyTotal',
+      'startHour', 'endHour', 'bounceThreshold', 'webhookUrl',
+      'senderDisplayName', 'physicalAddress', 'footerText', 'followUpDays'
     ];
 
     const mergedSettings = { ...existingSettings };
@@ -96,7 +99,7 @@ export async function PATCH(request: Request) {
 
     fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2), 'utf8');
     return NextResponse.json({ success: true, settings: mergedSettings });
-  } catch (err: any) {
-    return NextResponse.json({ error: 'Failed to save settings: ' + err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: 'Failed to save settings: ' + (err as Error).message }, { status: 500 });
   }
 }

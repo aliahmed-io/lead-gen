@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Search, AlertCircle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -17,8 +17,10 @@ export default function AuditLogs() {
   const [errorsOnly, setErrorsOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const fetchLogs = async () => {
-    setLoading(true);
+  const fetchLogs = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       const res = await fetch('/api/logs');
       if (res.ok) {
@@ -27,16 +29,18 @@ export default function AuditLogs() {
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 10000); // Auto-refresh every 10s
+    Promise.resolve().then(() => {
+      fetchLogs(false);
+    });
+    const interval = setInterval(() => fetchLogs(false), 10000); // Auto-refresh every 10s
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchLogs]);
 
   const filtered = logs.filter(l => {
     if (errorsOnly && l.level !== 'ERROR') return false;
@@ -66,7 +70,7 @@ export default function AuditLogs() {
           </button>
           
           <button 
-            onClick={fetchLogs}
+            onClick={() => fetchLogs(true)}
             className="btn btn-secondary py-2"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh

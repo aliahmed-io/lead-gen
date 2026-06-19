@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Mail, Send, Clock, Reply } from 'lucide-react';
+import { Mail, Send } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -41,7 +41,9 @@ export default function InboxPage() {
   };
 
   useEffect(() => {
-    fetchThreads();
+    Promise.resolve().then(() => {
+      fetchThreads();
+    });
     const iv = setInterval(fetchThreads, 15000);
     return () => clearInterval(iv);
   }, []);
@@ -93,8 +95,8 @@ export default function InboxPage() {
         const data = await res.json();
         alert('Failed to send: ' + data.error);
       }
-    } catch (e: any) {
-      alert('Error: ' + e.message);
+    } catch (e: unknown) {
+      alert('Error: ' + (e as Error).message);
     } finally {
       setSending(false);
     }

@@ -3,35 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { AccountHealth } from '@/types';
 
-// ─── Crypto (inline to avoid cross-module TS issues) ───────────────
-import crypto from 'crypto';
-
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16;
-const TAG_LENGTH = 16;
-
-function getKey(): Buffer {
-  const key = process.env.ENCRYPTION_KEY;
-  if (!key) throw new Error('ENCRYPTION_KEY not set in .env');
-  return crypto.createHash('sha256').update(key).digest();
-}
-
-function encryptPassword(text: string): string {
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const key = getKey();
-  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
-  const tag = (cipher as ReturnType<typeof crypto.createCipheriv> & { getAuthTag(): Buffer }).getAuthTag();
-  return Buffer.concat([iv, tag, encrypted]).toString('base64');
-}
-
-function looksEncrypted(value: string): boolean {
-  try {
-    return Buffer.from(value, 'base64').length > IV_LENGTH + TAG_LENGTH;
-  } catch {
-    return false;
-  }
-}
+import { encryptPassword, isEncrypted } from '@/lib/crypto';
 
 // ─── Rate Limiting (in-memory, per IP) ─────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -190,7 +162,7 @@ export async function POST(request: Request) {
     }
 
     // Encrypt password before storing — never store plain text
-    const encryptedPassword = looksEncrypted(sanitized.password)
+    const encryptedPassword = isEncrypted(sanitized.password)
       ? sanitized.password  // already encrypted, don't double-encrypt
       : encryptPassword(sanitized.password);
 
@@ -217,7 +189,14 @@ export async function POST(request: Request) {
     saveSettings(settings);
 
     // Never return password in response
-    const { password: _removed, ...safeAccount } = newAccount;
+    const safeAccount = {
+      id: newAccount.id,
+      email: newAccount.email,
+      smtpHost: newAccount.smtpHost,
+      imapHost: newAccount.imapHost,
+      smtpPort: newAccount.smtpPort,
+      imapPort: newAccount.imapPort,
+    };
     return NextResponse.json(safeAccount);
   } catch {
     return NextResponse.json({ error: 'Failed to save account' }, { status: 500 });

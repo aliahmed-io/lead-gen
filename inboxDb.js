@@ -16,6 +16,16 @@ class InboxDatabase {
         if (!parsed.threads) parsed.threads = {};
         return parsed;
       } catch (err) {
+        if (err instanceof SyntaxError && fs.existsSync(INBOX_PATH)) {
+          const backupPath = INBOX_PATH + '.bak';
+          try {
+            fs.renameSync(INBOX_PATH, backupPath);
+            console.error(`⚠️ Database file corrupt. Renamed to ${backupPath}`);
+          } catch (renameErr) {
+            console.error(`⚠️ Failed to rename corrupt database: ${renameErr.message}`);
+          }
+          throw new Error(`Fatal: Inbox database JSON is corrupt: ${err.message}`);
+        }
         console.error('Error reading inbox_db.json. Starting fresh.', err.message);
       }
     }

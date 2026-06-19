@@ -56,7 +56,7 @@ const ROLE_PREFIXES = [
  * @returns {boolean}
  */
 function isValidSyntax(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email);
 }
 
@@ -89,16 +89,23 @@ function isRoleBasedEmail(email) {
  * @returns {Promise<boolean>}
  */
 async function hasValidMxRecord(domain) {
+  let timeoutId;
   try {
     const mxLookup = dns.resolveMx(domain);
+    mxLookup.catch(() => {}); // prevent unhandled promise rejection if timeout wins
+
     const timeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('DNS lookup timed out')), DNS_TIMEOUT_MS);
+      timeoutId = setTimeout(() => reject(new Error('DNS lookup timed out')), DNS_TIMEOUT_MS);
     });
 
     const records = await Promise.race([mxLookup, timeout]);
     return records && records.length > 0;
   } catch (err) {
     return false;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 }
 

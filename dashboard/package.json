@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"cd .. && node start.js\"",
-    "build": "next build",
+    "dev": "dotenv -e ../.env -- concurrently \"next dev\" \"node ../start.js\"",
+    "build": "dotenv -e ../.env -- next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -24,6 +24,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "concurrently": "^10.0.3",
+    "dotenv-cli": "^7.4.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",

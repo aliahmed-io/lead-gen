@@ -2,42 +2,7 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
-import crypto from 'crypto';
-
-// ─── Inline decrypt (same as accounts/route.ts) ─────────────────────
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16;
-const TAG_LENGTH = 16;
-
-function getKey(): Buffer {
-  const key = process.env.ENCRYPTION_KEY;
-  if (!key) throw new Error('ENCRYPTION_KEY not set');
-  return crypto.createHash('sha256').update(key).digest();
-}
-
-function decryptPassword(encryptedBase64: string): string {
-  const buffer = Buffer.from(encryptedBase64, 'base64');
-  const iv = buffer.slice(0, IV_LENGTH);
-  const tag = buffer.slice(IV_LENGTH, IV_LENGTH + TAG_LENGTH);
-  const encrypted = buffer.slice(IV_LENGTH + TAG_LENGTH);
-  const key = getKey();
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  (decipher as ReturnType<typeof crypto.createDecipheriv> & { setAuthTag(t: Buffer): void }).setAuthTag(tag);
-  return decipher.update(encrypted).toString('utf8') + decipher.final('utf8');
-}
-
-function looksEncrypted(value: string): boolean {
-  try { return Buffer.from(value, 'base64').length > IV_LENGTH + TAG_LENGTH; }
-  catch { return false; }
-}
-
-function safeDecryptPassword(password: string): string {
-  if (!password) return '';
-  if (looksEncrypted(password)) {
-    try { return decryptPassword(password); } catch { return ''; }
-  }
-  return password;
-}
+import { safeDecryptPassword } from '@/lib/crypto';
 
 // ─── File paths ──────────────────────────────────────────────────────
 const inboxDbPath = path.resolve(process.cwd(), '../inbox_db.json');
@@ -72,14 +37,22 @@ export async function GET(request: Request) {
       return NextResponse.json(thread);
     }
 
-    const threads = (Object.values(inbox.threads) as Record<string, any>[])
+    interface Thread {
+      leadEmail: string;
+      accountId: number;
+      messages: unknown[];
+      lastMessageAt: number;
+      unread: boolean;
+    }
+
+    const threads = (Object.values(inbox.threads) as Thread[])
       .sort((a, b) =>
         (b.lastMessageAt || 0) - (a.lastMessageAt || 0)
       );
 
     return NextResponse.json({
       threads,
-      unreadCount: threads.filter((t: Record<string, boolean>) => t.unread).length,
+      unreadCount: threads.filter((t: Thread) => t.unread).length,
     });
   } catch (err: unknown) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
@@ -123,6 +96,10 @@ export async function POST(request: Request) {
       auth: { user, pass },
     });
 
+    const senderDisplayName = settings.senderDisplayName || 'Ali | Aethelon Labs';
+    const physicalAddress = settings.physicalAddress || '123 Business St, Suite 100, Austin, TX 78701';
+    const footerText = settings.footerText || 'If you no longer wish to receive emails from us, please reply with "unsubscribe".';
+
     const replySubject = subject || (
       thread.messages?.length > 0
         ? `Re: ${thread.messages[0].subject || ''}`
@@ -132,12 +109,12 @@ export async function POST(request: Request) {
     const footer = [
       '',
       '---',
-      'If you no longer wish to receive emails from us, please reply with "unsubscribe".',
-      'Ali Ahmed | Aethelon Labs | 123 Business St, Suite 100, Austin, TX 78701',
+      footerText,
+      `${senderDisplayName} | ${physicalAddress}`,
     ].join('\n');
 
     const info = await transporter.sendMail({
-      from: `"Ali | Aethelon Labs" <${user}>`,
+      from: `"${senderDisplayName}" <${user}>`,
       to: leadEmail,
       subject: replySubject,
       text: replyText + footer,

@@ -584,6 +584,11 @@ async function processWebsiteAxios(business) {
  * @returns {Promise<Array<Object>>} Enriched business records.
  */
 async function findEmails(businesses, db) {
+  const isDryRun = process.argv.includes('--dry-run');
+  if (isDryRun) {
+    console.log('⚡ Dry-run mode active. Skipping unified email extraction.');
+    return businesses;
+  }
   const withWebsites = businesses.filter(
     (b) => b.website && b.website.trim().length > 0
   );
@@ -684,9 +689,9 @@ async function findEmails(businesses, db) {
                   await page.route('**/*', (route) => {
                     const type = route.request().resourceType();
                     if (['image', 'media', 'font', 'stylesheet'].includes(type)) {
-                      route.abort();
+                      route.abort().catch(() => {});
                     } else {
-                      route.continue();
+                      route.continue().catch(() => {});
                     }
                   });
 
