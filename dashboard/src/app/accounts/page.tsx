@@ -323,26 +323,32 @@ export default function Accounts() {
               </div>
 
               {/* Detailed Metrics Footer */}
-              <div className="grid grid-cols-3 gap-2 border-t border-[var(--border-subtle)] pt-4 text-center">
+              <div className="grid grid-cols-4 gap-1 border-t border-[var(--border-subtle)] pt-3 text-center text-xs">
                 <div>
-                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Total Sent</p>
-                  <p className="text-sm font-bold text-[var(--text-primary)] mt-1 flex items-center justify-center gap-1 font-mono">
-                    <Send size={11} className="text-[var(--text-muted)]" /> {account.totalSent}
+                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Opens</p>
+                  <p className="text-xs font-bold text-[var(--text-primary)] mt-0.5 font-mono">
+                    {((account.openRate || 0) * 100).toFixed(0)}%
                   </p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Bounces</p>
-                  <p className={`text-sm font-bold mt-1 font-mono ${account.bounceCount > 0 ? 'text-[var(--danger)]' : 'text-[var(--text-secondary)]'}`}>
-                    {account.bounceCount}
+                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Clicks</p>
+                  <p className="text-xs font-bold text-[var(--text-primary)] mt-0.5 font-mono">
+                    {((account.clickRate || 0) * 100).toFixed(0)}%
                   </p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Bounce Rate</p>
+                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Replies</p>
+                  <p className="text-xs font-bold text-[var(--success)] mt-0.5 font-mono">
+                    {((account.replyRate || 0) * 100).toFixed(1)}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Bounce</p>
                   <p
-                    className={`text-sm font-bold mt-1 font-mono ${
-                      account.bounceRate > 0.05
+                    className={`text-xs font-bold mt-0.5 font-mono ${
+                      account.bounceRate > 0.04
                         ? 'text-[var(--danger)]'
-                        : account.bounceRate > 0.03
+                        : account.bounceRate > 0.02
                         ? 'text-[var(--warning)]'
                         : 'text-[var(--success)]'
                     }`}
@@ -352,16 +358,16 @@ export default function Accounts() {
                 </div>
               </div>
 
-              {/* Last Active Timestamp */}
-              <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pt-2.5 mt-2 border-t border-[var(--border-subtle)]">
+              {/* Last Active Timestamp & Reset Clock */}
+              <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pt-2 mt-2 border-t border-[var(--border-subtle)]">
                 <div className="flex items-center gap-1.5">
                   <Clock size={11} />
-                  <span>Last active: {formatDate(account.lastActiveAt)}</span>
+                  <span>Resets at Midnight CT</span>
                 </div>
                 <button
                   onClick={() => checkDns(account.email)}
                   disabled={dnsLoading[account.email]}
-                  className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors"
+                  className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
                   <Activity size={11} className={dnsLoading[account.email] ? "animate-spin" : ""} />
                   {dnsLoading[account.email] ? 'Checking...' : 'Check DNS'}

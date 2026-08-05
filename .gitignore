@@ -16,6 +16,13 @@ settings.json
 inbox_db.json
 inbox_db.json.tmp
 
+# Sensitive credential files — NEVER commit these
+mailboxes.csv
+import-mailboxes.js
+accounts/
+*.csv
+audit.log
+
 # OS generated files
 .DS_Store
 Thumbs.db

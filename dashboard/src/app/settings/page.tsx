@@ -55,18 +55,18 @@ const Field = ({ label, hint, children }: { label: React.ReactNode; hint?: strin
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
-    delayMinMs: 240000,
-    delayMaxMs: 336000,
-    maxEmailsPerDay: 100,
+    delayMinMs: 180000,
+    delayMaxMs: 480000,
+    maxEmailsPerDay: 80,
     startHour: 9,
     endHour: 17,
-    bounceThreshold: 3,
+    bounceThreshold: 0.03,
     followUpDays: 3,
     footerText: 'If you no longer wish to receive emails from us, please reply with "unsubscribe".',
     physicalAddress: '123 Business St, Suite 100, Austin, TX 78701',
     senderDisplayName: 'Ali | Aethelon Labs',
     webhookUrl: '',
-    maxDailyTotal: 600,
+    maxDailyTotal: 480,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -95,7 +95,9 @@ export default function SettingsPage() {
   }));
 
   const msToMin = (ms: number) => Math.round(ms / 60000);
-  const bounceColor = settings.bounceThreshold <= 3 ? 'var(--success)' : settings.bounceThreshold <= 6 ? 'var(--warning)' : 'var(--danger)';
+  const bounceColor = settings.bounceThreshold <= 0.03 ? 'var(--success)' : settings.bounceThreshold <= 0.06 ? 'var(--warning)' : 'var(--danger)';
+  // Display as percentage integer for the slider (0.03 -> 3)
+  const bounceDisplayPct = Math.round(settings.bounceThreshold * 100);
 
 
 
@@ -197,14 +199,14 @@ export default function SettingsPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Bounce Auto-Pause Threshold</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: bounceColor, fontWeight: 700 }}>
-              {settings.bounceThreshold}%
+              {bounceDisplayPct}%
             </span>
           </div>
         } hint="Mailboxes exceeding this bounce rate are automatically suspended.">
           <div style={{ position: 'relative', marginTop: '4px' }}>
-            <input type="range" min={1} max={10} value={settings.bounceThreshold}
-              onChange={e => setSettings({ ...settings, bounceThreshold: parseInt(e.target.value) })}
-              style={{ width: '100%', height: '4px', borderRadius: '99px', appearance: 'none', cursor: 'pointer', accentColor: bounceColor, background: `linear-gradient(90deg, ${bounceColor} ${settings.bounceThreshold * 10}%, var(--border-default) ${settings.bounceThreshold * 10}%)` }}
+            <input type="range" min={1} max={10} value={bounceDisplayPct}
+              onChange={e => setSettings({ ...settings, bounceThreshold: parseInt(e.target.value) / 100 })}
+              style={{ width: '100%', height: '4px', borderRadius: '99px', appearance: 'none', cursor: 'pointer', accentColor: bounceColor, background: `linear-gradient(90deg, ${bounceColor} ${bounceDisplayPct * 10}%, var(--border-default) ${bounceDisplayPct * 10}%)` }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
               <span style={{ fontSize: '10px', color: 'var(--success)', fontWeight: 600 }}>1% Safe</span>

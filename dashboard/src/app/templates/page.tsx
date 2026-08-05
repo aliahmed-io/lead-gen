@@ -129,8 +129,11 @@ export default function Templates() {
     const mockVals: Record<string, string> = {
       '{{companyName}}': 'Aethelon Labs',
       '{{city}}': 'Austin',
+      '{{state}}': 'Texas',
       '{{website}}': 'aethelon.com',
       '{{email}}': 'hello@aethelon.com',
+      '{{customSentence}}': 'I noticed your store is running on Shopify, which is an excellent platform.',
+      '{{platform}}': 'Shopify',
     };
 
     parts.forEach((part, i) => {
@@ -164,8 +167,11 @@ export default function Templates() {
     const mockVals: Record<string, string> = {
       '{{companyName}}': 'Aethelon Labs',
       '{{city}}': 'Austin',
+      '{{state}}': 'Texas',
       '{{website}}': 'aethelon.com',
       '{{email}}': 'hello@aethelon.com',
+      '{{customSentence}}': 'I noticed your store is running on Shopify, which is an excellent platform.',
+      '{{platform}}': 'Shopify',
     };
     return text.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, name) => mockVals[`{{${name}}}`] || `{{${name}}}`);
   };
@@ -246,11 +252,13 @@ export default function Templates() {
       </AnimatePresence>
 
       {/* Main Tabs (Sequences) */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '2px' }}>
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '2px', flexWrap: 'wrap' }}>
         {[
           { id: 'initial', label: 'Initial Outreach', stage: 'Stage 1' },
           { id: 'followUp1', label: 'Follow-Up 1', stage: 'Stage 2' },
-          { id: 'followUp2', label: 'Follow-Up 2', stage: 'Stage 3' }
+          { id: 'followUp2', label: 'Follow-Up 2', stage: 'Stage 3' },
+          { id: 'followUp3', label: 'Follow-Up 3', stage: 'Stage 4' },
+          { id: 'breakup', label: 'Breakup Email', stage: 'Stage 5' },
         ].map(tab => (
           <button 
             key={tab.id}
@@ -382,8 +390,11 @@ export default function Templates() {
                 {[
                   { name: 'Company Name', tag: 'companyName' },
                   { name: 'Target City', tag: 'city' },
+                  { name: 'Target State', tag: 'state' },
                   { name: 'Website Domain', tag: 'website' },
-                  { name: 'Email Address', tag: 'email' }
+                  { name: 'Auto Platform Opener', tag: 'customSentence' },
+                  { name: 'Email Address', tag: 'email' },
+                  { name: 'Platform (Shopify etc)', tag: 'platform' },
                 ].map(item => (
                   <button
                     key={item.tag}

@@ -60,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     { name: 'Unsubscribes',    href: '/unsubscribes', icon: UserMinus },
     { name: 'Email Templates', href: '/templates', icon: Mail },
     { name: 'Accounts',        href: '/accounts',  icon: Shield },
+    { name: 'Health Center',   href: '/health',    icon: Activity },
     { name: 'Audit Logs',      href: '/logs',      icon: Terminal },
     { name: 'Configuration',   href: '/settings',  icon: Settings },
   ];

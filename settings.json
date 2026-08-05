@@ -2,17 +2,93 @@
   "senderDisplayName": "Ali | Aethelon Labs",
   "physicalAddress": "123 Business St, Suite 100, Austin, TX 78701",
   "sequence": [
-    { "step": 0, "templateKey": "initial",   "delayDays": 0 },
-    { "step": 1, "templateKey": "followup1",  "delayDays": 4 },
-    { "step": 2, "templateKey": "followup2",  "delayDays": 5 },
-    { "step": 3, "templateKey": "followup3",  "delayDays": 6 },
-    { "step": 4, "templateKey": "breakup",    "delayDays": 7 }
+    {
+      "step": 0,
+      "templateKey": "initial",
+      "delayDays": 0
+    },
+    {
+      "step": 1,
+      "templateKey": "followup1",
+      "delayDays": 4
+    },
+    {
+      "step": 2,
+      "templateKey": "followup2",
+      "delayDays": 5
+    },
+    {
+      "step": 3,
+      "templateKey": "followup3",
+      "delayDays": 6
+    },
+    {
+      "step": 4,
+      "templateKey": "breakup",
+      "delayDays": 7
+    }
   ],
-  "delayMinMs": 240000,
-  "delayMaxMs": 336000,
-  "maxEmailsPerDay": 100,
-  "maxDailyTotal": 600,
+  "delayMinMs": 180000,
+  "delayMaxMs": 480000,
+  "maxEmailsPerDay": 80,
+  "maxDailyTotal": 480,
   "startHour": 9,
   "endHour": 17,
-  "bounceThreshold": 3
+  "bounceThreshold": 0.03,
+  "accounts": [
+    {
+      "id": "1782082773692uq5t",
+      "email": "ali@tryaethelon.com",
+      "password": "ENC:nVhVO2r1NkfV3MOYWSBSbiN8nkveiXtOuWldoHkA02y9Hem0dQbmkraNiYg=",
+      "smtpHost": "smtp.gmail.com",
+      "imapHost": "imap.gmail.com",
+      "smtpPort": "465",
+      "imapPort": "993"
+    },
+    {
+      "id": "1782082773692eb68",
+      "email": "ali@aethelonlabs.com",
+      "password": "ENC:W601o949k6P4nauiLIopOZt9c6xMbUvCAqS1K5MUP/HiFW2dsfRUv4pVf/Y=",
+      "smtpHost": "smtp.gmail.com",
+      "imapHost": "imap.gmail.com",
+      "smtpPort": "465",
+      "imapPort": "993"
+    },
+    {
+      "id": "1782082773692c42a",
+      "email": "ali@aethelonstudio.com",
+      "password": "ENC:lsLSIkcMA0PehRKz/9uby14xZUKTPRmeqNrbJiEaKEWKIoIP0G5OdofLrXA=",
+      "smtpHost": "smtp.gmail.com",
+      "imapHost": "imap.gmail.com",
+      "smtpPort": "465",
+      "imapPort": "993"
+    },
+    {
+      "id": "1782082773692b69v",
+      "email": "ali@getaethelon.com",
+      "password": "ENC:Uk/eWMUiTh6WbAPmgUC1l4kI6Iwaf1yXUFzrLFwr0NFBN+WxJ96bHYA00Ng=",
+      "smtpHost": "smtp.gmail.com",
+      "imapHost": "imap.gmail.com",
+      "smtpPort": "465",
+      "imapPort": "993"
+    },
+    {
+      "id": "17820827736924312",
+      "email": "ali@aethelonhq.com",
+      "password": "ENC:OdaXtQdAOg0EwdMRnxWTyc6dENTHcbE2aTD99pkKgQmd7rs7yAWmqNoqbPo=",
+      "smtpHost": "smtp.gmail.com",
+      "imapHost": "imap.gmail.com",
+      "smtpPort": "465",
+      "imapPort": "993"
+    },
+    {
+      "id": "17820827736939uc9",
+      "email": "ali@aethelonmail.com",
+      "password": "ENC:MqHUVeVIGMsczxn/JGb3sXxCExQ3tqbzpJfd1Q/7s0pGUHeqzQuyROPcIZE=",
+      "smtpHost": "smtp.gmail.com",
+      "imapHost": "imap.gmail.com",
+      "smtpPort": "465",
+      "imapPort": "993"
+    }
+  ]
 }

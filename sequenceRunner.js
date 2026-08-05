@@ -1,5 +1,6 @@
 require('dotenv').config();
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const { ImapFlow } = require('imapflow');
 const { LeadsDatabase } = require('./db');
 const campaignDb = require('./campaignDb');
@@ -11,6 +12,48 @@ const { verifyEmail } = require('./verifier');
 const { isWithinBusinessHours } = require('./timeUtils');
 const campaignState = require('./campaignState');
 const { decrypt, isEncrypted } = require('./cryptoUtils');
+const { selectVariant, evaluateAndPromoteWinner } = require('./abTesting');
+const { generatePersonalizedOpener } = require('./personalizer');
+
+/**
+ * Generates pseudo-randomized human sending delay using Gaussian distribution.
+ * e.g., 42s, 71s, 89s, 133s around mean.
+ */
+function generateHumanDelay(minMs = 180000, maxMs = 480000) {
+  const mean = (minMs + maxMs) / 2;
+  const stdDev = (maxMs - minMs) / 6;
+
+  let u1 = 0, u2 = 0;
+  while (u1 === 0) u1 = Math.random();
+  while (u2 === 0) u2 = Math.random();
+
+  const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+  const delay = Math.round(mean + z0 * stdDev);
+
+  return Math.max(minMs, Math.min(maxMs, delay));
+}
+
+// ─── RFC 8058 unsubscribe token ─────────────────────────────────────────────
+// Must match the secret used in dashboard/src/app/api/unsubscribe/one-click/route.ts
+const UNSUB_SECRET = process.env.ENCRYPTION_KEY || 'fallback-secret-change-in-production';
+// Set this to your dashboard's public URL in settings.json or .env
+const DASHBOARD_URL = process.env.DASHBOARD_URL || '';
+
+/**
+ * Generates a signed, URL-safe unsubscribe token valid for 90 days.
+ * Used to build the List-Unsubscribe HTTPS URL.
+ * @param {string} email
+ * @returns {string}
+ */
+function generateUnsubToken(email) {
+  const ts = Math.floor(Date.now() / 1000);
+  const payload = `${email.toLowerCase().trim()}:${ts}`;
+  const payloadB64 = Buffer.from(payload).toString('base64url');
+  const sig = crypto.createHmac('sha256', UNSUB_SECRET).update(payloadB64).digest('base64url');
+  return `${payloadB64}.${sig}`;
+}
+
+const { injectTrackingPixel, rewriteLinksForTracking } = require('./trackingUtils');
 
 function getSenderDetails(settings) {
   const displayName = settings.senderDisplayName || 'Sales Team';
@@ -373,21 +416,26 @@ async function runSequence() {
       }
     }
 
+    let variant = null;
+    if (nextStep === 0) {
+      variant = selectVariant(campaignDb, 'initial_subject', ['A', 'B']);
+    }
+
     const emailData = templates.getEmail(stepDef.templateKey, {
       companyName: record.businessName,
       website: record.website || '',
       city: record.city || '',
       state: record.state || '',
       platform: record.platform || 'Other',
-      customSentence: getCustomSentence(record.platform),
-    });
+      customSentence: generatePersonalizedOpener(record),
+    }, variant);
 
     const newStatus = STEP_TO_STATUS[nextStep] || 'sent';
     const timestampField = getTimestampField(nextStep);
 
     console.log(
       `[Account ${account.id}] Step ${nextStep} → ${record.email} ` +
-      `(${dailyCount + 1}/${accountMax} today) [${stepDef.templateKey}]`
+      `(${dailyCount + 1}/${accountMax} today) [${stepDef.templateKey}${variant ? ` Variant ${variant}` : ''}]`
     );
 
     if (isDryRun) {
@@ -398,16 +446,28 @@ async function runSequence() {
         [timestampField]: Date.now(),
         accountId: account.id,
         messageId: 'dry-run-id',
+        abVariant: variant,
       });
+      if (variant) {
+        campaignDb.updateAbTest('initial_subject', variant, 'sent');
+      }
     } else {
       try {
         const info = await account.transporter.sendMail({
           from: `"${senderDetails.displayName}" <${account.user}>`,
           to: record.email,
           subject: emailData.subject,
-          text: emailData.text + senderDetails.footer,
+          text: rewriteLinksForTracking(
+            injectTrackingPixel(emailData.text + senderDetails.footer, record.email),
+            record.email
+          ),
           headers: {
-            'List-Unsubscribe': `<mailto:${account.user}?subject=unsubscribe>`
+            // RFC 8058 one-click unsubscribe (required by Gmail bulk sender policy)
+            // Includes both mailto: fallback AND https: one-click POST target
+            'List-Unsubscribe': DASHBOARD_URL
+              ? `<mailto:${account.user}?subject=unsubscribe>, <${DASHBOARD_URL}/api/unsubscribe/one-click?token=${generateUnsubToken(record.email)}>`
+              : `<mailto:${account.user}?subject=unsubscribe>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           }
         });
 
@@ -417,7 +477,13 @@ async function runSequence() {
           [timestampField]: Date.now(),
           accountId: account.id,
           messageId: info.messageId,
+          abVariant: variant,
         });
+
+        if (variant) {
+          campaignDb.updateAbTest('initial_subject', variant, 'sent');
+          evaluateAndPromoteWinner(campaignDb, 'initial_subject');
+        }
 
         // Save outbound message to inbox thread
         inboxDb.addMessage({
@@ -442,10 +508,8 @@ async function runSequence() {
     }
 
     if (queueIndex < readyQueue.length) {
-      const delayMs =
-        Math.floor(Math.random() * (settings.delayMaxMs - settings.delayMinMs + 1)) +
-        settings.delayMinMs;
-      console.log(`   ⏲️ Sleeping ${(delayMs / 1000 / 60).toFixed(1)} min...\n`);
+      const delayMs = generateHumanDelay(settings.delayMinMs || 180000, settings.delayMaxMs || 480000);
+      console.log(`   ⏲️ Sleeping ${(delayMs / 1000 / 60).toFixed(1)} min (Gaussian human delay)...\n`);
       await new Promise(r => setTimeout(r, delayMs));
     }
   }

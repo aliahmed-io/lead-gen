@@ -2,9 +2,11 @@ require('dotenv').config();
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const campaignDb = require('./campaignDb');
+const inboxDb = require('./inboxDb');
 const fs = require('fs');
 const path = require('path');
-const { decrypt, isEncrypted } = require('./cryptoUtils'); // ← ADD THIS
+const { decrypt, isEncrypted } = require('./cryptoUtils');
+const { classifySentiment } = require('./replyClassifier');
 
 const OVERALL_TIMEOUT_MS = 30000;
 const MATCHABLE_STATUSES = ['sent', 'followed_up_1', 'followed_up_2'];
@@ -206,8 +208,57 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
         }
 
         if (bounceType === 'soft') {
-          console.log(`   📭 Soft bounce from ${fromAddress} — logging, will retry.`);
-          // Don't mark as bounced — soft bounces are temporary
+          // ── Soft bounce 3-strike rule ──────────────────────────────
+          // OOO / mailbox-full are temporary — don't DNC on first hit.
+          // After 3 soft bounces on the same lead, escalate to hard DNC.
+          const SOFT_BOUNCE_THRESHOLD = 3;
+
+          // Try to match the lead from body emails (same logic as hard bounce)
+          const emailRegex = /[\w.-]+@[\w.-]+\.\w+/g;
+          const emailsInBody = textBody.match(emailRegex) || [];
+          const senderEmail = (user || '').toLowerCase();
+
+          let matchedSoftLead = null;
+          for (const foundEmail of emailsInBody) {
+            const normalized = foundEmail.toLowerCase();
+            if (normalized === senderEmail) continue;
+            const rec = campaignDb.getRecord(normalized);
+            if (rec && rec.status !== 'bounced' && rec.status !== 'unsubscribed') {
+              matchedSoftLead = rec;
+              break;
+            }
+          }
+
+          // Also try matching by fromAddress if body match failed
+          if (!matchedSoftLead) {
+            const byFrom = campaignDb.getRecord(fromAddress);
+            if (byFrom && byFrom.status !== 'bounced' && byFrom.status !== 'unsubscribed') {
+              matchedSoftLead = byFrom;
+            }
+          }
+
+          if (matchedSoftLead) {
+            const currentStrikes = (matchedSoftLead.softBounceCount || 0) + 1;
+            if (currentStrikes >= SOFT_BOUNCE_THRESHOLD) {
+              console.log(`   ⚠️ Soft bounce #${currentStrikes} for ${matchedSoftLead.email} — escalating to DNC.`);
+              campaignDb.addOrUpdateRecord(matchedSoftLead.email, {
+                status: 'bounced',
+                softBounceCount: currentStrikes,
+                failReason: `Escalated after ${currentStrikes} soft bounces`,
+                bouncedAt: Date.now(),
+              });
+              newBounces++;
+            } else {
+              console.log(`   📭 Soft bounce #${currentStrikes}/${SOFT_BOUNCE_THRESHOLD} for ${matchedSoftLead.email} — logged, will retry.`);
+              campaignDb.addOrUpdateRecord(matchedSoftLead.email, {
+                softBounceCount: currentStrikes,
+                lastSoftBounceAt: Date.now(),
+              });
+            }
+          } else {
+            console.log(`   📭 Soft bounce from ${fromAddress} — could not match to lead record. Skipping.`);
+          }
+
           await client.messageFlagsAdd(message.seq, ['\\Seen']);
           continue;
         }
@@ -232,10 +283,29 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
         // ── 3. Check if it's a genuine reply from a campaign lead ──
         if (leadRecord && MATCHABLE_STATUSES.includes(leadRecord.status)) {
           console.log(`   🎉 Reply detected from ${fromAddress} (matched to ${leadRecord.email})!`);
+
+          const sentimentResult = await classifySentiment(textBody, subject);
+          const newStatus = sentimentResult.sentiment === 'negative' ? 'completed_no_interest' : 'interested';
+
+          console.log(`   🧠 Reply sentiment: ${sentimentResult.sentiment} (${sentimentResult.intent}) → status: ${newStatus}`);
+
           campaignDb.addOrUpdateRecord(leadRecord.email, {
-            status: 'interested',
+            status: newStatus,
+            sentiment: sentimentResult.sentiment,
+            intent: sentimentResult.intent,
             repliedAt: Date.now(),
           });
+
+          inboxDb.addMessage({
+            leadEmail: leadRecord.email,
+            fromAddress: fromAddress,
+            subject: subject,
+            textBody: textBody,
+            htmlBody: parsed.html || '',
+            direction: 'inbound',
+            accountId: id,
+          });
+
           newReplies++;
           await client.messageFlagsAdd(message.seq, ['\\Seen']);
         }

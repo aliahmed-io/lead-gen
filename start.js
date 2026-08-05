@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { startCampaign } = require('./sender');
 const { startFollowUps } = require('./followup');
-const { startListener } = require('./imapListener');
+const { checkReplies } = require('./replyDetector');
 
 // Global Logger Interceptor
 const logFile = fs.createWriteStream(path.join(__dirname, 'audit.log'), { flags: 'a' });
@@ -43,7 +43,7 @@ startCampaign().catch(err => console.error('\u274C Error in Sender:', err));
 cron.schedule('0 * * * *', async () => {
   console.log('\n\u23F0 [CRON] Hourly tick: Scanning IMAP and checking Sender queue...');
   try {
-    await startListener();
+    await checkReplies();
     await startCampaign();
   } catch (err) {
     console.error('\u274C Error in hourly cron:', err);

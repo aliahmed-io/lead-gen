@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const searchQuery = searchParams.get('search')?.toLowerCase() || '';
     const allowedSortFields = [
       'activity', 'businessName', 'email', 'website', 'city', 'state', 'platform', 'status',
-      'sentAt', 'followedUp1At', 'followedUp2At', 'repliedAt', 'completedAt', 'updatedAt'
+      'score', 'sentAt', 'followedUp1At', 'followedUp2At', 'repliedAt', 'completedAt', 'updatedAt'
     ];
     let sortBy = searchParams.get('sortBy') || 'activity';
     if (!allowedSortFields.includes(sortBy)) {
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     }
 
     interface CampaignData {
-      records: Record<string, { status?: string; sentAt?: number; followedUp1At?: number; followedUp2At?: number; repliedAt?: number; bouncedAt?: number; completedAt?: number; state?: string; city?: string; website?: string; }>;
+      records: Record<string, { status?: string; score?: number; sentiment?: string; openCount?: number; clickCount?: number; sentAt?: number; followedUp1At?: number; followedUp2At?: number; repliedAt?: number; bouncedAt?: number; completedAt?: number; state?: string; city?: string; website?: string; }>;
     }
     let campaignData: CampaignData = { records: {} };
     if (fs.existsSync(campaignDbPath)) {
@@ -68,6 +68,10 @@ export async function GET(request: Request) {
           state: b.state || campaignRecord?.state || '',
           city: b.city || campaignRecord?.city || '',
           website: b.website || campaignRecord?.website || '',
+          score: campaignRecord?.score || 0,
+          sentiment: campaignRecord?.sentiment,
+          openCount: campaignRecord?.openCount || 0,
+          clickCount: campaignRecord?.clickCount || 0,
         };
       });
     } else if (data.records) {

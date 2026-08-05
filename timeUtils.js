@@ -51,4 +51,37 @@ function isWithinBusinessHours(startHour = 9, endHour = 17) {
   return { valid: true };
 }
 
-module.exports = { isWithinBusinessHours };
+/**
+ * Checks if current time is a weekday (Mon-Fri) in Central Time.
+ */
+function isWeekday() {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    weekday: 'short',
+  });
+  const weekday = formatter.format(new Date());
+  return weekday !== 'Sat' && weekday !== 'Sun';
+}
+
+/**
+ * Calculates remaining milliseconds until Midnight Central Time (daily reset clock).
+ */
+function getTimeUntilMidnight() {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(new Date());
+  const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute').value, 10);
+  const second = parseInt(parts.find(p => p.type === 'second').value, 10);
+
+  const secondsPassed = hour * 3600 + minute * 60 + second;
+  const secondsInDay = 86400;
+  return (secondsInDay - secondsPassed) * 1000;
+}
+
+module.exports = { isWithinBusinessHours, isWeekday, getTimeUntilMidnight };

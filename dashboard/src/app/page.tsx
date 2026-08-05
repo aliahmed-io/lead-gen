@@ -162,6 +162,26 @@ export default function Overview() {
         </div>
       )}
 
+      {/* ── Deliverability Alert Center Banner ─────────────────────── */}
+      {stats?.alerts && (stats.alerts as Array<{ id: string; message: string; severity?: string }>).length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '14px 20px',
+          background: 'var(--danger-bg)', border: '1px solid rgba(181, 78, 69, 0.25)',
+          borderRadius: '14px', fontSize: '13px', color: 'var(--danger)', fontFamily: 'var(--font-inter)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ShieldAlert size={18} className="animate-pulse" style={{ flexShrink: 0 }} />
+            <div>
+              <strong style={{ fontWeight: 700 }}>Deliverability Circuit Breaker Alert:</strong>{' '}
+              {(stats.alerts as Array<{ id: string; message: string }>)[0].message}
+            </div>
+          </div>
+          <Link href="/accounts" className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+            View Mailboxes <ArrowRight size={12} style={{ marginLeft: '4px' }} />
+          </Link>
+        </div>
+      )}
+
       {/* ── Campaign Control Banner ─────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}

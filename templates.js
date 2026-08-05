@@ -45,7 +45,7 @@ module.exports = {
     };
   },
 
-  getEmail: (templateKey, data) => {
+  getEmail: (templateKey, data, variant = null) => {
     // Map sequence definition keys to the actual keys in templates.json
     const keyMap = {
       'initial': 'initial',
@@ -57,8 +57,14 @@ module.exports = {
     
     const actualKey = keyMap[templateKey] || templateKey;
     const tpl = getTemplates()[actualKey] || {};
+
+    let subjectRaw = tpl.subject;
+    if (variant && tpl[`subject${variant}`]) {
+      subjectRaw = tpl[`subject${variant}`];
+    }
+
     return {
-      subject: parseTemplate(tpl.subject || `Default Subject (${templateKey})`, data),
+      subject: parseTemplate(subjectRaw || `Default Subject (${templateKey})`, data),
       text: parseTemplate(tpl.text || `Default Text (${templateKey})`, data)
     };
   }

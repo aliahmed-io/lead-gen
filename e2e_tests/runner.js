@@ -6,7 +6,9 @@ const testFiles = [
   path.join(__dirname, 'tier1.test.js'),
   path.join(__dirname, 'tier2.test.js'),
   path.join(__dirname, 'tier3.test.js'),
-  path.join(__dirname, 'tier4.test.js')
+  path.join(__dirname, 'tier4.test.js'),
+  path.join(__dirname, 'tier5.test.js'),
+  path.join(__dirname, 'tier6.test.js')
 ];
 
 run({ files: testFiles })

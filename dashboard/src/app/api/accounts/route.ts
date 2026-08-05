@@ -72,6 +72,11 @@ export async function GET(request: Request) {
         sentAt?: number;
         followedUp1At?: number;
         followedUp2At?: number;
+        repliedAt?: number;
+        openedAt?: number;
+        openCount?: number;
+        clickedAt?: number;
+        clickCount?: number;
       }>;
       dailyCounts: Record<string, Record<string, number>>;
     }
@@ -92,6 +97,9 @@ export async function GET(request: Request) {
       const accountId = acc.id as string;
       let totalSent = 0;
       let bounceCount = 0;
+      let replyCount = 0;
+      let openCount = 0;
+      let clickCount = 0;
       let lastActiveAt: number | null = null;
 
       for (const record of Object.values(campaignData.records)) {
@@ -103,6 +111,15 @@ export async function GET(request: Request) {
             bounceCount++;
             totalSent++;
           }
+          if (record.repliedAt || record.status === 'interested') {
+            replyCount++;
+          }
+          if (record.openedAt || record.openCount) {
+            openCount += (record.openCount || 1);
+          }
+          if (record.clickedAt || record.clickCount) {
+            clickCount += (record.clickCount || 1);
+          }
           const ts = record.sentAt || record.followedUp1At || record.followedUp2At;
           if (ts && (lastActiveAt === null || ts > lastActiveAt)) lastActiveAt = ts;
         }
@@ -110,10 +127,13 @@ export async function GET(request: Request) {
 
       const sentToday = campaignData.dailyCounts[accountId]?.[todayStr] || 0;
       const bounceRate = totalSent > 0 ? bounceCount / totalSent : 0;
+      const replyRate = totalSent > 0 ? replyCount / totalSent : 0;
+      const openRate = totalSent > 0 ? Math.min(1, openCount / totalSent) : 0;
+      const clickRate = totalSent > 0 ? Math.min(1, clickCount / totalSent) : 0;
 
       let healthScore: 'good' | 'warning' | 'critical' = 'good';
-      if (bounceRate > 0.05) healthScore = 'critical';
-      else if (bounceRate > 0.03) healthScore = 'warning';
+      if (bounceRate > 0.04) healthScore = 'critical';
+      else if (bounceRate > 0.02) healthScore = 'warning';
 
       accounts.push({
         id: accountId,
@@ -122,6 +142,10 @@ export async function GET(request: Request) {
         totalSent,
         bounceCount,
         bounceRate,
+        replyCount,
+        replyRate,
+        openRate,
+        clickRate,
         lastActiveAt,
         healthScore,
       });

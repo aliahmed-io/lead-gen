@@ -1,14 +1,24 @@
 {
   "initial": {
-    "subject": "Quick question for {{companyName}}",
-    "text": "Hi {{companyName}} team,\n\nHope you're having a great week!\n\n{{customSentence}} \n\n[YOUR PITCH GOES HERE - e.g. We help stores like yours in {{city}} increase conversions by X%]\n\nWould you be open to a quick 5-minute chat next week to see if there's a fit?\n\nBest,\nYour Name\nYour Title\nYour Company"
+    "subject": "Quick question, {{companyName}}",
+    "subjectA": "Quick question, {{companyName}}",
+    "subjectB": "Idea for {{companyName}} online store",
+    "text": "Hi {{companyName}} team,\n\n{{customSentence}}\n\nI work with furniture and home decor stores across {{city}} and {{state}} to help them convert more of their website traffic into actual customers — without spending more on ads.\n\nWould it be worth a 15-minute call to see if there's a fit? No pressure at all.\n\nAli\nAethelon Labs\n{{website}}"
   },
   "followUp1": {
-    "subject": "Re: Quick question for {{companyName}}",
-    "text": "Hi {{companyName}} team,\n\nI know things get busy, so I'm just bubbling this up to the top of your inbox.\n\nAre you currently exploring any solutions for [YOUR VALUE PROP]?\n\nIf not, no worries! Just let me know.\n\nBest,\nYour Name"
+    "subject": "Re: Quick question, {{companyName}}",
+    "text": "Hi {{companyName}} team,\n\nJust bumping this to the top of your inbox in case it got buried.\n\nWe've been helping stores in {{state}} increase their online sales without increasing ad spend — and I'd love to see if we can do the same for you.\n\nWorth a quick chat?\n\nAli\nAethelon Labs"
   },
   "followUp2": {
-    "subject": "Re: Quick question for {{companyName}}",
-    "text": "Hi {{companyName}} team,\n\nI'm reaching out one last time to see if [YOUR VALUE PROP] is on your radar right now.\n\nIf it's not a priority at the moment, I completely understand and won't bother you again.\n\nThanks for your time!\n\nBest,\nYour Name"
+    "subject": "Re: Quick question, {{companyName}}",
+    "text": "Hi {{companyName}} team,\n\nI know your inbox is probably packed, so I'll keep this short.\n\nWe help {{city}}-area home decor and furniture stores turn website visitors into buyers. I think {{companyName}} could be a great fit based on what I've seen on your site.\n\nIf now isn't the right time, completely understood. But if you're open to it, I'd love 15 minutes.\n\nAli\nAethelon Labs"
+  },
+  "followUp3": {
+    "subject": "Re: Quick question, {{companyName}}",
+    "text": "Hi {{companyName}} team,\n\nOne last follow-up, I promise.\n\nIf growing your online sales is on your radar for this quarter, I'd love to have a quick conversation. If the timing isn't right, no worries at all — I'll leave you to it.\n\nEither way, best of luck with the business. {{companyName}} is doing great work.\n\nAli\nAethelon Labs"
+  },
+  "breakup": {
+    "subject": "Closing the loop, {{companyName}}",
+    "text": "Hi {{companyName}} team,\n\nI've reached out a few times and haven't heard back, so I'll assume the timing isn't right — and I completely respect that.\n\nI'll close the loop here. If anything changes or you'd ever like to explore ways to grow your online sales, my door is always open.\n\nWishing {{companyName}} continued success.\n\nAli\nAethelon Labs"
   }
 }

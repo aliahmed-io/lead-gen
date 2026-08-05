@@ -3,6 +3,10 @@ export interface LeadRecord {
   businessName?: string;
   platform?: string;
   status?: string;
+  score?: number;
+  sentiment?: string;
+  openCount?: number;
+  clickCount?: number;
   repliedAt?: number;
   completedAt?: number;
   followedUp2At?: number;
@@ -61,8 +65,21 @@ export interface AccountHealth {
   totalSent: number;
   bounceCount: number;
   bounceRate: number;
+  replyCount?: number;
+  replyRate?: number;
+  openRate?: number;
+  clickRate?: number;
   lastActiveAt: number | null;
   healthScore: 'good' | 'warning' | 'critical';
+}
+
+export interface DeliverabilityAlert {
+  id: string;
+  type: string;
+  severity: 'info' | 'warning' | 'critical';
+  accountId?: string;
+  message: string;
+  at: number;
 }
 
 export interface DailyVolume {
@@ -82,4 +99,5 @@ export interface EnhancedStats extends Stats {
   followUpBreakdown: { stage1: number; stage2: number };
   accountBreakdown: { accountId: string | number; sent: number; bounced: number }[];
   recentActivity: { email: string; from: string | null; to: string; at: number }[];
+  alerts?: DeliverabilityAlert[];
 }
