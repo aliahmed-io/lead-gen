@@ -1,24 +1,19 @@
 {
   "initial": {
-    "subject": "Quick question, {{companyName}}",
-    "subjectA": "Quick question, {{companyName}}",
-    "subjectB": "Idea for {{companyName}} online store",
-    "text": "Hi {{companyName}} team,\n\n{{customSentence}}\n\nI work with furniture and home decor stores across {{city}} and {{state}} to help them convert more of their website traffic into actual customers — without spending more on ads.\n\nWould it be worth a 15-minute call to see if there's a fit? No pressure at all.\n\nAli\nAethelon Labs\n{{website}}"
+    "subject": "Quick question for {{Company}}",
+    "subjectA": "Quick question for {{Company}}",
+    "textA": "Hi {{First Name}},\n\nI build custom ecommerce websites and help existing stores improve conversions with redesigns, AI features, advanced search, cart recovery, AR/3D, and performance optimization.\n\nI'm currently taking on a few case-study clients and would love to work with {{Company}}.\n\nPortfolio:\n{{Portfolio}}\n\nIf you're planning any improvements this year, just reply to this email. I'd be happy to answer any questions.\n\nAli Ahmed | Aethelon Labs",
+    "subjectB": "Introductory pricing for {{Company}}'s online store",
+    "textB": "Hi {{First Name}},\n\nI build custom ecommerce websites and improve existing stores with AI, advanced search, cart recovery, AR/3D, redesigns, and performance upgrades.\n\nFor my first 5 case-study clients, I'm offering introductory pricing:\n\n• Improvements & new features: from $150\n• Custom ecommerce: from $700\n• AI-powered ecommerce: from $1,200\n\nPortfolio:\n{{Portfolio}}\n\nIf you're interested or have any questions, I'd be happy to help.\n\nAli Ahmed | Aethelon Labs",
+    "subjectC": "Case-study project for {{Company}}",
+    "textC": "Hi {{First Name}},\n\nIf you're planning to improve {{Company}}'s online store, I can help.\n\nI build custom ecommerce websites, redesign existing stores, and add AI features, advanced search, cart recovery, AR/3D, and other custom functionality.\n\nI'm offering introductory pricing for my first few case-study projects in exchange for honest feedback and a testimonial.\n\nPortfolio:\n{{Portfolio}}\n\nIf you'd like to discuss your store or ask anything, just reply to this email.\n\nAli Ahmed | Aethelon Labs"
   },
   "followUp1": {
-    "subject": "Re: Quick question, {{companyName}}",
-    "text": "Hi {{companyName}} team,\n\nJust bumping this to the top of your inbox in case it got buried.\n\nWe've been helping stores in {{state}} increase their online sales without increasing ad spend — and I'd love to see if we can do the same for you.\n\nWorth a quick chat?\n\nAli\nAethelon Labs"
+    "subject": "Re: Quick question for {{Company}}",
+    "text": "Hi {{First Name}},\n\nJust bumping this to the top of your inbox in case it got buried.\n\nWe've been helping ecommerce stores increase their sales without increasing ad spend — and I'd love to see if we can do the same for {{Company}}.\n\nPortfolio:\n{{Portfolio}}\n\nWorth a quick chat?\n\nAli Ahmed | Aethelon Labs"
   },
   "followUp2": {
-    "subject": "Re: Quick question, {{companyName}}",
-    "text": "Hi {{companyName}} team,\n\nI know your inbox is probably packed, so I'll keep this short.\n\nWe help {{city}}-area home decor and furniture stores turn website visitors into buyers. I think {{companyName}} could be a great fit based on what I've seen on your site.\n\nIf now isn't the right time, completely understood. But if you're open to it, I'd love 15 minutes.\n\nAli\nAethelon Labs"
-  },
-  "followUp3": {
-    "subject": "Re: Quick question, {{companyName}}",
-    "text": "Hi {{companyName}} team,\n\nOne last follow-up, I promise.\n\nIf growing your online sales is on your radar for this quarter, I'd love to have a quick conversation. If the timing isn't right, no worries at all — I'll leave you to it.\n\nEither way, best of luck with the business. {{companyName}} is doing great work.\n\nAli\nAethelon Labs"
-  },
-  "breakup": {
-    "subject": "Closing the loop, {{companyName}}",
-    "text": "Hi {{companyName}} team,\n\nI've reached out a few times and haven't heard back, so I'll assume the timing isn't right — and I completely respect that.\n\nI'll close the loop here. If anything changes or you'd ever like to explore ways to grow your online sales, my door is always open.\n\nWishing {{companyName}} continued success.\n\nAli\nAethelon Labs"
+    "subject": "Closing the loop, {{Company}}",
+    "text": "Hi {{First Name}},\n\nI know your inbox is probably packed, so I'll keep this short.\n\nI've reached out a few times and haven't heard back, so I'll assume the timing isn't right — and I completely respect that.\n\nIf anything changes or you'd ever like to explore ways to grow {{Company}}'s online sales, my door is always open.\n\nAli Ahmed | Aethelon Labs"
   }
 }

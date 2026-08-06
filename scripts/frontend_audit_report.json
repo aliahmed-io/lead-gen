@@ -1,0 +1,212 @@
+[
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 592,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"email\" value={newAccount.email} onChange={e => setNewAccount({...newAccount, email: e.target.value})} className=\"input w-full p-2.5 outline-none\" placeholder=\"name@domain.com\" />\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 596,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"password\" value={newAccount.password} onChange={e => setNewAccount({...newAccount, password: e.target.value})} className=\"input w-full p-2.5 outline-none\" placeholder=\"••••••••••••••••\" />\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 600,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"text\" value={newAccount.smtpHost} onChange={e => setNewAccount({...newAccount, smtpHost: e.target.value})} className=\"input w-full p-2.5 outline-none\" placeholder=\"smtp.gmail.com\" />\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 604,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"text\" value={newAccount.imapHost} onChange={e => setNewAccount({...newAccount, imapHost: e.target.value})} className=\"input w-full p-2.5 outline-none\" placeholder=\"imap.gmail.com\" />\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 706,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 719,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 735,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 774,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 793,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 803,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 861,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 872,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\accounts\\page.tsx",
+    "line": 883,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\leads\\page.tsx",
+    "line": 451,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\leads\\page.tsx",
+    "line": 580,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"checkbox\"\""
+  },
+  {
+    "file": "app\\leads\\page.tsx",
+    "line": 660,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"checkbox\" checked={isSelected}\""
+  },
+  {
+    "file": "app\\logs\\page.tsx",
+    "line": 81,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\sequences\\page.tsx",
+    "line": 148,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\settings\\page.tsx",
+    "line": 164,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"number\" min={1} max={500} className=\"input\" style={{ maxWidth: '120px' }}\""
+  },
+  {
+    "file": "app\\settings\\page.tsx",
+    "line": 173,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"number\" min={1} max={5000} className=\"input\" style={{ maxWidth: '120px' }}\""
+  },
+  {
+    "file": "app\\settings\\page.tsx",
+    "line": 183,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"number\" min={0} className=\"input\"\""
+  },
+  {
+    "file": "app\\settings\\page.tsx",
+    "line": 189,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"number\" min={0} className=\"input\"\""
+  },
+  {
+    "file": "app\\settings\\page.tsx",
+    "line": 207,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"range\" min={1} max={10} value={bounceDisplayPct}\""
+  },
+  {
+    "file": "app\\settings\\page.tsx",
+    "line": 222,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"number\" min={1} max={30} className=\"input\" style={{ maxWidth: '100px' }}\""
+  },
+  {
+    "file": "app\\settings\\page.tsx",
+    "line": 234,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"text\" className=\"input\"\""
+  },
+  {
+    "file": "app\\settings\\page.tsx",
+    "line": 246,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"text\" className=\"input\"\""
+  },
+  {
+    "file": "app\\settings\\page.tsx",
+    "line": 256,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input type=\"url\" className=\"input\" placeholder=\"https://hooks.slack.com/services/...\"\""
+  },
+  {
+    "file": "app\\templates\\page.tsx",
+    "line": 373,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\unsubscribes\\page.tsx",
+    "line": 129,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  },
+  {
+    "file": "app\\unsubscribes\\page.tsx",
+    "line": 167,
+    "category": "Form Accessibility Flaw",
+    "severity": "MEDIUM",
+    "description": "Form input element missing id, name, or aria-label attribute: \"<input\""
+  }
+]

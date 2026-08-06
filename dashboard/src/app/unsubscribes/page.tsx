@@ -127,6 +127,9 @@ export default function UnsubscribesPage() {
           <form onSubmit={handleAdd} style={{ display: 'flex', gap: '8px' }}>
             <div style={{ flex: 1, position: 'relative' }}>
               <input
+                id="unsub-email-input"
+                name="email"
+                aria-label="Email address to unsubscribe"
                 type="email"
                 placeholder="name@domain.com"
                 value={newEmail}

@@ -10,22 +10,12 @@
     {
       "step": 1,
       "templateKey": "followup1",
-      "delayDays": 4
+      "delayDays": 3
     },
     {
       "step": 2,
       "templateKey": "followup2",
-      "delayDays": 5
-    },
-    {
-      "step": 3,
-      "templateKey": "followup3",
-      "delayDays": 6
-    },
-    {
-      "step": 4,
-      "templateKey": "breakup",
-      "delayDays": 7
+      "delayDays": 4
     }
   ],
   "delayMinMs": 180000,
@@ -43,7 +33,16 @@
       "smtpHost": "smtp.gmail.com",
       "imapHost": "imap.gmail.com",
       "smtpPort": "465",
-      "imapPort": "993"
+      "imapPort": "993",
+      "totpSecret": "zxf4zldxuoqj4hridrq7vf2hxktyk4h6",
+      "firstName": "Ali",
+      "lastName": "Ahmed",
+      "senderName": "Ali Ahmed",
+      "signature": "Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com",
+      "forwardingDestination": "ali@tryaethelon.com",
+      "adminEmail": "ali@tryaethelon.com",
+      "adminPassword": "@RoPOwF6(#de9{,0",
+      "adminSecret": "zxf4zldxuoqj4hridrq7vf2hxktyk4h6"
     },
     {
       "id": "1782082773692eb68",
@@ -52,7 +51,16 @@
       "smtpHost": "smtp.gmail.com",
       "imapHost": "imap.gmail.com",
       "smtpPort": "465",
-      "imapPort": "993"
+      "imapPort": "993",
+      "totpSecret": "od74meoyb4d5o7ql27yqyckrpwlx6vfq",
+      "firstName": "Ali",
+      "lastName": "Ahmed",
+      "senderName": "Ali Ahmed",
+      "signature": "Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com",
+      "forwardingDestination": "ali@aethelonlabs.com",
+      "adminEmail": "ali@aethelonlabs.com",
+      "adminPassword": "v*D=$4}2H3n7Kc71",
+      "adminSecret": "od74meoyb4d5o7ql27yqyckrpwlx6vfq"
     },
     {
       "id": "1782082773692c42a",
@@ -61,25 +69,52 @@
       "smtpHost": "smtp.gmail.com",
       "imapHost": "imap.gmail.com",
       "smtpPort": "465",
-      "imapPort": "993"
+      "imapPort": "993",
+      "totpSecret": "xf6qx77czcklgbatailo334loca57wig",
+      "firstName": "Ali",
+      "lastName": "Ahmed",
+      "senderName": "Ali Ahmed",
+      "signature": "Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com",
+      "forwardingDestination": "ali@aethelonstudio.com",
+      "adminEmail": "ali@aethelonstudio.com",
+      "adminPassword": "[h]tL0O(8_65a^0B",
+      "adminSecret": "xf6qx77czcklgbatailo334loca57wig"
     },
     {
       "id": "1782082773692b69v",
       "email": "ali@getaethelon.com",
-      "password": "ENC:Uk/eWMUiTh6WbAPmgUC1l4kI6Iwaf1yXUFzrLFwr0NFBN+WxJ96bHYA00Ng=",
+      "password": "ENC:6O3KIBbvNess14+4reY+ckn2WtSvux8lk89d2GUTgSzyaG51EZa0rCz7uaQ=",
       "smtpHost": "smtp.gmail.com",
       "imapHost": "imap.gmail.com",
       "smtpPort": "465",
-      "imapPort": "993"
+      "imapPort": "993",
+      "totpSecret": "q2ikdgxmp4b5njj75edg6mm5p3e53cjh",
+      "firstName": "Ali",
+      "lastName": "Ahmed",
+      "senderName": "Ali Ahmed",
+      "signature": "Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com",
+      "forwardingDestination": "ali@getaethelon.com",
+      "adminEmail": "ali@getaethelon.com",
+      "adminPassword": "&i6eg8ev>8j!*MQ)",
+      "adminSecret": "q2ikdgxmp4b5njj75edg6mm5p3e53cjh"
     },
     {
       "id": "17820827736924312",
       "email": "ali@aethelonhq.com",
-      "password": "ENC:OdaXtQdAOg0EwdMRnxWTyc6dENTHcbE2aTD99pkKgQmd7rs7yAWmqNoqbPo=",
+      "password": "ENC:y87yoZpzIXKrZYZQ8eVvcUbWFlunmuND31PrrolbmX8V/5DYBwhgOmEzMvg=",
       "smtpHost": "smtp.gmail.com",
       "imapHost": "imap.gmail.com",
       "smtpPort": "465",
-      "imapPort": "993"
+      "imapPort": "993",
+      "totpSecret": "4e442v6mjqd3y76kmmm6oqc2bd3pbnvq",
+      "firstName": "Ali",
+      "lastName": "Ahmed",
+      "senderName": "Ali Ahmed",
+      "signature": "Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com",
+      "forwardingDestination": "ali@aethelonhq.com",
+      "adminEmail": "ali@aethelonhq.com",
+      "adminPassword": "*fcx&Q;h+214sVw7",
+      "adminSecret": "4e442v6mjqd3y76kmmm6oqc2bd3pbnvq"
     },
     {
       "id": "17820827736939uc9",
@@ -88,7 +123,16 @@
       "smtpHost": "smtp.gmail.com",
       "imapHost": "imap.gmail.com",
       "smtpPort": "465",
-      "imapPort": "993"
+      "imapPort": "993",
+      "totpSecret": "fijtywbrlc7re4w5k5tcp5odsz44ti4c",
+      "firstName": "Ali",
+      "lastName": "Ahmed",
+      "senderName": "Ali Ahmed",
+      "signature": "Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com",
+      "forwardingDestination": "ali@aethelonmail.com",
+      "adminEmail": "ali@aethelonmail.com",
+      "adminPassword": "9+A@9$1_jw*L8D+J",
+      "adminSecret": "fijtywbrlc7re4w5k5tcp5odsz44ti4c"
     }
   ]
 }

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { AccountHealth } from '@/types';
 
-import { encryptPassword, isEncrypted } from '@/lib/crypto';
+import { encryptPassword, isEncrypted, safeDecryptPassword } from '@/lib/crypto';
 
 // ─── Rate Limiting (in-memory, per IP) ─────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -138,6 +138,16 @@ export async function GET(request: Request) {
       accounts.push({
         id: accountId,
         email: acc.email as string,
+        appPassword: safeDecryptPassword(acc.password as string),
+        totpSecret: acc.totpSecret as string | undefined,
+        firstName: (acc.firstName as string) || 'Ali',
+        lastName: (acc.lastName as string) || 'Ahmed',
+        senderName: (acc.senderName as string) || 'Ali Ahmed',
+        signature: (acc.signature as string) || 'Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com',
+        forwardingDestination: (acc.forwardingDestination as string) || (acc.email as string),
+        adminEmail: (acc.adminEmail as string) || (acc.email as string),
+        adminPassword: acc.adminPassword as string | undefined,
+        adminSecret: acc.adminSecret as string | undefined,
         sentToday,
         totalSent,
         bounceCount,
@@ -224,6 +234,52 @@ export async function POST(request: Request) {
     return NextResponse.json(safeAccount);
   } catch {
     return NextResponse.json({ error: 'Failed to save account' }, { status: 500 });
+  }
+}
+
+// ─── PUT — Update Account Details ───────────────────────────────────
+export async function PUT(request: Request) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  if (isRateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
+  try {
+    const body = await request.json();
+    const { id, firstName, lastName, senderName, signature, forwardingDestination, adminEmail, adminPassword, adminSecret, password } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Account ID is required' }, { status: 400 });
+    }
+
+    const settings = getSettings();
+    const accounts = (settings.accounts as Record<string, unknown>[]) || [];
+    const accIndex = accounts.findIndex(a => String(a.id) === String(id));
+
+    if (accIndex === -1) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    }
+
+    const target = accounts[accIndex];
+    if (target) {
+      if (firstName !== undefined) target.firstName = String(firstName).trim();
+      if (lastName !== undefined) target.lastName = String(lastName).trim();
+      if (senderName !== undefined) target.senderName = String(senderName).trim();
+      if (signature !== undefined) target.signature = String(signature);
+      if (forwardingDestination !== undefined) target.forwardingDestination = String(forwardingDestination).trim();
+      if (adminEmail !== undefined) target.adminEmail = String(adminEmail).trim();
+      if (adminPassword !== undefined) target.adminPassword = String(adminPassword);
+      if (adminSecret !== undefined) target.adminSecret = String(adminSecret).trim();
+      if (password !== undefined && String(password).trim()) {
+        const plain = String(password).trim();
+        target.password = isEncrypted(plain) ? plain : encryptPassword(plain);
+      }
+    }
+
+    saveSettings(settings);
+    return NextResponse.json({ success: true, account: target });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
 

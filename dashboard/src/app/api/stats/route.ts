@@ -156,6 +156,33 @@ export async function GET() {
       else nicheBreakdown.Other++;
     });
 
+    // 5. Template A / B / C Variant Metrics Breakdown
+    const variantStats: Record<string, { name: string; sent: number; opens: number; replies: number; positiveReplies: number; callsBooked: number; clientsClosed: number }> = {
+      A: { name: 'Template A (Control - No Prices)', sent: 0, opens: 0, replies: 0, positiveReplies: 0, callsBooked: 0, clientsClosed: 0 },
+      B: { name: 'Template B (Introductory Prices)', sent: 0, opens: 0, replies: 0, positiveReplies: 0, callsBooked: 0, clientsClosed: 0 },
+      C: { name: 'Template C (Aggressive Value)', sent: 0, opens: 0, replies: 0, positiveReplies: 0, callsBooked: 0, clientsClosed: 0 },
+    };
+
+    for (const r of Object.values(campaignData.records) as any[]) {
+      const v = (r.variant || 'A').toUpperCase() as 'A' | 'B' | 'C';
+      if (variantStats[v]) {
+        if (['sent', 'followed_up_1', 'followed_up_2', 'interested', 'completed_no_interest'].includes(String(r.status))) {
+          variantStats[v].sent++;
+        }
+        if (r.openedAt || r.opened) {
+          variantStats[v].opens++;
+        }
+        if (r.status === 'interested' || r.repliedAt || r.replied) {
+          variantStats[v].replies++;
+          if (r.status === 'interested' || r.sentiment === 'positive') {
+            variantStats[v].positiveReplies++;
+          }
+        }
+        if (r.callBooked) variantStats[v].callsBooked++;
+        if (r.clientClosed) variantStats[v].clientsClosed++;
+      }
+    }
+
     const responseData = {
       total,
       contacted,
@@ -168,6 +195,7 @@ export async function GET() {
       followUpBreakdown: { stage1, stage2 },
       sequenceBreakdown: { initial: sent, followup1: stage1, followup2: stage2, breakup: completed },
       nicheBreakdown,
+      variantBreakdown: variantStats,
       revenueFunnel: {
         totalLeads: total,
         verified: total,

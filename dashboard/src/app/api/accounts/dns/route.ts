@@ -56,6 +56,19 @@ async function checkMX(domain: string) {
   }
 }
 
+async function checkDKIM(domain: string) {
+  try {
+    const records = await dnsPromises.resolveTxt(`google._domainkey.${domain}`);
+    const dkim = records.find(r => r.join('').includes('v=DKIM1') || r.join('').includes('p='));
+    if (dkim) {
+      return { pass: true, record: dkim.join(''), warning: null };
+    }
+    return { pass: false, record: null, warning: 'No DKIM record found on google._domainkey.' };
+  } catch (err: unknown) {
+    return { pass: false, record: null, warning: `DKIM lookup failed: ${(err as Error).message}` };
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -70,14 +83,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
 
-    const [spf, dmarc, mx] = await Promise.all([
+    const [spf, dmarc, dkim, mx] = await Promise.all([
       checkSPF(domain),
       checkDMARC(domain),
+      checkDKIM(domain),
       checkMX(domain),
     ]);
 
-    const criticalFails = [!spf.pass, !dmarc.pass, !mx.pass].filter(Boolean).length;
-    const warnings = [spf.warning, dmarc.warning, mx.warning].filter(Boolean);
+    const criticalFails = [!spf.pass, !dmarc.pass, !dkim.pass, !mx.pass].filter(Boolean).length;
+    const warnings = [spf.warning, dmarc.warning, dkim.warning, mx.warning].filter(Boolean);
 
     let overall: 'good' | 'warning' | 'fail' = 'good';
     if (criticalFails >= 2) overall = 'fail';
@@ -88,6 +102,7 @@ export async function GET(request: Request) {
       overall,
       spf,
       dmarc,
+      dkim,
       mx,
       summary: criticalFails === 0
         ? warnings.length > 0

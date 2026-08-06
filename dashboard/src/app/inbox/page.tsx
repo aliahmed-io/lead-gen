@@ -195,6 +195,9 @@ export default function InboxPage() {
             <div style={{ padding: '20px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                 <textarea 
+                  id="inbox-reply-textarea"
+                  name="replyText"
+                  aria-label="Type your email reply"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Type your reply..."

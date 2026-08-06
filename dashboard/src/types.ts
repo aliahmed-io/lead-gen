@@ -61,6 +61,16 @@ export interface CampaignState {
 export interface AccountHealth {
   id: string | number;
   email: string;
+  appPassword?: string;
+  totpSecret?: string;
+  firstName?: string;
+  lastName?: string;
+  senderName?: string;
+  signature?: string;
+  forwardingDestination?: string;
+  adminEmail?: string;
+  adminPassword?: string;
+  adminSecret?: string;
   sentToday: number;
   totalSent: number;
   bounceCount: number;
@@ -100,4 +110,5 @@ export interface EnhancedStats extends Stats {
   accountBreakdown: { accountId: string | number; sent: number; bounced: number }[];
   recentActivity: { email: string; from: string | null; to: string; at: number }[];
   alerts?: DeliverabilityAlert[];
+  variantBreakdown?: Record<string, { name: string; sent: number; opens: number; replies: number; positiveReplies: number; callsBooked: number; clientsClosed: number }>;
 }

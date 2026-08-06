@@ -5,10 +5,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ChevronLeft, ChevronRight, UserCheck, UserMinus,
-  ChevronDown, ChevronUp, Download, SlidersHorizontal,
-  Users, X, ShieldCheck, AlertTriangle, CheckCircle, ArrowUpDown
+  ChevronDown, ChevronUp, Download, SlidersHorizontal, Upload,
+  Users, X, ShieldCheck, AlertTriangle, CheckCircle, ArrowUpDown, FileText
 } from 'lucide-react';
 import { LeadRecord } from '@/types';
+import { useToast } from '@/components/ui/toast';
+import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
@@ -59,6 +62,7 @@ export default function Leads() {
   const [status, setStatus] = useState('all');
   const [platform, setPlatform] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
+  const [qualityTier, setQualityTier] = useState('all');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -78,6 +82,58 @@ export default function Leads() {
   // Verification Report Modal States
   const [verificationResults, setVerificationResults] = useState<{ email: string; valid: boolean; reason: string }[] | null>(null);
 
+  // CSV Import States
+  const { showToast } = useToast();
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [importing, setImporting] = useState(false);
+
+  const handleCsvImport = async () => {
+    if (!csvText.trim()) return;
+    setImporting(true);
+    try {
+      const lines = csvText.trim().split('\n');
+      const parsedLeads = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const cols = line.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+        
+        // Skip header row if present
+        if (i === 0 && (cols[0].toLowerCase().includes('email') || cols[0].toLowerCase().includes('name'))) {
+          continue;
+        }
+
+        parsedLeads.push({
+          email: cols[0],
+          businessName: cols[1] || cols[0].split('@')[0],
+          platform: cols[2] || 'Other',
+          city: cols[3] || '',
+          state: cols[4] || '',
+        });
+      }
+
+      const res = await fetch('/api/leads/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leads: parsedLeads }),
+      });
+
+      if (!res.ok) throw new Error('Import failed');
+      const data = await res.json();
+
+      showToast(`Successfully imported ${data.importedCount} leads (${data.duplicateCount} duplicates skipped)`, 'success');
+      setShowImportModal(false);
+      setCsvText('');
+      fetchLeads(true);
+    } catch (err: unknown) {
+      showToast((err as Error).message || 'Failed to import leads', 'error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
     return () => clearTimeout(t);
@@ -93,6 +149,7 @@ export default function Leads() {
       status, 
       platform, 
       state: stateFilter, 
+      qualityTier,
       search: debouncedSearch,
       sortBy,
       sortOrder
@@ -290,6 +347,7 @@ export default function Leads() {
     { label: 'Location', field: 'city', width: '160px' },
     { label: 'Platform', field: 'platform', width: '120px' },
     { label: 'Campaign Status', field: 'status', width: '140px' },
+    { label: 'Quality Score', field: 'qualityScore', width: '130px' },
     { label: 'Sent At', field: 'sentAt', width: '150px' },
     { label: 'Follow-Up 1', field: 'followedUp1At', width: '150px' },
     { label: 'Follow-Up 2', field: 'followedUp2At', width: '150px' },
@@ -320,15 +378,20 @@ export default function Leads() {
           </p>
         </div>
         
-        {/* Dropdown Export Options */}
-        <div style={{ position: 'relative' }}>
-          <button 
-            onClick={() => setShowExportMenu(!showExportMenu)} 
-            className="btn btn-secondary" 
-            style={{ gap: '6px' }}
-          >
-            <Download size={14} /> Export CSV <ChevronDown size={12} />
-          </button>
+        {/* Header Action Buttons */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <Button variant="primary" icon={Upload} onClick={() => setShowImportModal(true)}>
+            Import CSV
+          </Button>
+
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setShowExportMenu(!showExportMenu)} 
+              className="btn btn-secondary" 
+              style={{ gap: '6px' }}
+            >
+              <Download size={14} /> Export CSV <ChevronDown size={12} />
+            </button>
           
           <AnimatePresence>
             {showExportMenu && (
@@ -374,6 +437,7 @@ export default function Leads() {
           </AnimatePresence>
         </div>
       </div>
+      </div>
 
       {/* ── Error ──────────────────────────────────────────────────── */}
       {error && (
@@ -388,6 +452,9 @@ export default function Leads() {
         <div style={{ position: 'relative', flex: '1', minWidth: '240px' }}>
           <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
           <input
+            id="leads-search-input"
+            name="search"
+            aria-label="Search leads by name, email, or website"
             type="text" placeholder="Search by name, email, website…"
             value={search} onChange={e => { setLoading(true); setSearch(e.target.value); }}
             className="input" style={{ paddingLeft: '36px' }}
@@ -400,19 +467,25 @@ export default function Leads() {
         </div>
 
         {[
+          { value: qualityTier, set: (v: string) => { setLoading(true); setQualityTier(v); setPage(1); }, opts: [
+            { value: 'all', label: 'All Quality Tiers' },
+            { value: 'top', label: '🔥 Top Quality (Score 80-100)' },
+            { value: 'average', label: '📊 Average Quality (Score 50-79)' },
+            { value: 'low', label: '⚠️ Low Quality (Score < 50)' },
+          ], label: 'Filter by Lead Quality' },
           { value: status, set: (v: string) => { setLoading(true); setStatus(v); setPage(1); }, opts: STATUS_OPTIONS, label: 'Filter by Status' },
           { value: platform, set: (v: string) => { setLoading(true); setPlatform(v); setPage(1); }, opts: PLATFORM_OPTIONS, label: 'Filter by Platform' },
           { value: stateFilter, set: (v: string) => { setLoading(true); setStateFilter(v); setPage(1); }, opts: STATE_OPTIONS, label: 'Filter by State' },
         ].map((f, i) => (
           <select key={i} value={f.value} onChange={e => f.set(e.target.value)}
             aria-label={f.label}
-            className="input" style={{ width: 'auto', minWidth: '120px', padding: '8px 32px 8px 12px' }}>
+            className="input" style={{ width: 'auto', minWidth: '130px', padding: '8px 32px 8px 12px' }}>
             {f.opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         ))}
 
         {activeFilters.length > 0 && (
-          <button onClick={() => { setLoading(true); setStatus('all'); setPlatform('all'); setStateFilter('all'); setPage(1); }}
+          <button onClick={() => { setLoading(true); setStatus('all'); setPlatform('all'); setStateFilter('all'); setQualityTier('all'); setPage(1); }}
             style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--honey-600)', cursor: 'pointer', background: 'none', border: 'none', padding: '4px 8px', fontWeight: 600 }}>
             <X size={12} /> Clear Filters
           </button>
@@ -637,6 +710,20 @@ export default function Leads() {
                       </span>
                     </td>
 
+                    {/* Quality Tier */}
+                    <td style={{ padding: '12px 16px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        padding: '2px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: 800,
+                        fontFamily: 'var(--font-mono)',
+                        background: lead.qualityTier === 'top' ? 'var(--honey-100)' : lead.qualityTier === 'average' ? 'var(--bg-elevated)' : 'var(--danger-bg)',
+                        color: lead.qualityTier === 'top' ? 'var(--honey-700)' : lead.qualityTier === 'average' ? 'var(--text-secondary)' : 'var(--danger)',
+                        border: lead.qualityTier === 'top' ? '1px solid var(--honey-500)' : '1px solid var(--border-subtle)',
+                      }}>
+                        {lead.qualityTier === 'top' ? '🔥 Top' : lead.qualityTier === 'average' ? '📊 Avg' : '⚠️ Low'} ({lead.qualityScore || 65})
+                      </span>
+                    </td>
+
                     {/* Sent At */}
                     <td style={{ padding: '12px 16px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                       {formatTableDate(lead.sentAt)}
@@ -783,6 +870,42 @@ export default function Leads() {
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Performing validation & database operations.</p>
         </div>
       )}
+      {/* CSV Import Modal */}
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import Custom CSV Lead List"
+        confirmLabel="Import Leads"
+        confirmVariant="primary"
+        onConfirm={handleCsvImport}
+        loading={importing}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Paste or drag CSV lines below formatted as: <code style={{ fontFamily: 'var(--font-mono)' }}>email, businessName, platform, city, state</code>
+          </p>
+          <textarea
+            id="csv-import-textarea"
+            name="csvText"
+            aria-label="CSV lead import text"
+            value={csvText}
+            onChange={(e) => setCsvText(e.target.value)}
+            placeholder="alex@shopdecor.com, Shop Decor, Shopify, Austin, TX&#10;sarah@designlab.com, Design Lab, WooCommerce, Dallas, TX"
+            style={{
+              width: '100%',
+              minHeight: '160px',
+              padding: '12px',
+              borderRadius: '10px',
+              border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-base)',
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '12px',
+              resize: 'vertical',
+            }}
+          />
+        </div>
+      </Modal>
 
     </div>
   );

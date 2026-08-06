@@ -10,6 +10,9 @@ import {
   Zap,
 } from 'lucide-react';
 import { EnhancedStats, CampaignState, AccountHealth } from '@/types';
+import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { StatCard } from '@/components/ui/stat-card';
 
 const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 const stagger = { show: { transition: { staggerChildren: 0.06 } } };
@@ -221,22 +224,21 @@ export default function Overview() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, fontFamily: 'var(--font-inter)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {status !== 'running' && (
-            <button onClick={() => handleCampaignAction('resume')} disabled={actionLoading} className="btn btn-primary">
-              <Play size={14} fill="white" /> Resume
-            </button>
+            <Button variant="primary" icon={Play} onClick={() => handleCampaignAction('resume')} loading={actionLoading}>
+              Resume
+            </Button>
           )}
           {status === 'running' && (
-            <button onClick={() => handleCampaignAction('pause', 'Paused via dashboard')} disabled={actionLoading}
-              style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 16px', borderRadius:'10px', fontSize:'13px', fontWeight:600, cursor:'pointer', border:'1px solid rgba(198, 120, 43, 0.2)', background:'var(--warning-bg)', color:'var(--warning)', transition:'all 0.15s' }}>
-              <PauseIcon size={14} fill="var(--warning)" /> Pause
-            </button>
+            <Button variant="secondary" icon={PauseIcon} onClick={() => handleCampaignAction('pause', 'Paused via dashboard')} loading={actionLoading}>
+              Pause
+            </Button>
           )}
           {status !== 'stopped' && (
-            <button onClick={() => handleCampaignAction('stop')} disabled={actionLoading} className="btn btn-danger" style={{ padding: '8px 14px' }}>
-              <Square size={12} fill="currentColor" /> Stop
-            </button>
+            <Button variant="danger" icon={Square} onClick={() => handleCampaignAction('stop')} loading={actionLoading}>
+              Stop
+            </Button>
           )}
         </div>
       </motion.div>
@@ -346,6 +348,65 @@ export default function Overview() {
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* ── A/B/C Template Performance Experiment Card ─────────────── */}
+      <div className="card" style={{ padding: '24px', fontFamily: 'var(--font-inter)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>A/B/C Template Experiment (1,500 Split Test)</span>
+              <span className="badge badge-amber">3-Stage Drip</span>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Tracking reply rates, positive sentiment, booked calls, and deals closed across 500 emails per template.
+            </div>
+          </div>
+          <Link href="/templates" style={{ fontSize: '12px', color: 'var(--honey-600)', fontWeight: 700, textDecoration: 'none' }}>
+            Manage Templates →
+          </Link>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '10px 12px' }}>Template Variant</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Sent</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Open Rate</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Reply Rate</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Positive Replies</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Calls Booked</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Clients Closed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {['A', 'B', 'C'].map((vKey) => {
+                const v = stats?.variantBreakdown?.[vKey] || {
+                  name: vKey === 'A' ? 'Template A (Control - No Prices)' : vKey === 'B' ? 'Template B (Introductory Prices)' : 'Template C (Aggressive Value)',
+                  sent: 0, opens: 0, replies: 0, positiveReplies: 0, callsBooked: 0, clientsClosed: 0
+                };
+                const openPct = v.sent > 0 ? ((v.opens / v.sent) * 100).toFixed(1) : '0.0';
+                const replyPct = v.sent > 0 ? ((v.replies / v.sent) * 100).toFixed(1) : '0.0';
+
+                return (
+                  <tr key={vKey} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      <span className="badge badge-gray" style={{ marginRight: '8px' }}>Variant {vKey}</span>
+                      {v.name}
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>{v.sent} / 500</td>
+                    <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--honey-600)', fontWeight: 700 }}>{openPct}%</td>
+                    <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--success)', fontWeight: 700 }}>{replyPct}%</td>
+                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 700, color: 'var(--text-primary)' }}>{v.positiveReplies}</td>
+                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 700, color: 'var(--text-primary)' }}>{v.callsBooked}</td>
+                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 800, color: 'var(--success)' }}>{v.clientsClosed}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 

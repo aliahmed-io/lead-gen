@@ -132,13 +132,13 @@ export default function SettingsPage() {
       <Section icon={<Clock size={14} />} label="Sending Schedule" accent="var(--honey-500)">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <Field label="Start Hour" hint="When sending begins (Central Time)">
-            <select className="input" value={settings.startHour}
+            <select id="settings-start-hour" name="startHour" aria-label="Start Hour Central Time" className="input" value={settings.startHour}
               onChange={e => setSettings({ ...settings, startHour: parseInt(e.target.value, 10) })}>
               {hours.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
             </select>
           </Field>
           <Field label="End Hour" hint="When sending stops for the day">
-            <select className="input" value={settings.endHour}
+            <select id="settings-end-hour" name="endHour" aria-label="End Hour Central Time" className="input" value={settings.endHour}
               onChange={e => setSettings({ ...settings, endHour: parseInt(e.target.value, 10) })}>
               {hours.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
             </select>
@@ -148,7 +148,6 @@ export default function SettingsPage() {
           <Clock size={14} style={{ color: 'var(--honey-600)', flexShrink: 0 }} />
           <span>
             Emails send only Mon–Fri between{' '}
-            <strong style={{ color: 'var(--text-primary)' }}>{hours.find(h => h.value === settings.startHour)?.label}</strong> and{' '}
             <strong style={{ color: 'var(--text-primary)' }}>{hours.find(h => h.value === settings.endHour)?.label}</strong>{' '}
             Central Time (CT). Holidays auto-pause.
           </span>
@@ -161,7 +160,7 @@ export default function SettingsPage() {
           <Field label="Max Emails Per Day (per account)"
             hint="Each SMTP account is throttled independently. Warmup mode overrides this.">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <input type="number" min={1} max={500} className="input" style={{ maxWidth: '120px' }}
+              <input id="settings-max-per-day" name="maxEmailsPerDay" aria-label="Max Emails Per Day per account" type="number" min={1} max={500} className="input" style={{ maxWidth: '120px' }}
                 value={settings.maxEmailsPerDay}
                 onChange={e => setSettings({ ...settings, maxEmailsPerDay: parseInt(e.target.value) || 0 })} />
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>emails / account</span>
@@ -170,7 +169,7 @@ export default function SettingsPage() {
           <Field label="Global Daily Limit"
             hint="Maximum total emails sent across ALL accounts in one day.">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <input type="number" min={1} max={5000} className="input" style={{ maxWidth: '120px' }}
+              <input id="settings-max-daily-total" name="maxDailyTotal" aria-label="Global Daily Limit" type="number" min={1} max={5000} className="input" style={{ maxWidth: '120px' }}
                 value={settings.maxDailyTotal}
                 onChange={e => setSettings({ ...settings, maxDailyTotal: parseInt(e.target.value) || 0 })} />
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>total emails</span>
@@ -180,13 +179,13 @@ export default function SettingsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <Field label="Min Delay Between Sends"
             hint={`≈ ${msToMin(settings.delayMinMs)} min`}>
-            <input type="number" min={0} className="input"
+            <input id="settings-delay-min" name="delayMinMs" aria-label="Min Delay Between Sends" type="number" min={0} className="input"
               value={settings.delayMinMs}
               onChange={e => setSettings({ ...settings, delayMinMs: parseInt(e.target.value) || 0 })} />
           </Field>
           <Field label="Max Delay Between Sends"
             hint={`≈ ${msToMin(settings.delayMaxMs)} min`}>
-            <input type="number" min={0} className="input"
+            <input id="settings-delay-max" name="delayMaxMs" aria-label="Max Delay Between Sends" type="number" min={0} className="input"
               value={settings.delayMaxMs}
               onChange={e => setSettings({ ...settings, delayMaxMs: parseInt(e.target.value) || 0 })} />
           </Field>
@@ -204,7 +203,7 @@ export default function SettingsPage() {
           </div>
         } hint="Mailboxes exceeding this bounce rate are automatically suspended.">
           <div style={{ position: 'relative', marginTop: '4px' }}>
-            <input type="range" min={1} max={10} value={bounceDisplayPct}
+            <input id="settings-bounce-threshold" name="bounceThreshold" aria-label="Bounce Auto Pause Threshold" type="range" min={1} max={10} value={bounceDisplayPct}
               onChange={e => setSettings({ ...settings, bounceThreshold: parseInt(e.target.value) / 100 })}
               style={{ width: '100%', height: '4px', borderRadius: '99px', appearance: 'none', cursor: 'pointer', accentColor: bounceColor, background: `linear-gradient(90deg, ${bounceColor} ${bounceDisplayPct * 10}%, var(--border-default) ${bounceDisplayPct * 10}%)` }}
             />
@@ -219,7 +218,7 @@ export default function SettingsPage() {
         <Field label="Follow-up Wait Interval (Days)"
           hint="Days between initial email and first follow-up, and between follow-ups.">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <input type="number" min={1} max={30} className="input" style={{ maxWidth: '100px' }}
+            <input id="settings-followup-days" name="followUpDays" aria-label="Follow-up Wait Interval Days" type="number" min={1} max={30} className="input" style={{ maxWidth: '100px' }}
               value={settings.followUpDays}
               onChange={e => setSettings({ ...settings, followUpDays: parseInt(e.target.value) || 3 })} />
             <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>days between stages</span>
@@ -231,19 +230,19 @@ export default function SettingsPage() {
       <Section icon={<RefreshCw size={14} />} label="Sender Identity & Compliance" accent="var(--warning)">
         <Field label="Sender Display Name"
           hint="The name recipients see in their inbox (e.g., 'John | MyCompany').">
-          <input type="text" className="input"
+          <input id="settings-sender-name" name="senderDisplayName" aria-label="Sender Display Name" type="text" className="input"
             value={settings.senderDisplayName}
             onChange={e => setSettings({ ...settings, senderDisplayName: e.target.value })} />
         </Field>
         <Field label="Unsubscribe Footer Text"
           hint="Appended to every outbound email. Required by CAN-SPAM.">
-          <textarea className="input" rows={3} style={{ resize: 'vertical', fontFamily: 'inherit' }}
+          <textarea id="settings-footer-text" name="footerText" aria-label="Unsubscribe Footer Text" className="input" rows={3} style={{ resize: 'vertical', fontFamily: 'inherit' }}
             value={settings.footerText}
             onChange={e => setSettings({ ...settings, footerText: e.target.value })} />
         </Field>
         <Field label="Physical Office Address"
           hint="Required by law. Displayed in the email footer.">
-          <input type="text" className="input"
+          <input id="settings-physical-address" name="physicalAddress" aria-label="Physical Office Address" type="text" className="input"
             value={settings.physicalAddress}
             onChange={e => setSettings({ ...settings, physicalAddress: e.target.value })} />
         </Field>
@@ -253,7 +252,7 @@ export default function SettingsPage() {
       <Section icon={<Link2 size={14} />} label="Webhook Integrations" accent="var(--success)">
         <Field label="Webhook URL"
           hint="POST notification is sent to this URL when a lead replies with interest. Works with Slack, Discord, Zapier, n8n.">
-          <input type="url" className="input" placeholder="https://hooks.slack.com/services/..."
+          <input id="settings-webhook-url" name="webhookUrl" aria-label="Webhook URL" type="url" className="input" placeholder="https://hooks.slack.com/services/..."
             value={settings.webhookUrl || ''}
             onChange={e => setSettings({ ...settings, webhookUrl: e.target.value })} />
         </Field>

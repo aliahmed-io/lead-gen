@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Save, Plus, Activity, Mail, Eye, Info, AlertTriangle,
-  Trash2, FileText, CheckCircle, HelpCircle, Smartphone, Monitor
-} from "lucide-react";
+  Mail, Save, Plus, Trash2, ArrowLeft, RefreshCw,
+  Sparkles, CheckCircle, AlertTriangle, Eye, Code, Smartphone, Monitor, HelpCircle, FileText, Activity, Info, ShieldCheck, XCircle
+} from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
 
 export default function Templates() {
   const [templates, setTemplates] = useState<Record<string, { subject: string; text: string }>>({});
@@ -15,6 +17,27 @@ export default function Templates() {
   const [activeVariant, setActiveVariant] = useState(""); // "" means Variant A, "B", "C", etc.
   const [error, setError] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [templateSpamReport, setTemplateSpamReport] = useState<any>(null);
+  const [testingSpam, setTestingSpam] = useState(false);
+
+  const runTemplateSpamCheck = async (subject: string, body: string) => {
+    setTestingSpam(true);
+    try {
+      const res = await fetch('/api/spam-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, body }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTemplateSpamReport(data.report);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTestingSpam(false);
+    }
+  };
 
   useEffect(() => {
     fetch('/api/templates')
@@ -88,15 +111,15 @@ export default function Templates() {
     setActiveVariant(nextChar);
   };
 
-  const deleteVariant = () => {
-    if (!activeVariant) return; // Cannot delete base variant
-    const confirmDelete = window.confirm(`Are you sure you want to delete Variant ${activeVariant}?`);
-    if (!confirmDelete) return;
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  const confirmDeleteVariant = () => {
+    if (!activeVariant) return;
     const newTemplates = { ...templates };
     delete newTemplates[`${activeTab}_${activeVariant}`];
     setTemplates(newTemplates);
-    setActiveVariant(""); // Reset to base
+    setActiveVariant("");
+    setShowDeleteModal(false);
   };
 
   const insertVariable = (variableName: string) => {
@@ -318,7 +341,7 @@ export default function Templates() {
             <div style={{ display: 'flex', gap: '6px' }}>
               {activeVariant && (
                 <button
-                  onClick={deleteVariant}
+                  onClick={() => setShowDeleteModal(true)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -357,6 +380,27 @@ export default function Templates() {
               >
                 <Plus size={12} /> Add Variant
               </button>
+              <button
+                onClick={() => runTemplateSpamCheck(currentTemplate.subject || '', currentTemplate.text || '')}
+                disabled={testingSpam}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '8px',
+                  border: '1px solid var(--honey-500)',
+                  background: 'var(--honey-100)',
+                  color: 'var(--honey-700)',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s',
+                }}
+              >
+                <ShieldCheck size={12} className={testingSpam ? "animate-spin" : ""} />
+                {testingSpam ? 'Auditing Copy...' : 'Check Copy Spam Score'}
+              </button>
             </div>
           </div>
 
@@ -365,10 +409,13 @@ export default function Templates() {
             
             {/* Subject Line */}
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+              <label htmlFor="template-subject-input" style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
                 Subject Line
               </label>
               <input 
+                id="template-subject-input"
+                name="subject"
+                aria-label="Subject Line"
                 type="text" 
                 className="input w-full"
                 style={{ padding: '12px', fontSize: '14px', fontWeight: 600 }}
@@ -432,6 +479,8 @@ export default function Templates() {
               </label>
               <textarea 
                 id="template-body"
+                name="body"
+                aria-label="Email Copy Template"
                 className="input w-full"
                 rows={12}
                 style={{ 
@@ -588,6 +637,96 @@ export default function Templates() {
         </div>
 
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={`Delete Variant ${activeVariant}`}
+        confirmLabel="Delete Variant"
+        confirmVariant="danger"
+        onConfirm={confirmDeleteVariant}
+      >
+        Are you sure you want to delete Variant {activeVariant}? This action cannot be undone.
+      </Modal>
+
+      {/* Template Copy Spam Report Modal */}
+      {templateSpamReport && (
+        <div className="overlay flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-panel-raised p-6 rounded-2xl max-w-lg w-full space-y-5"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="text-[var(--honey-600)]" size={22} />
+                <div>
+                  <h2 className="text-lg font-extrabold text-[var(--text-primary)] font-sans">Template Copy Spam Analysis</h2>
+                  <p className="text-xs text-[var(--text-muted)] font-mono">{activeTab.toUpperCase()} {activeVariant ? `(Variant ${activeVariant})` : '(Variant A)'}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-black font-mono text-[var(--success)]">{templateSpamReport.score}/100</span>
+                <p className="text-[10px] font-bold uppercase text-[var(--text-muted)]">Copy Quality Score</p>
+              </div>
+            </div>
+
+            {/* Rating Banner */}
+            <div className="p-4 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Spam Penalty Score</span>
+                <p className="text-sm font-extrabold text-[var(--text-primary)] font-mono">
+                  {templateSpamReport.spamAssassinRating} / 10.0 (Lower is better)
+                </p>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider ${
+                templateSpamReport.ratingLabel === 'EXCELLENT' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+              }`}>
+                {templateSpamReport.ratingLabel}
+              </span>
+            </div>
+
+            {/* Rules Checklist */}
+            <div className="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1">
+              <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Spam Filter Rules Checklist</h4>
+              {templateSpamReport.rules.map((r: any, idx: number) => (
+                <div key={idx} className="p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl flex items-start gap-3">
+                  {r.passed ? (
+                    <CheckCircle size={16} className="text-[var(--success)] shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle size={16} className="text-[var(--danger)] shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">{r.rule}</span>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{r.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recommendations */}
+            {templateSpamReport.recommendations.length > 0 && (
+              <div className="p-4 bg-[var(--warning-bg)] border border-[var(--warning)]/20 rounded-xl space-y-1.5">
+                <h5 className="text-xs font-bold text-[var(--warning)] flex items-center gap-1.5">
+                  <AlertTriangle size={14} /> Recommended Copy Adjustments
+                </h5>
+                <ul className="list-disc list-inside text-xs text-[var(--text-secondary)] space-y-1 pl-1">
+                  {templateSpamReport.recommendations.map((rec: string, i: number) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setTemplateSpamReport(null)} className="btn btn-primary py-2 text-xs font-bold">
+                Close Report
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
     </div>
   );

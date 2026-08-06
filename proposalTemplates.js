@@ -42,8 +42,8 @@ Ali Ahmed | Aethelon Labs`
   ecommerce: {
     id: 'ecommerce',
     title: 'E-commerce Store Optimization & Redesign',
-    defaultPrice: '$3,000 – $5,000',
-    timeline: '2 – 3 Weeks',
+    defaultPrice: '$1,500 – $2,500',
+    timeline: '10 – 14 Days',
     deliverables: [
       'Custom Shopify / WooCommerce Store Redesign',
       'Checkout Funnel & Cart Optimization',
@@ -62,8 +62,8 @@ Great connecting! Here is the tailored proposal for modernizing your online stor
 • Advanced Product Filtering & Search
 • Payment gateway setup & Abandoned cart flow integration
 
-💰 Investment: ${price || '$3,000 – $5,000'}
-⏱️ Estimated Timeline: ${timeline || '2 – 3 Weeks'}
+💰 Investment: ${price || '$1,500 – $2,500'}
+⏱️ Estimated Timeline: ${timeline || '10 – 14 Days'}
 
 Happy to jump on a quick call to walk through example store case studies!
 
@@ -74,8 +74,8 @@ Ali Ahmed | Aethelon Labs`
   fullstack_app: {
     id: 'fullstack_app',
     title: 'Custom Full-Stack Web Application',
-    defaultPrice: '$5,000 – $9,000',
-    timeline: '3 – 5 Weeks',
+    defaultPrice: '$2,500 – $4,000',
+    timeline: '2 – 3 Weeks',
     deliverables: [
       'Next.js 16 + TypeScript Application Architecture',
       'PostgreSQL Database & Secure API Gateway',
@@ -94,8 +94,8 @@ Here is the proposed technical scope for building the custom web application for
 • Stripe billing integration (Subscriptions & Invoices)
 • Automated CI/CD deployment & hosting setup
 
-💰 Investment: ${price || '$5,000 – $9,000'}
-⏱️ Estimated Timeline: ${timeline || '3 – 5 Weeks'}
+💰 Investment: ${price || '$2,500 – $4,000'}
+⏱️ Estimated Timeline: ${timeline || '2 – 3 Weeks'}
 
 Looking forward to bringing this build to life!
 

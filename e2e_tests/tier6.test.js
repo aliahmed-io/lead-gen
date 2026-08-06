@@ -6,6 +6,9 @@ const { runPreflightAndSimulation } = require('../campaignSimulator');
 const { getProposalTemplate } = require('../proposalTemplates');
 const { matchLead } = require('../portfolioMatcher');
 
+const { generatePostMortem } = require('../campaignPostMortem');
+const CONFIG = require('../config');
+
 test('Tier 6 - High-ROI Freelancer Additions Unit Tests', async (t) => {
   await t.test('1. Website Auditor handles malformed or empty URLs safely', async () => {
     const res = await auditWebsite('');
@@ -13,7 +16,7 @@ test('Tier 6 - High-ROI Freelancer Additions Unit Tests', async (t) => {
     assert.ok(res.problems.length > 0, 'Should include error problem explanation');
   });
 
-  await t.test('2. Lead Quality Engine computes Opportunity Score and Badge', async () => {
+  await t.test('2. Lead Quality Engine computes Weighted Scores & Recommended Services', async () => {
     const lead = {
       businessName: 'Austin Decor',
       platform: 'Shopify',
@@ -22,8 +25,15 @@ test('Tier 6 - High-ROI Freelancer Additions Unit Tests', async (t) => {
       email: 'owner@example.com'
     };
     const res = await evaluateLead(lead);
-    assert.ok(res.opportunityScore >= 30, 'Opportunity score should be >= baseline 30');
+    assert.ok(res.overallScore >= 0, 'Overall score should be valid number');
+    assert.ok(res.recommendedServices.length > 0, 'Should return recommended services');
     assert.strictEqual(typeof res.priorityBadge, 'string', 'Badge must be a string');
+  });
+
+  await t.test('3. Post-Mortem Engine generates insights & recommendations', () => {
+    const pm = generatePostMortem({ campaignId: 'c1', leads: [1, 2, 3], records: { 'test@a.com': { status: 'interested' } } });
+    assert.strictEqual(pm.campaignId, 'c1', 'Post-mortem should preserve campaign ID');
+    assert.ok(pm.recommendations.length > 0, 'Should generate actionable recommendations');
   });
 
   await t.test('3. Campaign Simulator & Preflight calculates projected duration', () => {

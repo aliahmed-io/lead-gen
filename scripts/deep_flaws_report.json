@@ -1,0 +1,275 @@
+[
+  {
+    "file": "accounts\\page.tsx",
+    "line": 286,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className=\"p-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--honey-50)] transition-all active:scale-95 disabled:opacity-50 cursor-pointer\"",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 362,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className=\"px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[var(--honey-100)] text-[var(--honey-700)] hover:bg-[var(--honey-200)] transition-colors cursor-pointer shrink-0 border border-[var(--border-subtle)]\"",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 434,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className=\"p-1 text-[var(--text-muted)] hover:text-[var(--honey-600)] transition-colors cursor-pointer\"",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 444,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className=\"absolute top-4 right-4 p-1.5 bg-[var(--danger-bg)] text-[var(--danger)] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--danger)] hover:text-white z-10 cursor-pointer border border-[var(--danger)]/15\"",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 553,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className=\"flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors cursor-pointer\"",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 569,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className=\"card rounded-2xl p-6 hover:bg-[var(--honey-50)] border-dashed border-[var(--border-strong)] flex flex-col items-center justify-center cursor-pointer min-h-[280px]\"",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 653,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 664,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 675,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 751,
+    "title": "Textarea Missing Form ID / ARIA Label",
+    "snippet": "<textarea",
+    "fix": "Add id, name, and aria-label."
+  },
+  {
+    "file": "accounts\\page.tsx",
+    "line": 848,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className=\"p-2 text-xs font-bold rounded-lg bg-[var(--honey-100)] text-[var(--honey-700)] hover:bg-[var(--honey-200)] transition-colors cursor-pointer\"",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "health\\page.tsx",
+    "line": 49,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className=\"p-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer\"",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "inbox\\page.tsx",
+    "line": 129,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer',",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "inbox\\page.tsx",
+    "line": 197,
+    "title": "Textarea Missing Form ID / ARIA Label",
+    "snippet": "<textarea",
+    "fix": "Add id, name, and aria-label."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 413,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 471,
+    "title": "Select Dropdown Missing ARIA Label",
+    "snippet": "<select key={i} value={f.value} onChange={e => f.set(e.target.value)}",
+    "fix": "Add id, name, and aria-label."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 480,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--honey-600)', cursor: 'pointer', background: 'none', border: 'none', padding: '4px 8px', fontWeight: 600 }}>",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 556,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer'",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 583,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "style={{ cursor: 'pointer', accentColor: 'var(--honey-500)', width: '14px', height: '14px' }}",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 598,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer',",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 636,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer',",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 662,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "style={{ cursor: 'pointer', accentColor: 'var(--honey-500)', width: '14px', height: '14px' }}",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 778,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "leads\\page.tsx",
+    "line": 864,
+    "title": "Textarea Missing Form ID / ARIA Label",
+    "snippet": "<textarea",
+    "fix": "Add id, name, and aria-label."
+  },
+  {
+    "file": "logs\\page.tsx",
+    "line": 62,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors border cursor-pointer ${",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "page.tsx",
+    "line": 297,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end', cursor: 'pointer', position: 'relative', zIndex: 10 }}",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "sequences\\page.tsx",
+    "line": 133,
+    "title": "Select Dropdown Missing ARIA Label",
+    "snippet": "<select",
+    "fix": "Add id, name, and aria-label."
+  },
+  {
+    "file": "sequences\\page.tsx",
+    "line": 196,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer', transition: 'all 0.2s'",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "settings\\page.tsx",
+    "line": 135,
+    "title": "Select Dropdown Missing ARIA Label",
+    "snippet": "<select className=\"input\" value={settings.startHour}",
+    "fix": "Add id, name, and aria-label."
+  },
+  {
+    "file": "settings\\page.tsx",
+    "line": 141,
+    "title": "Select Dropdown Missing ARIA Label",
+    "snippet": "<select className=\"input\" value={settings.endHour}",
+    "fix": "Add id, name, and aria-label."
+  },
+  {
+    "file": "settings\\page.tsx",
+    "line": 208,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "style={{ width: '100%', height: '4px', borderRadius: '99px', appearance: 'none', cursor: 'pointer', accentColor: bounceColor, background: `linear-gradient(90deg, ${bounceColor} ${bounceDisplayPct * 10}%, var(--border-default) ${bounceDisplayPct * 10}%)` }}",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "templates\\page.tsx",
+    "line": 273,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer',",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "templates\\page.tsx",
+    "line": 308,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer',",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "templates\\page.tsx",
+    "line": 335,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer',",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "templates\\page.tsx",
+    "line": 356,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer',",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "templates\\page.tsx",
+    "line": 415,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "cursor: 'pointer',",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "templates\\page.tsx",
+    "line": 438,
+    "title": "Textarea Missing Form ID / ARIA Label",
+    "snippet": "<textarea",
+    "fix": "Add id, name, and aria-label."
+  },
+  {
+    "file": "templates\\page.tsx",
+    "line": 496,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "style={{ padding: '4px 8px', borderRadius: '4px', background: previewMode === \"desktop\" ? 'var(--bg-elevated)' : 'transparent', color: previewMode === \"desktop\" ? 'var(--text-primary)' : 'var(--text-muted)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  },
+  {
+    "file": "templates\\page.tsx",
+    "line": 501,
+    "title": "Fake Clickable Element (cursor-pointer with no onClick)",
+    "snippet": "style={{ padding: '4px 8px', borderRadius: '4px', background: previewMode === \"mobile\" ? 'var(--bg-elevated)' : 'transparent', color: previewMode === \"mobile\" ? 'var(--text-primary)' : 'var(--text-muted)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>",
+    "fix": "Attach onClick handler or remove cursor-pointer class."
+  }
+]

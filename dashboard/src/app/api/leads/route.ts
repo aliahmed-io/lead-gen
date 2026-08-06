@@ -15,10 +15,11 @@ export async function GET(request: Request) {
     const statusFilter = searchParams.get('status');
     const platformFilter = searchParams.get('platform');
     const stateFilter = searchParams.get('state');
+    const qualityFilter = searchParams.get('qualityTier');
     const searchQuery = searchParams.get('search')?.toLowerCase() || '';
     const allowedSortFields = [
       'activity', 'businessName', 'email', 'website', 'city', 'state', 'platform', 'status',
-      'score', 'sentAt', 'followedUp1At', 'followedUp2At', 'repliedAt', 'completedAt', 'updatedAt'
+      'score', 'sentAt', 'followedUp1At', 'followedUp2At', 'repliedAt', 'completedAt', 'updatedAt', 'qualityScore'
     ];
     let sortBy = searchParams.get('sortBy') || 'activity';
     if (!allowedSortFields.includes(sortBy)) {
@@ -50,12 +51,15 @@ export async function GET(request: Request) {
 
     let rawRecords: LeadRecord[] = [];
     if (data.businesses) {
-      const businesses = data.businesses as Record<string, BusinessDbRecord>;
+      const businesses = data.businesses as Record<string, any>;
       rawRecords = Object.values(businesses).map((b) => {
         const campaignRecord = campaignData.records[b.email || ''];
         return {
           email: b.email,
-          businessName: b.name,
+          businessName: b.name || b.companyName,
+          contactName: b.contactName,
+          firstName: b.firstName,
+          lastName: b.lastName,
           platform: b.platform,
           status: campaignRecord ? campaignRecord.status : (b.emailStatus || 'found'),
           updatedAt: b.updatedAt ? new Date(b.updatedAt).getTime() : 0,
@@ -69,6 +73,8 @@ export async function GET(request: Request) {
           city: b.city || campaignRecord?.city || '',
           website: b.website || campaignRecord?.website || '',
           score: campaignRecord?.score || 0,
+          qualityTier: b.qualityTier || 'average',
+          qualityScore: b.qualityScore || 65,
           sentiment: campaignRecord?.sentiment,
           openCount: campaignRecord?.openCount || 0,
           clickCount: campaignRecord?.clickCount || 0,
@@ -95,6 +101,10 @@ export async function GET(request: Request) {
 
     if (stateFilter && stateFilter !== 'all') {
       filteredRecords = filteredRecords.filter((r) => r.state?.toLowerCase() === stateFilter.toLowerCase());
+    }
+
+    if (qualityFilter && qualityFilter !== 'all') {
+      filteredRecords = filteredRecords.filter((r) => String(r.qualityTier || '').toLowerCase() === qualityFilter.toLowerCase());
     }
 
     if (searchQuery) {

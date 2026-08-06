@@ -14,9 +14,15 @@ import {
   XCircle,
   Activity,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Eye,
+  EyeOff,
+  Copy
 } from 'lucide-react';
 import { AccountHealth, Settings } from '@/types';
+import { generateTOTP } from '@/lib/totp';
+import { Modal } from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
 
 interface DnsCheckResult {
   overall: 'good' | 'warning' | 'fail';
@@ -33,10 +39,125 @@ export default function Accounts() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAccount, setNewAccount] = useState({ email: '', password: '', smtpHost: '', imapHost: '' });
+  const [editingAccount, setEditingAccount] = useState<AccountHealth | null>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'credentials' | 'admin'>('details');
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    senderName: '',
+    signature: '',
+    forwardingDestination: '',
+    adminEmail: '',
+    adminPassword: '',
+    adminSecret: '',
+    password: '',
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [spamReportModal, setSpamReportModal] = useState<{ email: string; report: any } | null>(null);
+  const [spamLoading, setSpamLoading] = useState<Record<string, boolean>>({});
+
+  const runSpamCheck = async (email: string) => {
+    setSpamLoading(prev => ({ ...prev, [email]: true }));
+    try {
+      const res = await fetch('/api/spam-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSpamReportModal({ email, report: data.report });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSpamLoading(prev => ({ ...prev, [email]: false }));
+    }
+  };
+
+  const openEditModal = (acc: AccountHealth) => {
+    setEditingAccount(acc);
+    setActiveTab('details');
+    setEditForm({
+      firstName: acc.firstName || 'Ali',
+      lastName: acc.lastName || 'Ahmed',
+      senderName: acc.senderName || 'Ali Ahmed',
+      signature: acc.signature || 'Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com',
+      forwardingDestination: acc.forwardingDestination || acc.email,
+      adminEmail: acc.adminEmail || acc.email,
+      adminPassword: acc.adminPassword || '',
+      adminSecret: acc.adminSecret || '',
+      password: acc.appPassword || '',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingAccount) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch('/api/accounts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingAccount.id,
+          ...editForm,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update account details');
+      await loadData();
+      setEditingAccount(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dnsResults, setDnsResults] = useState<Record<string, DnsCheckResult>>({});
   const [dnsLoading, setDnsLoading] = useState<Record<string, boolean>>({});
   const [dnsExpanded, setDnsExpanded] = useState<Record<string, boolean>>({});
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [totpData, setTotpData] = useState<Record<string, { code: string; secondsRemaining: number }>>({});
+  const [copiedTotpEmail, setCopiedTotpEmail] = useState<string | null>(null);
+
+  const togglePasswordVisibility = (email: string) => {
+    setShowPasswords(prev => ({ ...prev, [email]: !prev[email] }));
+  };
+
+  const copyPassword = (email: string, password?: string) => {
+    if (!password) return;
+    navigator.clipboard.writeText(password);
+    setCopiedEmail(email);
+    setTimeout(() => setCopiedEmail(null), 2000);
+  };
+
+  const copyTOTP = (email: string, code?: string) => {
+    if (!code || code === '------') return;
+    navigator.clipboard.writeText(code);
+    setCopiedTotpEmail(email);
+    setTimeout(() => setCopiedTotpEmail(null), 2000);
+  };
+
+  useEffect(() => {
+    const updateCodes = async () => {
+      const newTotp: Record<string, { code: string; secondsRemaining: number }> = {};
+      for (const acc of accounts) {
+        if (acc.totpSecret) {
+          try {
+            newTotp[acc.email] = await generateTOTP(acc.totpSecret);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+      setTotpData(newTotp);
+    };
+
+    updateCodes();
+    const interval = setInterval(updateCodes, 1000);
+    return () => clearInterval(interval);
+  }, [accounts]);
 
   const checkDns = async (email: string) => {
     setDnsLoading(prev => ({ ...prev, [email]: true }));
@@ -75,11 +196,14 @@ export default function Accounts() {
     }
   };
 
-  const handleDeleteAccount = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this mailbox?')) return;
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  const confirmDeleteAccount = async () => {
+    if (!deleteTargetId) return;
     try {
-      const res = await fetch(`/api/accounts?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/accounts?id=${deleteTargetId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete account');
+      setDeleteTargetId(null);
       await loadData();
     } catch (err) {
       setError((err as Error).message);
@@ -238,7 +362,7 @@ export default function Accounts() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="card rounded-2xl p-6 relative overflow-hidden group flex flex-col justify-between h-[280px]"
+              className="card rounded-2xl p-6 relative overflow-hidden group flex flex-col justify-between min-h-[290px]"
             >
               {/* Account Top Row */}
               <div className="space-y-3">
@@ -250,14 +374,94 @@ export default function Accounts() {
                 </div>
 
                 <div className="space-y-0.5">
-                  <h3 className="text-sm font-bold text-[var(--text-primary)] truncate pr-6" title={account.email}>
-                    {account.email}
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-[var(--text-primary)] truncate pr-2" title={account.email}>
+                      {account.email}
+                    </h3>
+                    <button
+                      onClick={() => openEditModal(account)}
+                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[var(--honey-100)] text-[var(--honey-700)] hover:bg-[var(--honey-200)] transition-colors cursor-pointer shrink-0 border border-[var(--border-subtle)]"
+                    >
+                      Details & Credentials
+                    </button>
+                  </div>
                   <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">Mailbox ID: Account {account.id}</p>
                 </div>
+
+                {/* App Password Display Box */}
+                {account.appPassword && (
+                  <div className="mt-2 p-2 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">App Pass:</span>
+                      <span className="text-xs font-mono font-semibold text-[var(--text-primary)] truncate">
+                        {showPasswords[account.email] ? account.appPassword : '••••••••••••••••'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => togglePasswordVisibility(account.email)}
+                        className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                        title={showPasswords[account.email] ? "Hide Password" : "Show Password"}
+                      >
+                        {showPasswords[account.email] ? <EyeOff size={13} /> : <Eye size={13} />}
+                      </button>
+                      <button
+                        onClick={() => copyPassword(account.email, account.appPassword)}
+                        className="p-1 text-[var(--text-muted)] hover:text-[var(--honey-600)] transition-colors"
+                        title="Copy App Password"
+                      >
+                        {copiedEmail === account.email ? <CheckCircle size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Live 2FA Authentication Code Box */}
+                {account.totpSecret && (
+                  <div className="mt-2 p-2 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <div className="relative w-5 h-5 flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5 -rotate-90" viewBox="0 0 36 36">
+                          <path
+                            className="text-[var(--border-subtle)]"
+                            strokeWidth="3"
+                            stroke="currentColor"
+                            fill="none"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <path
+                            className="text-[var(--honey-500)] transition-all duration-300"
+                            strokeDasharray={`${((totpData[account.email]?.secondsRemaining || 30) / 30) * 100}, 100`}
+                            strokeWidth="3.5"
+                            strokeLinecap="round"
+                            stroke="currentColor"
+                            fill="none"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                        </svg>
+                        <span className="absolute text-[8px] font-bold text-[var(--text-muted)] font-mono">
+                          {totpData[account.email]?.secondsRemaining || 30}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">2FA Code:</span>
+                        <span className="text-xs font-mono font-bold text-[var(--honey-600)] tracking-wider">
+                          {totpData[account.email]?.code || '------'}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => copyTOTP(account.email, totpData[account.email]?.code)}
+                      className="p-1 text-[var(--text-muted)] hover:text-[var(--honey-600)] transition-colors cursor-pointer"
+                      title="Copy 2FA Code"
+                    >
+                      {copiedTotpEmail === account.email ? <CheckCircle size={13} className="text-[var(--success)]" /> : <Copy size={13} />}
+                    </button>
+                  </div>
+                )}
               </div>
               <button 
-                onClick={() => handleDeleteAccount(String(account.id))} 
+                onClick={() => setDeleteTargetId(String(account.id))} 
                 className="absolute top-4 right-4 p-1.5 bg-[var(--danger-bg)] text-[var(--danger)] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--danger)] hover:text-white z-10 cursor-pointer border border-[var(--danger)]/15"
                 title="Delete Mailbox"
                 aria-label="Delete Mailbox"
@@ -364,14 +568,24 @@ export default function Accounts() {
                   <Clock size={11} />
                   <span>Resets at Midnight CT</span>
                 </div>
-                <button
-                  onClick={() => checkDns(account.email)}
-                  disabled={dnsLoading[account.email]}
-                  className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                >
-                  <Activity size={11} className={dnsLoading[account.email] ? "animate-spin" : ""} />
-                  {dnsLoading[account.email] ? 'Checking...' : 'Check DNS'}
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => checkDns(account.email)}
+                    disabled={dnsLoading[account.email]}
+                    className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    <Activity size={11} className={dnsLoading[account.email] ? "animate-spin" : ""} />
+                    {dnsLoading[account.email] ? 'Checking...' : 'Check DNS'}
+                  </button>
+                  <button
+                    onClick={() => runSpamCheck(account.email)}
+                    disabled={spamLoading[account.email]}
+                    className="flex items-center gap-1 text-[var(--honey-600)] hover:underline font-bold transition-colors cursor-pointer"
+                  >
+                    <ShieldCheck size={11} className={spamLoading[account.email] ? "animate-spin" : ""} />
+                    {spamLoading[account.email] ? 'Auditing...' : 'Run Spam Check'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           );
@@ -428,6 +642,387 @@ export default function Accounts() {
           </motion.div>
         </div>
       )}
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(deleteTargetId)}
+        onClose={() => setDeleteTargetId(null)}
+        title="Delete Outreach Mailbox"
+        confirmLabel="Delete Mailbox"
+        confirmVariant="danger"
+        onConfirm={confirmDeleteAccount}
+      >
+        Are you sure you want to delete this mailbox account? Active cold email sequences assigned to this account will be paused.
+      </Modal>
+
+      {/* Account Details & Credentials Modal */}
+      {editingAccount && (
+        <div className="overlay flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-panel-raised p-6 rounded-2xl max-w-xl w-full space-y-5"
+          >
+            {/* Header with Mail Icon & Active Badge */}
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-[var(--honey-100)] rounded-xl border border-[var(--border-subtle)] text-[var(--honey-600)]">
+                  <Mail size={18} />
+                </div>
+                <h2 className="text-lg font-extrabold text-[var(--text-primary)] font-sans">{editingAccount.email}</h2>
+              </div>
+              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Active
+              </span>
+            </div>
+
+            {/* Tabs Navigation */}
+            <div className="flex gap-2 bg-[var(--bg-elevated)] p-1 rounded-xl border border-[var(--border-subtle)]">
+              <button
+                type="button"
+                onClick={() => setActiveTab('details')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'details'
+                    ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm font-extrabold'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                Details
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('credentials')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'credentials'
+                    ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm font-extrabold'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                Credentials
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('admin')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'admin'
+                    ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm font-extrabold'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                Admin credentials
+              </button>
+            </div>
+
+            {/* TAB 1: DETAILS */}
+            {activeTab === 'details' && (
+              <div className="space-y-4 font-sans max-h-[60vh] overflow-y-auto pr-1">
+                {/* Profile Picture */}
+                <div className="flex items-center gap-4 p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-2xl">
+                  <div className="w-14 h-14 rounded-full bg-amber-600/20 border-2 border-amber-500/40 flex items-center justify-center text-amber-600 font-extrabold text-lg shrink-0 overflow-hidden">
+                    <span>{editForm.firstName.slice(0, 1).toUpperCase()}{editForm.lastName.slice(0, 1).toUpperCase()}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[var(--text-primary)]">Profile Picture</h4>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                      Square image recommended (250×250 – 500×500), JPG/PNG/GIF/WEBP, max 25MB
+                    </p>
+                    <button type="button" className="text-xs font-bold text-red-500 hover:underline mt-1">Remove</button>
+                  </div>
+                </div>
+
+                {/* First & Last Name */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="edit-first-name" className="block text-xs font-bold text-[var(--text-secondary)] mb-1">First Name</label>
+                    <input
+                      id="edit-first-name"
+                      name="firstName"
+                      aria-label="First Name"
+                      type="text"
+                      value={editForm.firstName}
+                      onChange={e => setEditForm({ ...editForm, firstName: e.target.value })}
+                      className="input w-full p-2.5 outline-none text-xs"
+                      placeholder="Ali"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-last-name" className="block text-xs font-bold text-[var(--text-secondary)] mb-1">Last Name</label>
+                    <input
+                      id="edit-last-name"
+                      name="lastName"
+                      aria-label="Last Name"
+                      type="text"
+                      value={editForm.lastName}
+                      onChange={e => setEditForm({ ...editForm, lastName: e.target.value })}
+                      className="input w-full p-2.5 outline-none text-xs"
+                      placeholder="Ahmed"
+                    />
+                  </div>
+                </div>
+
+                {/* Sender Name */}
+                <div>
+                  <label htmlFor="edit-sender-name" className="block text-xs font-bold text-[var(--text-secondary)] mb-1">Sender Name</label>
+                  <input
+                    id="edit-sender-name"
+                    name="senderName"
+                    aria-label="Sender Name"
+                    type="text"
+                    value={editForm.senderName}
+                    onChange={e => setEditForm({ ...editForm, senderName: e.target.value })}
+                    className="input w-full p-2.5 outline-none text-xs"
+                    placeholder="Ali Ahmed"
+                  />
+                </div>
+
+                {/* Signature */}
+                <div>
+                  <label htmlFor="edit-signature" className="block text-xs font-bold text-[var(--text-secondary)] mb-1">Signature</label>
+                  <div className="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--bg-surface)]">
+                    <textarea
+                      id="edit-signature"
+                      name="signature"
+                      aria-label="Signature"
+                      rows={4}
+                      value={editForm.signature}
+                      onChange={e => setEditForm({ ...editForm, signature: e.target.value })}
+                      className="w-full p-3 text-xs outline-none bg-transparent font-sans resize-none"
+                      placeholder="Your professional email signature..."
+                    />
+                    <div className="flex items-center gap-2 p-2 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] text-xs text-[var(--text-muted)] font-mono">
+                      <button type="button" title="Bold" aria-label="Bold" onClick={() => setEditForm(prev => ({ ...prev, signature: prev.signature + ' **bold**' }))} className="px-2 py-0.5 rounded font-bold hover:bg-[var(--honey-100)] hover:text-[var(--text-primary)] cursor-pointer">B</button>
+                      <button type="button" title="Italic" aria-label="Italic" onClick={() => setEditForm(prev => ({ ...prev, signature: prev.signature + ' *italic*' }))} className="px-2 py-0.5 rounded italic hover:bg-[var(--honey-100)] hover:text-[var(--text-primary)] cursor-pointer">I</button>
+                      <button type="button" title="Underline" aria-label="Underline" onClick={() => setEditForm(prev => ({ ...prev, signature: prev.signature + ' <u>underline</u>' }))} className="px-2 py-0.5 rounded underline hover:bg-[var(--honey-100)] hover:text-[var(--text-primary)] cursor-pointer">U</button>
+                      <button type="button" title="Strikethrough" aria-label="Strikethrough" onClick={() => setEditForm(prev => ({ ...prev, signature: prev.signature + ' ~~strikethrough~~' }))} className="px-2 py-0.5 rounded line-through hover:bg-[var(--honey-100)] hover:text-[var(--text-primary)] cursor-pointer">S</button>
+                      <button type="button" title="Insert Link" aria-label="Insert Link" onClick={() => setEditForm(prev => ({ ...prev, signature: prev.signature + ' [Link](https://)' }))} className="px-2 py-0.5 rounded hover:bg-[var(--honey-100)] hover:text-[var(--text-primary)] cursor-pointer">🔗</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email Forwarding Destination */}
+                <div>
+                  <label htmlFor="edit-forwarding-dest" className="block text-xs font-bold text-[var(--text-secondary)] mb-1">Email forwarding destination</label>
+                  <input
+                    id="edit-forwarding-dest"
+                    name="forwardingDestination"
+                    aria-label="Email forwarding destination"
+                    type="email"
+                    value={editForm.forwardingDestination}
+                    onChange={e => setEditForm({ ...editForm, forwardingDestination: e.target.value })}
+                    className="input w-full p-2.5 outline-none text-xs font-mono"
+                    placeholder={editingAccount.email}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: CREDENTIALS */}
+            {activeTab === 'credentials' && (
+              <div className="space-y-4 font-sans max-h-[60vh] overflow-y-auto pr-1">
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    disabled
+                    value={editingAccount.email}
+                    className="input w-full p-2.5 outline-none bg-[var(--bg-elevated)] text-xs font-mono text-[var(--text-muted)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] mb-1">App Password (16 Characters)</label>
+                  <input
+                    type="text"
+                    value={editForm.password}
+                    onChange={e => setEditForm({ ...editForm, password: e.target.value })}
+                    className="input w-full p-2.5 outline-none font-mono text-xs"
+                    placeholder="••••••••••••••••"
+                  />
+                </div>
+
+                {/* Live 2FA Code Box */}
+                <div className="p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
+                      <svg className="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
+                        <path
+                          className="text-[var(--border-subtle)]"
+                          strokeWidth="3"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                        <path
+                          className="text-[var(--honey-500)] transition-all duration-300"
+                          strokeDasharray={`${((totpData[editingAccount.email]?.secondsRemaining || 30) / 30) * 100}, 100`}
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                      </svg>
+                      <span className="absolute text-[9px] font-bold text-[var(--text-muted)] font-mono">
+                        {totpData[editingAccount.email]?.secondsRemaining || 30}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">Live 2FA Authentication Code</span>
+                      <span className="text-sm font-mono font-bold text-[var(--honey-600)] tracking-widest">
+                        {totpData[editingAccount.email]?.code || '------'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyTOTP(editingAccount.email, totpData[editingAccount.email]?.code)}
+                    className="p-2 text-xs font-bold rounded-lg bg-[var(--honey-100)] text-[var(--honey-700)] hover:bg-[var(--honey-200)] transition-colors cursor-pointer"
+                  >
+                    {copiedTotpEmail === editingAccount.email ? 'Copied!' : 'Copy Code'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: ADMIN CREDENTIALS */}
+            {activeTab === 'admin' && (
+              <div className="space-y-4 font-sans max-h-[60vh] overflow-y-auto pr-1">
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] mb-1">Admin Email</label>
+                  <input
+                    type="email"
+                    value={editForm.adminEmail}
+                    onChange={e => setEditForm({ ...editForm, adminEmail: e.target.value })}
+                    className="input w-full p-2.5 outline-none text-xs font-mono"
+                    placeholder="admin@domain.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] mb-1">Admin Password</label>
+                  <input
+                    type="text"
+                    value={editForm.adminPassword}
+                    onChange={e => setEditForm({ ...editForm, adminPassword: e.target.value })}
+                    className="input w-full p-2.5 outline-none font-mono text-xs"
+                    placeholder="••••••••••••••••"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-secondary)] mb-1">Admin 2FA Secret Key</label>
+                  <input
+                    type="text"
+                    value={editForm.adminSecret}
+                    onChange={e => setEditForm({ ...editForm, adminSecret: e.target.value })}
+                    className="input w-full p-2.5 outline-none font-mono text-xs"
+                    placeholder="32-character base32 secret"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
+              <button
+                type="button"
+                onClick={() => setEditingAccount(null)}
+                disabled={savingEdit}
+                className="btn btn-secondary py-2 text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={savingEdit}
+                className="btn btn-primary py-2 text-xs font-bold"
+              >
+                {savingEdit ? 'Updating...' : 'Update'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Spam & Deliverability Audit Modal */}
+      {spamReportModal && (
+        <div className="overlay flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-panel-raised p-6 rounded-2xl max-w-lg w-full space-y-5"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="text-[var(--honey-600)]" size={22} />
+                <div>
+                  <h2 className="text-lg font-extrabold text-[var(--text-primary)] font-sans">Spam & Deliverability Audit</h2>
+                  <p className="text-xs text-[var(--text-muted)] font-mono">{spamReportModal.email}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-black font-mono text-[var(--success)]">{spamReportModal.report.score}/100</span>
+                <p className="text-[10px] font-bold uppercase text-[var(--text-muted)]">Spam Score</p>
+              </div>
+            </div>
+
+            {/* Rating Banner */}
+            <div className="p-4 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">SpamAssassin Rating</span>
+                <p className="text-sm font-extrabold text-[var(--text-primary)] font-mono">
+                  {spamReportModal.report.spamAssassinRating} / 10.0 (Lower is better)
+                </p>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider ${
+                spamReportModal.report.ratingLabel === 'EXCELLENT' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+              }`}>
+                {spamReportModal.report.ratingLabel}
+              </span>
+            </div>
+
+            {/* Checklist */}
+            <div className="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1">
+              <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Rule Compliance Checklist</h4>
+              {spamReportModal.report.rules.map((r: any, idx: number) => (
+                <div key={idx} className="p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl flex items-start gap-3">
+                  {r.passed ? (
+                    <CheckCircle size={16} className="text-[var(--success)] shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle size={16} className="text-[var(--danger)] shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">{r.rule}</span>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{r.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Actionable Recommendations */}
+            {spamReportModal.report.recommendations.length > 0 && (
+              <div className="p-4 bg-[var(--warning-bg)] border border-[var(--warning)]/20 rounded-xl space-y-1.5">
+                <h5 className="text-xs font-bold text-[var(--warning)] flex items-center gap-1.5">
+                  <AlertTriangle size={14} /> Actionable Deliverability Recommendations
+                </h5>
+                <ul className="list-disc list-inside text-xs text-[var(--text-secondary)] space-y-1 pl-1">
+                  {spamReportModal.report.recommendations.map((rec: string, i: number) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setSpamReportModal(null)} className="btn btn-primary py-2 text-xs font-bold">
+                Close Report
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
     </div>
   );
 }

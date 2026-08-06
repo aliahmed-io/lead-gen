@@ -131,6 +131,9 @@ export default function SequencesPage() {
               <div style={{ flex: 1 }}>
                 <label className="text-sm font-medium mb-1 block">Template</label>
                 <select 
+                  id={`sequence-template-select-${index}`}
+                  name="templateKey"
+                  aria-label="Sequence Step Template"
                   className="input-field" 
                   value={step.templateKey}
                   onChange={(e) => updateStep(index, 'templateKey', e.target.value)}
