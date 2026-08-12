@@ -72,6 +72,11 @@ function checkStatisticalSignificance(x1, n1, x2, n2) {
  * @param {string[]} variants - e.g. ["A", "B"]
  * @returns {string} Selected variant name
  */
+/**
+ * @param {typeof import('./campaignDb')} campaignDb
+ * @param {string} testId
+ * @param {string[]} [variants]
+ */
 function selectVariant(campaignDb, testId, variants = ['A', 'B']) {
   if (!variants || variants.length === 0) return 'A';
   if (variants.length === 1) return variants[0];
@@ -103,6 +108,11 @@ function selectVariant(campaignDb, testId, variants = ['A', 'B']) {
  * @param {object} campaignDb
  * @param {string} testId
  * @returns {string|null} Winning variant if newly promoted, else null
+ */
+/**
+ * @param {typeof import('./campaignDb')} campaignDb
+ * @param {string} testId
+ * @returns {string|null}
  */
 function evaluateAndPromoteWinner(campaignDb, testId) {
   const test = campaignDb.getAbTest(testId);

@@ -13,6 +13,7 @@
  */
 
 const fs = require('fs');
+const { errOf } = require('./utils');
 const { DB_FILE, DB_AUTOSAVE_INTERVAL } = require('./config');
 
 /* ------------------------------------------------------------------ */
@@ -67,7 +68,7 @@ class LeadsDatabase {
         } catch (renameErr) {
           console.error(`\u26A0\uFE0F  Failed to rename corrupt database: ${renameErr instanceof Error ? renameErr.message : String(renameErr)}`);
         }
-        throw new Error(`Fatal: Database JSON is corrupt: ${err.message}`);
+        throw new Error(`Fatal: Database JSON is corrupt: ${errOf(err).message}`);
       }
       console.warn(
         `\u26A0\uFE0F  Database file unreadable, creating new: ${err instanceof Error ? err.message : String(err)}`

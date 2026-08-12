@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { errOf } = require('./utils');
 const nodemailer = require('nodemailer');
 const campaignDb = require('./campaignDb');
 const templates = require('./templates');
@@ -7,6 +8,9 @@ const path = require('path');
 const { isWithinBusinessHours } = require('./timeUtils');
 const campaignState = require('./campaignState');
 
+/**
+ * @param {{ senderDisplayName?: string, physicalAddress?: string }} settings
+ */
 function getSenderDetails(settings) {
   const displayName = settings.senderDisplayName || 'Sales Team';
   const address = settings.physicalAddress || '123 Business St, City, State 12345';
@@ -20,6 +24,23 @@ function getSenderDetails(settings) {
     ].join('\n')
   };
 }
+
+/**
+ * @typedef {object} CampaignRecord
+ * @property {string} email
+ * @property {string} [status]
+ * @property {number|null} [sentAt]
+ * @property {number|null} [followedUp1At]
+ * @property {number|null} [followedUp2At]
+ * @property {string|number} accountId
+ * @property {string} [businessName]
+ * @property {string} [website]
+ * @property {string} [city]
+ * @property {string} [state]
+ * @property {string} [platform]
+ * @property {number} [nextStage]
+ * @property {string} [messageId]
+ */
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
@@ -40,10 +61,11 @@ function getSettings() {
 /**
  * Builds the SMTP transporter map from settings.accounts or .env configuration, keyed by account ID.
  *
- * @returns {Record<number, { id: number, user: string, transporter: object }>}
+ * @returns {Record<string|number, { id: number, user: string, transporter: object }>}
  */
 function buildTransporters() {
   const settings = getSettings();
+  /** @type {Record<string|number, { id: number, user: string, transporter: object }>} */
   const result = {};
 
   if (settings.accounts && settings.accounts.length > 0) {
@@ -90,23 +112,27 @@ function buildTransporters() {
 /**
  * Builds the list of follow-up candidates from the campaign database.
  *
- * @param {CampaignDatabase} campaignDb
- * @returns {Array<object>}
+ * * @returns {LeadRecord[]}
  */
-function buildFollowUpCandidates(campaignDb) {
+function buildFollowUpCandidates(/** @type {import('./campaignDb')} */ campaignDb) {
   const now = Date.now();
-  const allRecords = campaignDb.getAllRecords();
+  const allRecords = /** @type {CampaignRecord[]} */ (campaignDb.getAllRecords());
 
-  return allRecords.reduce((acc, r) => {
-    if (r.status === 'sent' && r.sentAt !== null && (now - r.sentAt > THREE_DAYS_MS)) {
+  return allRecords.reduce(
+    /**
+     * @param {LeadRecord[]} acc
+     * @param {LeadRecord} r
+     */
+    (acc, r) => {
+    if (r.status === 'sent' && r.sentAt != null && (now - r.sentAt > THREE_DAYS_MS)) {
       acc.push({ ...r, nextStage: 1 });
-    } else if (r.status === 'followed_up_1' && r.followedUp1At !== null && (now - r.followedUp1At > FOUR_DAYS_MS)) {
+    } else if (r.status === 'followed_up_1' && r.followedUp1At != null && (now - r.followedUp1At > FOUR_DAYS_MS)) {
       acc.push({ ...r, nextStage: 2 });
-    } else if (r.status === 'followed_up_2' && r.followedUp2At !== null && (now - r.followedUp2At > FIVE_DAYS_MS)) {
+    } else if (r.status === 'followed_up_2' && r.followedUp2At != null && (now - r.followedUp2At > FIVE_DAYS_MS)) {
       acc.push({ ...r, nextStage: 3 });
     }
     return acc;
-  }, []);
+  }, /** @type {CampaignRecord[]} */ ([]));
 }
 
 /**
@@ -121,7 +147,7 @@ async function startFollowUps() {
 
   const transporters = buildTransporters();
 
-  const followUpCandidates = buildFollowUpCandidates(campaignDb);
+  const followUpCandidates = /** @type {CampaignRecord[]} */ (buildFollowUpCandidates(campaignDb));
 
   console.log('📊 Follow-Up Status:');
   console.log(`   Total Candidates found: ${followUpCandidates.length}`);
@@ -181,7 +207,7 @@ async function startFollowUps() {
       continue;
     }
 
-    const warmup = campaignDb.getWarmupStatus(accountId);
+    const warmup = /** @type {{ level?: number; currentVolume?: number }} */ (campaignDb.getWarmupStatus(accountId));
     const accountMaxEmails = (warmup && warmup.level) ? warmup.level * 10 : settings.maxEmailsPerDay;
 
     const dailyCount = campaignDb.getDailyCount(accountId);
@@ -221,8 +247,9 @@ async function startFollowUps() {
       }
     } else {
       try {
+        /** @type {{ from: string; to: string; subject: string; text: string; headers: { 'List-Unsubscribe': string }; inReplyTo?: string; references?: string[]; }} */
         const mailOptions = {
-          from: `"${senderDetails.displayName}" <${activeAccount.user}>`,
+          from: `"${senderDetails.displayName}" <${activeAccount.user}>,`,
           to: lead.email,
           subject: emailData.subject,
           text: emailData.text + senderDetails.footer,
@@ -232,11 +259,11 @@ async function startFollowUps() {
         };
 
         if (lead.messageId) {
-          mailOptions.inReplyTo = lead.messageId;
-          mailOptions.references = [lead.messageId];
+          (/** @type {{ inReplyTo?: string; references?: string[] }} */ (mailOptions)).inReplyTo = lead.messageId;
+          (/** @type {{ inReplyTo?: string; references?: string[] }} */ (mailOptions)).references = [lead.messageId];
         }
 
-        const info = await activeAccount.transporter.sendMail(mailOptions);
+        const info = await /** @type {import('nodemailer').TransportInstance} */ (activeAccount.transporter).sendMail(mailOptions);
 
         campaignDb.incrementDailyCount(accountId);
 
@@ -248,7 +275,7 @@ async function startFollowUps() {
 
         console.log(`   ✅ Follow-up ${lead.nextStage} sent! MessageId: ${info.messageId}`);
       } catch (err) {
-        console.error(`   ❌ Error sending follow-up: ${err.message}`);
+        console.error(`   ❌ Error sending follow-up: ${errOf(err).message}`);
         continue;
       }
 

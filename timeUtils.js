@@ -9,6 +9,10 @@ const hd = new Holidays('US', 'TX');
  * 
  * Returns: { valid: boolean, reason?: string }
  */
+/**
+ * @param {number} [startHour]
+ * @param {number} [endHour]
+ */
 function isWithinBusinessHours(startHour = 9, endHour = 17) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago',
@@ -22,11 +26,11 @@ function isWithinBusinessHours(startHour = 9, endHour = 17) {
   
   const parts = formatter.formatToParts(new Date());
   
-  const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
-  const weekday = parts.find(p => p.type === 'weekday').value;
-  const year = parts.find(p => p.type === 'year').value;
-  const month = parts.find(p => p.type === 'month').value;
-  const day = parts.find(p => p.type === 'day').value;
+  const hour = parseInt(/** @type {string} */ (parts.find(p => p.type === 'hour')?.value ?? ''), 10);
+  const weekday = /** @type {string} */ (parts.find(p => p.type === 'weekday')?.value ?? '');
+  const year = /** @type {string} */ (parts.find(p => p.type === 'year')?.value ?? '');
+  const month = /** @type {string} */ (parts.find(p => p.type === 'month')?.value ?? '');
+  const day = /** @type {string} */ (parts.find(p => p.type === 'day')?.value ?? '');
   
   // 1. Weekend Check
   if (weekday === 'Sat' || weekday === 'Sun') {
@@ -36,10 +40,10 @@ function isWithinBusinessHours(startHour = 9, endHour = 17) {
   // 2. Holiday Check
   // Note: formatting to YYYY-MM-DD ensures clean timezone matching for the holiday library
   const dateStr = `${year}-${month}-${day} 12:00:00`;
-  const holidayObj = hd.isHoliday(new Date(dateStr));
+  const holidayObj = /** @type {Array<{ type?: string; name?: string }> | false} */ (hd.isHoliday(new Date(dateStr)));
   
   if (holidayObj && holidayObj.some(h => h.type === 'public')) {
-    const holidayName = holidayObj.find(h => h.type === 'public').name;
+    const holidayName = /** @type {string} */ (holidayObj.find(h => h.type === 'public')?.name);
     return { valid: false, reason: `Public Holiday (${holidayName})` };
   }
   
@@ -54,6 +58,7 @@ function isWithinBusinessHours(startHour = 9, endHour = 17) {
 /**
  * Checks if current time is a weekday (Mon-Fri) in Central Time.
  */
+/** */
 function isWeekday() {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago',
@@ -75,9 +80,9 @@ function getTimeUntilMidnight() {
     hour12: false,
   });
   const parts = formatter.formatToParts(new Date());
-  const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
-  const minute = parseInt(parts.find(p => p.type === 'minute').value, 10);
-  const second = parseInt(parts.find(p => p.type === 'second').value, 10);
+  const hour = parseInt(/** @type {string} */ (parts.find(p => p.type === 'hour')?.value ?? ''), 10);
+  const minute = parseInt(/** @type {string} */ (parts.find(p => p.type === 'minute')?.value ?? ''), 10);
+  const second = parseInt(/** @type {string} */ (parts.find(p => p.type === 'second')?.value ?? ''), 10);
 
   const secondsPassed = hour * 3600 + minute * 60 + second;
   const secondsInDay = 86400;

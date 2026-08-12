@@ -7,7 +7,8 @@
     "start": "node start.js",
     "dev": "concurrently \"npm run dev --prefix dashboard\" \"node start.js\"",
     "scrape": "node index.js",
-    "lint": "eslint index.js scraper.js db.js keepAwake.js",
+    "lint": "eslint *.js e2e_tests",
+    "test": "node e2e_tests/runner.js",
     "build": "tsc"
   },
   "keywords": [
@@ -45,6 +46,6 @@
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
+    "typescript": "^5.8.3"
   }
 }

@@ -115,7 +115,7 @@ async function getMxRecords(domain) {
     const records = await Promise.race([mxLookup, timeout]);
     if (!records || records.length === 0) return null;
     // Sort by priority ascending (lower = higher preference)
-    return records.sort((a, b) => a.priority - b.priority);
+    return /** @type {Array<{ exchange: string; priority: number }>} */ (records).sort((a, b) => (a.priority || 0) - (b.priority || 0));
   } catch {
     return null;
   } finally {
@@ -153,7 +153,7 @@ function attemptSmtpPing(targetEmail, mxHost) {
     const done = result => {
       if (settled) return;
       settled = true;
-      try { socket.write('QUIT\r\n'); } catch {} // best-effort QUIT
+      try { socket.write('QUIT\r\n'); } catch (_e) { /* best-effort QUIT */ }
       socket.destroy();
       resolve(result);
     };

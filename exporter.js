@@ -6,6 +6,7 @@
  */
 
 const XLSX = require('xlsx');
+const { errOf } = require('./utils');
 const path = require('path');
 const { OUTPUT_FILE } = require('./config');
 
@@ -90,7 +91,7 @@ function exportToExcel(leads) {
     if (err.code === 'EBUSY') {
       console.warn(`\n\u26A0\uFE0F  Warning: Could not save to Excel because '${OUTPUT_FILE}' is currently open in another program (like Excel). Please close it to allow saving.`);
     } else {
-      console.error(`\n\u274C Error saving to Excel: ${err.message}`);
+      console.error(`\n\u274C Error saving to Excel: ${errOf(err).message}`);
     }
   }
 

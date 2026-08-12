@@ -12,6 +12,10 @@ module.exports = [
       ecmaVersion: 2022,
       sourceType: "commonjs",
       globals: {
+        globalThis: "readonly",
+        Buffer: "readonly",
+        AbortController: "readonly",
+        setImmediate: "readonly",
         console: "readonly",
         process: "readonly",
         require: "readonly",

@@ -163,8 +163,8 @@ export async function GET() {
       C: { name: 'Template C (Aggressive Value)', sent: 0, opens: 0, replies: 0, positiveReplies: 0, callsBooked: 0, clientsClosed: 0 },
     };
 
-    for (const r of Object.values(campaignData.records) as any[]) {
-      const v = (r.variant || 'A').toUpperCase() as 'A' | 'B' | 'C';
+    for (const r of Object.values(campaignData.records) as LeadRecord[]) {
+      const v = (typeof r.variant === 'string' ? r.variant : 'A').toUpperCase() as 'A' | 'B' | 'C';
       if (variantStats[v]) {
         if (['sent', 'followed_up_1', 'followed_up_2', 'interested', 'completed_no_interest'].includes(String(r.status))) {
           variantStats[v].sent++;

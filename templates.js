@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { errOf } = require('./utils');
 
 function getTemplates() {
   const tplPath = path.join(__dirname, 'templates.json');
@@ -7,7 +8,7 @@ function getTemplates() {
     try {
       return JSON.parse(fs.readFileSync(tplPath, 'utf8'));
     } catch (e) {
-      console.error('Error parsing templates.json. Using defaults.');
+      console.error('Error parsing templates.json. Using defaults.', errOf(e).message);
     }
   }
   return {};
@@ -17,6 +18,8 @@ function getTemplates() {
  * Extracts and capitalizes a clean first name from lead data or email address.
  * E.g., 'alex.smith@domain.com' -> 'Alex'
  * E.g., 'info@domain.com' -> '' (falls back to 'there')
+ *
+ * @param {TemplateData} data
  */
 function extractFirstName(data) {
   if (data.firstName && typeof data.firstName === 'string' && data.firstName.trim()) {
@@ -47,11 +50,36 @@ function extractFirstName(data) {
   return '';
 }
 
+/**
+ * @param {string} str
+ */
 function capitalize(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
+/**
+ * Convenience accessors used by the follow-up runner, backed by getEmail().
+ *
+ * @param {TemplateData} data
+ * @param {string} [variant]
+ */
+function getFollowUpEmail1(data, variant) {
+  return getEmail('followup1', data, variant);
+}
+
+/**
+ * @param {TemplateData} data
+ * @param {string} [variant]
+ */
+function getFollowUpEmail2(data, variant) {
+  return getEmail('followup2', data, variant);
+}
+
+/**
+ * @param {string} templateString
+ * @param {TemplateData} data
+ */
 function parseTemplate(templateString, data) {
   if (!templateString) return '';
   
@@ -71,42 +99,54 @@ function parseTemplate(templateString, data) {
     'customSentence': data.customSentence || ''
   };
 
+  /** @type {Record<string, string>} */
+  const varsMap = vars;
+  const dataMap = /** @type {Record<string, unknown>} */ (data);
   return templateString.replace(/\{\{([^}]+)\}\}/g, (match, rawKey) => {
     const key = rawKey.trim();
-    if (vars[key] !== undefined) return vars[key];
-    if (data[key] !== undefined) return data[key];
+    if (varsMap[key] !== undefined) return varsMap[key];
+    if (dataMap[key] !== undefined) return String(dataMap[key]);
     return match;
   });
+}
+
+/**
+ * @param {string} templateKey
+ * @param {TemplateData} data
+ * @param {string} [variant]
+ */
+function getEmail(templateKey, data, variant = 'A') {
+  const keyMap = /** @type {Record<string, string>} */ ({
+    'initial': 'initial',
+    'followup1': 'followUp1',
+    'followup2': 'followUp2'
+  });
+
+  const actualKey = keyMap[templateKey] || templateKey;
+  /** @type {Record<string, string>} */
+  const tpl = getTemplates()[actualKey] || {};
+
+  let subjectRaw = tpl.subject;
+  if (variant && tpl[`subject${variant}`]) {
+    subjectRaw = tpl[`subject${variant}`];
+  }
+
+  let textRaw = tpl.text;
+  if (variant && tpl[`text${variant}`]) {
+    textRaw = tpl[`text${variant}`];
+  }
+
+  return {
+    subject: parseTemplate(subjectRaw || `Quick question for {{Company}}`, data),
+    text: parseTemplate(textRaw || tpl.text || '', data)
+  };
 }
 
 module.exports = {
   getTemplates,
   extractFirstName,
   parseTemplate,
-
-  getEmail: (templateKey, data, variant = 'A') => {
-    const keyMap = {
-      'initial': 'initial',
-      'followup1': 'followUp1',
-      'followup2': 'followUp2'
-    };
-    
-    const actualKey = keyMap[templateKey] || templateKey;
-    const tpl = getTemplates()[actualKey] || {};
-
-    let subjectRaw = tpl.subject;
-    if (variant && tpl[`subject${variant}`]) {
-      subjectRaw = tpl[`subject${variant}`];
-    }
-
-    let textRaw = tpl.text;
-    if (variant && tpl[`text${variant}`]) {
-      textRaw = tpl[`text${variant}`];
-    }
-
-    return {
-      subject: parseTemplate(subjectRaw || `Quick question for {{Company}}`, data),
-      text: parseTemplate(textRaw || tpl.text || '', data)
-    };
-  }
+  getFollowUpEmail1,
+  getFollowUpEmail2,
+  getEmail
 };

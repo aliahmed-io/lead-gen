@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, AlertTriangle, XCircle, RefreshCw, ShieldCheck, Activity } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, ShieldCheck } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page';
 
 interface HealthCheck {
   name: string;
@@ -33,24 +34,38 @@ export default function HealthCenter() {
   };
 
   useEffect(() => {
-    fetchHealth();
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/health');
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          setChecks(data.checks || []);
+          setOverall(data.overall || 'good');
+        }
+      } catch (e) {
+        console.error('Failed to fetch health status', e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+     
   }, []);
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 font-sans">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold text-[var(--text-primary)] tracking-tight font-serif">System Health Center</h1>
-          <p className="text-[var(--text-secondary)] text-sm mt-1">Preflight diagnostic checklist before launching outreach campaigns.</p>
-        </div>
-        <button
-          onClick={fetchHealth}
-          disabled={loading}
-          className="p-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer"
-        >
-          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
+      <PageHeader
+        title="System Health Center"
+        subtitle="Preflight diagnostic checklist before launching outreach campaigns."
+        onRefresh={fetchHealth}
+        refreshLoading={loading}
+      />
 
       {/* Status Banner */}
       <div className={`p-6 rounded-2xl border flex items-center gap-4 ${

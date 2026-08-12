@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Mail, Send } from 'lucide-react';
+import Link from 'next/link';
+import { Mail, Send, Inbox as InboxIcon, RefreshCw, Trash2 } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 interface Message {
   id: string;
@@ -27,6 +29,7 @@ export default function InboxPage() {
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
 
   const fetchThreads = async () => {
     try {
@@ -47,6 +50,8 @@ export default function InboxPage() {
     const iv = setInterval(fetchThreads, 15000);
     return () => clearInterval(iv);
   }, []);
+
+  const unreadCount = threads.filter(t => t.unread).length;
 
   const selectThread = async (thread: Thread) => {
     setSelectedThread(thread);
@@ -93,10 +98,10 @@ export default function InboxPage() {
         if (latestThread) setSelectedThread(latestThread);
       } else {
         const data = await res.json();
-        alert('Failed to send: ' + data.error);
+        showToast(`Failed to send: ${data.error ?? 'unknown error'}`, 'error');
       }
     } catch (e: unknown) {
-      alert('Error: ' + (e as Error).message);
+      showToast(`Error: ${(e as Error).message}`, 'error');
     } finally {
       setSending(false);
     }
@@ -107,14 +112,31 @@ export default function InboxPage() {
       
       {/* Sidebar */}
       <div style={{ width: '350px', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)' }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid var(--border-subtle)' }}>
-          <h1 className="text-xl font-bold font-serif">Inbox</h1>
+        <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <InboxIcon size={17} style={{ color: 'var(--honey-500)' }} /> Inbox
+            </h1>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {unreadCount > 0 && <span className="badge badge-amber">{unreadCount} new</span>}
+            <button
+              onClick={fetchThreads}
+              className="btn btn-secondary"
+              style={{ padding: '6px' }}
+              aria-label="Refresh inbox"
+            >
+              <RefreshCw size={13} />
+            </button>
+          </div>
         </div>
         
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {threads.length === 0 ? (
-            <div style={{ padding: '20px', color: 'var(--text-muted)', textAlign: 'center', fontSize: '13px' }}>
-              No messages found.
+            <div style={{ padding: '40px 20px', color: 'var(--text-muted)', textAlign: 'center' }}>
+              <Trash2 size={24} style={{ opacity: 0.25, marginBottom: '10px' }} />
+              <div style={{ fontSize: '13px', fontWeight: 600 }}>No messages found</div>
+              <div style={{ fontSize: '11px', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>Replies appear here after leads respond.</div>
             </div>
           ) : (
             threads.map(thread => {
@@ -146,7 +168,7 @@ export default function InboxPage() {
                     </div>
                   </div>
                   {thread.unread && (
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--honey-500)', marginTop: '6px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--honey-500)', marginTop: '6px', boxShadow: '0 0 6px var(--honey-glow)' }} />
                   )}
                 </div>
               );
@@ -159,13 +181,16 @@ export default function InboxPage() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-base)' }}>
         {selectedThread ? (
           <>
-            <div style={{ padding: '20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedThread.leadEmail}</h2>
-                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  Via Account #{selectedThread.accountId}
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ minWidth: 0 }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedThread.leadEmail}</h2>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                  Via Account #{selectedThread.accountId} · {selectedThread.messages.length} message{selectedThread.messages.length === 1 ? '' : 's'}
                 </div>
               </div>
+              <Link href={`/leads?search=${encodeURIComponent(selectedThread.leadEmail)}`} style={{ fontSize: '11px', color: 'var(--honey-600)', textDecoration: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                Open in Leads →
+              </Link>
             </div>
             
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>

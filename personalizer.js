@@ -45,15 +45,16 @@ class TemplatePersonalizer {
   /**
    * Generates a tailored opening sentence for a cold outreach email.
    *
-   * @param {object} lead - Lead record with businessName, platform, city, state, website
+   * @param {LeadRecord} lead - Lead record with businessName, platform, city, state, website
    * @returns {string} Personalization sentence
    */
-  generateOpener(lead = {}) {
+  generateOpener(lead = /** @type {LeadRecord} */ ({})) {
     const platform = lead.platform || 'Other';
     const city = lead.city ? lead.city.trim() : '';
     const state = lead.state ? lead.state.trim() : '';
 
-    const platformTemplates = PLATFORM_SENTENCES[platform] || PLATFORM_SENTENCES.Other;
+    const sentencesByPlatform = /** @type {Record<string, string[]>} */ (PLATFORM_SENTENCES);
+    const platformTemplates = sentencesByPlatform[platform] || PLATFORM_SENTENCES.Other;
     const mainOpener = platformTemplates[Math.floor(Math.random() * platformTemplates.length)];
 
     if (city && Math.random() > 0.5) {
@@ -70,5 +71,9 @@ const defaultPersonalizer = new TemplatePersonalizer();
 
 module.exports = {
   TemplatePersonalizer,
-  generatePersonalizedOpener: (lead) => defaultPersonalizer.generateOpener(lead),
+  /**
+   * @param {LeadRecord} [lead]
+   * @returns {string}
+   */
+  generatePersonalizedOpener: (lead) => defaultPersonalizer.generateOpener(/** @type {LeadRecord} */ (lead || {})),
 };

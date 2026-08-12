@@ -1,8 +1,10 @@
 const fs = require('fs');
+const { errOf } = require('./utils');
 const path = require('path');
 
 const STATE_PATH = path.join(__dirname, 'campaign_state.json');
 
+/** @type {{ status: 'running'|'paused'|'stopped', pausedAt: null, pauseReason: null, stoppedAt: null }} */
 const DEFAULT_STATE = {
   status: 'running',
   pausedAt: null,
@@ -28,7 +30,7 @@ function getState() {
         stoppedAt: parsed.stoppedAt || null,
       };
     } catch (err) {
-      console.error(`⚠️ Error reading campaign_state.json: ${err.message}. Defaulting to running.`);
+      console.error(`⚠️ Error reading campaign_state.json: ${errOf(err).message}. Defaulting to running.`);
     }
   }
   return { ...DEFAULT_STATE };

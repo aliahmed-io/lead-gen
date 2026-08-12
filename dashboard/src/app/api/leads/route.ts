@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 
     let rawRecords: LeadRecord[] = [];
     if (data.businesses) {
-      const businesses = data.businesses as Record<string, any>;
+      const businesses = data.businesses as Record<string, BusinessDbRecord>;
       rawRecords = Object.values(businesses).map((b) => {
         const campaignRecord = campaignData.records[b.email || ''];
         return {

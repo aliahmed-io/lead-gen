@@ -15,19 +15,19 @@ export async function POST(request: Request) {
       try {
         const spfTxts = await dns.resolveTxt(domain);
         dnsStatus.spf = spfTxts.some(r => r.join('').includes('v=spf1'));
-      } catch (e) {}
+      } catch (_e) { /* noop */ }
 
       // 2. Check DKIM (google._domainkey)
       try {
         const dkimTxts = await dns.resolveTxt(`google._domainkey.${domain}`);
         dnsStatus.dkim = dkimTxts.some(r => r.join('').includes('v=DKIM1') || r.join('').includes('p='));
-      } catch (e) {}
+      } catch (_e) { /* noop */ }
 
       // 3. Check DMARC (_dmarc)
       try {
         const dmarcTxts = await dns.resolveTxt(`_dmarc.${domain}`);
         dnsStatus.dmarc = dmarcTxts.some(r => r.join('').includes('v=DMARC1'));
-      } catch (e) {}
+      } catch (_e) { /* noop */ }
     }
 
     const report = analyzeSpamScore(body, domain ? dnsStatus : undefined);

@@ -15,7 +15,7 @@
  * knows the URL format.
  */
 
-import { NextResponse } from 'next/server';
+import { } from 'next/server';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';

@@ -41,8 +41,13 @@ export async function GET(request: Request) {
     if (data.accounts && Array.isArray(data.accounts)) {
       data.accounts = data.accounts.map((acc: Record<string, unknown>) => {
         const rest = { ...acc };
+        // Never expose any credential material to the client; TOTP codes are
+        // generated server-side by /api/accounts instead.
         delete rest.pass;
         delete rest.password;
+        delete rest.adminPassword;
+        delete rest.adminSecret;
+        delete rest.totpSecret;
         return rest;
       });
     }

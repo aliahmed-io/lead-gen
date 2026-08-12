@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Search, AlertCircle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
+import { PageHeader } from '@/components/ui/page';
 
 type LogEntry = {
   id: number;
@@ -52,8 +53,12 @@ export default function AuditLogs() {
     <div className="p-10 max-w-7xl mx-auto flex flex-col h-full font-sans">
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[var(--text-primary)] mb-2 font-serif">Audit Logs</h1>
-          <p className="text-[var(--text-secondary)] text-sm">Live feed from the background Master Scheduler.</p>
+          <PageHeader
+            title="Audit Logs"
+            subtitle="Live feed from the background Master Scheduler."
+            onRefresh={() => fetchLogs(true)}
+            refreshLoading={loading}
+          />
         </div>
         
         <div className="flex items-center gap-4">

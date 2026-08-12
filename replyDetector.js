@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { errOf } = require('./utils');
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const campaignDb = require('./campaignDb');
@@ -23,13 +24,16 @@ function getSettings() {
   return {};
 }
 
+/**
+ * @param {string|undefined} password
+ */
 function safeDecryptPassword(password) {
   if (!password) return '';
   if (isEncrypted(password)) {
     try {
       return decrypt(password);
     } catch (e) {
-      console.error('Failed to decrypt password:', e.message);
+      console.error('Failed to decrypt password:', errOf(e).message);
       return '';
     }
   }
@@ -40,6 +44,11 @@ function safeDecryptPassword(password) {
 /**
  * Determines if an email is a system bounce/DSN notification.
  * Returns the bounce type: 'hard', 'soft', or null (not a bounce).
+ */
+/**
+ * @param {string} fromAddress
+ * @param {string} subject
+ * @param {string} text
  */
 function detectBounceType(fromAddress, subject, text) {
   const from = (fromAddress || '').toLowerCase();
@@ -84,10 +93,13 @@ function detectBounceType(fromAddress, subject, text) {
 
 /**
  * Determines if a reply is an unsubscribe request.
+ *
+ * @param {string|undefined} subject
+ * @param {string|undefined} text
  */
 function isUnsubscribeRequest(subject, text) {
-  const subj = (subject || '').toLowerCase();
-  const body = (text || '').toLowerCase();
+  const subj = (/** @type {string|undefined} */ (subject) || '').toLowerCase();
+  const body = (/** @type {string|undefined} */ (text) || '').toLowerCase();
   return (
     subj.includes('unsubscribe') ||
     body.includes('unsubscribe') ||
@@ -105,6 +117,15 @@ function isUnsubscribeRequest(subject, text) {
  * - Hard bounces → marks as 'bounced' (FIXED from previous version)
  * - Soft bounces → marks as 'soft_bounce', retryable
  * - Unsubscribe requests → adds to unsubscribe list
+ */
+/**
+ * @param {{ getRecord(email: string): LeadRecord|null|undefined; getRecordByMessageId(id: string): LeadRecord|null|undefined; addOrUpdateRecord(email: string, patch: object): void; addUnsubscribe(email: string): void }} campaignDb
+ * @param {string|number} id
+ * @param {string} user
+ * @param {string} pass
+ * @param {string} host
+ * @param {string|number} port
+ * @param {unknown[]} activeClients
  */
 async function checkAccount(campaignDb, id, user, pass, host, port, activeClients) {
   const client = new ImapFlow({
@@ -137,7 +158,7 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
       if (uids && uids.length > 0) {
         const messages = client.fetch(uids.join(','), { source: true, flags: true });
 
-        for await (const message of messages) {
+        for await (const message of /** @type {IterableIterator<{ seq: number; source: Buffer|string; flags: string[] }> & AsyncIterable<{ seq: number; source: Buffer|string; flags: string[] }>} */ (messages)) {
         const parsed = await simpleParser(message.source);
 
         if (!parsed.from?.value?.length) {
@@ -281,10 +302,10 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
         }
 
         // ── 3. Check if it's a genuine reply from a campaign lead ──
-        if (leadRecord && MATCHABLE_STATUSES.includes(leadRecord.status)) {
+        if (leadRecord && MATCHABLE_STATUSES.includes(/** @type {string} */ (leadRecord.status ?? ''))) {
           console.log(`   🎉 Reply detected from ${fromAddress} (matched to ${leadRecord.email})!`);
 
-          const sentimentResult = await classifySentiment(textBody, subject);
+          const sentimentResult = await classifySentiment(/** @type {string} */ (textBody), /** @type {string} */ (subject));
           const newStatus = sentimentResult.sentiment === 'negative' ? 'completed_no_interest' : 'interested';
 
           console.log(`   🧠 Reply sentiment: ${sentimentResult.sentiment} (${sentimentResult.intent}) → status: ${newStatus}`);
@@ -316,12 +337,12 @@ async function checkAccount(campaignDb, id, user, pass, host, port, activeClient
         `   Account ${id}: ${newReplies} replies, ${newBounces} hard bounces, ${newUnsubscribes} unsubscribes.`
       );
     } finally {
-      lock.release();
+      await lock.release();
     }
 
-    await client.logout();
+    await /** @type {{ logout(): Promise<void> }} */ (client).logout();
   } catch (err) {
-    console.warn(`⚠️ Error checking IMAP Account ${id}: ${err.message}`);
+    console.warn(`⚠️ Error checking IMAP Account ${id}: ${errOf(err).message}`);
   } finally {
     if (activeClients) {
       const idx = activeClients.indexOf(client);
@@ -342,13 +363,14 @@ async function checkReplies() {
   let totalBounces = 0;
   let totalUnsubscribes = 0;
   let accountsChecked = 0;
+  /** @type {unknown[]} */
   const activeClients = [];
 
   let accounts = [];
   const settings = getSettings();
 
   if (settings.accounts && settings.accounts.length > 0) {
-    accounts = settings.accounts.map(acc => ({
+    accounts = settings.accounts.map(/** @param {{ id: string|number; user?: string; email?: string; pass?: string; password?: string; imapHost?: string; host?: string; imapPort?: number|string; port?: number|string }} acc */ (acc) => ({
       id: acc.id,
       user: acc.user || acc.email,
       pass: safeDecryptPassword(acc.pass || acc.password), // ← DECRYPTED
@@ -393,9 +415,9 @@ async function checkReplies() {
   try {
     await Promise.race([scanWork, timeout]);
   } catch (err) {
-    console.warn(`⚠️ ${err.message}. Returning partial results.`);
-    for (const client of activeClients) {
-      try { await client.logout(); } catch (e) {}
+    console.warn(`⚠️ ${errOf(err).message}. Returning partial results.`);
+    for (const client of /** @type {{ logout(): Promise<void> }[]} */ (activeClients)) {
+      try { await client.logout(); } catch (_e) { /* best-effort logout */ }
     }
   } finally {
     if (timeoutId) {

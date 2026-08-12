@@ -1,6 +1,7 @@
 'use strict';
 
 const axios = require('axios');
+const { errOf } = require('./utils');
 const cheerio = require('cheerio');
 const http = require('http');
 const https = require('https');
@@ -8,6 +9,9 @@ const https = require('https');
 /**
  * Deterministic Website Audit Engine
  * Inspects technical quality, OpenGraph, Schema markup, social proof, CTAs, and performance.
+ */
+/**
+ * @param {string} websiteUrl
  */
 async function auditWebsite(websiteUrl) {
   if (!websiteUrl || typeof websiteUrl !== 'string') {
@@ -35,7 +39,7 @@ async function auditWebsite(websiteUrl) {
     hasSchemaMarkup: false,
     hasSocialProof: false,
     cms: 'Unknown',
-    copyrightYear: null,
+    copyrightYear: /** @type {number|null} */ (null),
   };
 
   if (!metrics.isHttps) {
@@ -54,26 +58,26 @@ async function auditWebsite(websiteUrl) {
       httpAgent: new http.Agent({ keepAlive: false }),
       httpsAgent: new https.Agent({ keepAlive: false, rejectUnauthorized: false })
     });
+    const resp = /** @type {{ data?: unknown; request?: { res?: { socket?: { encrypted?: boolean } } } }} */ (/** @type {unknown} */ (response));
 
-    metrics.responseTimeMs = Date.now() - startTime;
+        metrics.responseTimeMs = Date.now() - startTime;
     if (metrics.responseTimeMs > 3000) {
       score -= 15;
       problems.push(`Slow page load speed (${(metrics.responseTimeMs / 1000).toFixed(1)}s)`);
     }
-
-    metrics.hasSsl = response.request.res.socket.encrypted || false;
-    const html = response.data || '';
+    metrics.hasSsl = (resp.request && resp.request.res && resp.request.res.socket && resp.request.res.socket.encrypted) || false;
+    const html = String(resp.data || '');
     const $ = cheerio.load(html);
-
     // 1. Favicon Check
-    metrics.hasFavicon = $('link[rel*="icon"]').length > 0;
+    metrics.hasFavicon = /** @type {number} */ ($('link[rel*="icon"]').length) > 0;
     if (!metrics.hasFavicon) {
       score -= 10;
       problems.push('Missing website favicon');
     }
 
     // 2. Meta Description & OpenGraph
-    metrics.hasMetaDescription = $('meta[name="description"]').attr('content')?.length > 10;
+    const metaDesc = $('meta[name="description"]').attr('content') || '';
+    metrics.hasMetaDescription = metaDesc.length > 10;
     if (!metrics.hasMetaDescription) {
       score -= 10;
       problems.push('Missing SEO meta description tag');
@@ -86,14 +90,14 @@ async function auditWebsite(websiteUrl) {
     }
 
     // 3. Schema Markup
-    metrics.hasSchemaMarkup = $('script[type="application/ld+json"]').length > 0;
+    metrics.hasSchemaMarkup = /** @type {number} */ ($('script[type="application/ld+json"]').length) > 0;
     if (!metrics.hasSchemaMarkup) {
       score -= 10;
       problems.push('Missing Schema.org structured data markup');
     }
 
     // 4. Mobile Viewport
-    metrics.hasViewport = $('meta[name="viewport"]').length > 0;
+    metrics.hasViewport = /** @type {number} */ ($('meta[name="viewport"]').length) > 0;
     if (!metrics.hasViewport) {
       score -= 15;
       problems.push('No mobile viewport tag (poor mobile experience)');
@@ -101,13 +105,13 @@ async function auditWebsite(websiteUrl) {
 
     // 5. CTA & Social Proof Check
     const ctaButtons = $('a.btn, button, input[type="submit"], a[href*="contact"], a[href*="shop"], a[href*="book"]');
-    metrics.hasCtaAboveFold = ctaButtons.length > 0;
+    metrics.hasCtaAboveFold = /** @type {number} */ (ctaButtons.length) > 0;
     if (!metrics.hasCtaAboveFold) {
       score -= 15;
       problems.push('No prominent Call to Action (CTA) button above fold');
     }
 
-    const htmlText = $.text().toLowerCase();
+    const htmlText = String($.text()).toLowerCase();
     metrics.hasSocialProof = htmlText.includes('review') || htmlText.includes('testimonial') || htmlText.includes('rating') || htmlText.includes('client');
     if (!metrics.hasSocialProof) {
       score -= 10;
@@ -122,7 +126,7 @@ async function auditWebsite(websiteUrl) {
     }
 
     // 7. Social Links
-    metrics.hasSocialLinks = $('a[href*="facebook"], a[href*="instagram"], a[href*="twitter"], a[href*="linkedin"]').length > 0;
+    metrics.hasSocialLinks = /** @type {number} */ ($('a[href*="facebook"], a[href*="instagram"], a[href*="twitter"], a[href*="linkedin"]').length) > 0;
 
     // 8. CMS Detection
     if (html.includes('Shopify.shop') || html.includes('cdn.shopify.com')) metrics.cms = 'Shopify';
@@ -135,9 +139,9 @@ async function auditWebsite(websiteUrl) {
     // 9. Stale Copyright Year
     const copyMatch = html.match(/©\s*(\d{4})|copyright\s*(\d{4})/i);
     if (copyMatch) {
-      metrics.copyrightYear = parseInt(copyMatch[1] || copyMatch[2], 10);
+      metrics.copyrightYear = /** @type {number} */ (parseInt(copyMatch[1] || copyMatch[2], 10));
       const currentYear = new Date().getFullYear();
-      if (metrics.copyrightYear < currentYear - 2) {
+      if ((metrics.copyrightYear || 0) < currentYear - 2) {
         score -= 15;
         problems.push(`Outdated copyright year (${metrics.copyrightYear}) — site appears unmaintained`);
       }
@@ -145,7 +149,7 @@ async function auditWebsite(websiteUrl) {
 
   } catch (err) {
     score -= 40;
-    problems.push(`Website failed to connect: ${err.message}`);
+    problems.push(`Website failed to connect: ${errOf(err).message}`);
   }
 
   const finalScore = Math.max(0, Math.min(100, Math.round(score)));

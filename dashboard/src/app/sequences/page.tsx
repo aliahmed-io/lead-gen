@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Save, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
+import { PageHeader } from '@/components/ui/page';
 
 interface SequenceStep {
   step: number;
@@ -13,6 +16,7 @@ export default function SequencesPage() {
   const [sequence, setSequence] = useState<SequenceStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetch('/api/settings')
@@ -43,12 +47,12 @@ export default function SequencesPage() {
       });
       if (res.ok) {
         setSequence(reindexed);
-        alert('Sequence saved successfully!');
+        showToast('Sequence saved successfully!', 'success');
       } else {
-        alert('Failed to save sequence');
+        showToast('Failed to save sequence', 'error');
       }
-    } catch {
-      alert('Error saving sequence');
+    } catch (e: unknown) {
+      showToast(`Error saving sequence: ${(e as Error).message}`, 'error');
     } finally {
       setSaving(false);
     }
@@ -87,7 +91,15 @@ export default function SequencesPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: '40px' }}>Loading...</div>;
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '16px' }}>
+        <motion.div
+          animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+          style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid var(--border-default)', borderTopColor: 'var(--honey-500)' }}
+        />
+        <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontFamily: 'var(--font-inter)' }}>Loading sequence…</span>
+      </div>
+    );
   }
 
   // Calculate cumulative timeline days
@@ -101,15 +113,17 @@ export default function SequencesPage() {
 
   return (
     <div className="page-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
-        <div>
-          <h1 className="text-3xl font-bold font-serif mb-2 text-primary">Campaign Sequence Builder</h1>
-          <p className="text-muted text-sm">Design your multi-step email sequences. Delays are relative to the previous step.</p>
-        </div>
-        <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Save size={16} />
-          {saving ? 'Saving...' : 'Save Sequence'}
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <PageHeader
+          title="Campaign Sequence Builder"
+          subtitle="Design your multi-step email sequences. Delays are relative to the previous step."
+          onRefresh={() => fetch('/api/settings').then(r => r.ok ? r.json() : {}).then((d: Record<string, unknown>) => { if (d.sequence) setSequence(d.sequence as SequenceStep[]); })}
+        >
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Save size={16} />
+            {saving ? 'Saving...' : 'Save Sequence'}
+          </button>
+        </PageHeader>
       </div>
 
       {/* Editor */}

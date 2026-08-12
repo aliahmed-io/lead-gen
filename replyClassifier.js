@@ -69,5 +69,9 @@ const defaultClassifier = new RuleBasedReplyClassifier();
 
 module.exports = {
   RuleBasedReplyClassifier,
+  /**
+   * @param {string} [textBody]
+   * @param {string} [subject]
+   */
   classifySentiment: (textBody, subject) => defaultClassifier.classify(textBody, subject),
 };

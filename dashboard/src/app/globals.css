@@ -188,6 +188,15 @@ code, pre, kbd, samp, .font-mono {
   white-space: nowrap;
   text-decoration: none;
 }
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+}
+.btn-ghost:hover {
+  background: var(--honey-50);
+  color: var(--text-primary);
+}
 .btn:active { transform: scale(0.97); }
 .btn:disabled { opacity: 0.4; pointer-events: none; }
 
@@ -226,6 +235,7 @@ code, pre, kbd, samp, .font-mono {
 }
 
 /* ─── Nav Item ────────────────────────────────────────────────────── */
+.nav-link,
 .nav-item {
   display: flex;
   align-items: center;
@@ -241,15 +251,18 @@ code, pre, kbd, samp, .font-mono {
   text-decoration: none;
   letter-spacing: -0.01em;
 }
+.nav-link:hover,
 .nav-item:hover {
   background: var(--honey-100);
   color: var(--text-primary);
 }
+.nav-link.active,
 .nav-item.active {
   background: var(--bg-surface);
   color: var(--honey-600);
   box-shadow: 0 2px 8px rgba(44, 34, 25, 0.02);
 }
+.nav-link.active::before,
 .nav-item.active::before {
   content: '';
   position: absolute;

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { errOf } = require('./utils');
 const path = require('path');
 const lockfile = require('proper-lockfile');
 const { calculateLeadScore } = require('./leadScoring');
@@ -9,7 +10,7 @@ const BATCH_SAVE_THRESHOLD = 10;
 class CampaignDatabase {
   constructor() {
     this._dirtyCount = 0;
-    this.data = this.load();
+        this.data = /** @type {CampaignData} */ (this.load());
   }
 
   load() {
@@ -33,11 +34,11 @@ class CampaignDatabase {
             fs.renameSync(DB_PATH, backupPath);
             console.error(`⚠️ Database file corrupt. Renamed to ${backupPath}`);
           } catch (renameErr) {
-            console.error(`⚠️ Failed to rename corrupt database: ${renameErr.message}`);
+            console.error(`⚠️ Failed to rename corrupt database: ${errOf(renameErr).message}`);
           }
-          throw new Error(`Fatal: Campaign database JSON is corrupt: ${err.message}`);
+          throw new Error(`Fatal: Campaign database JSON is corrupt: ${errOf(err).message}`);
         }
-        console.error('Error reading campaign_db.json. Starting fresh.', err.message);
+        console.error('Error reading campaign_db.json. Starting fresh.', errOf(err).message);
         return { records: {}, dailyCounts: {}, unsubscribed: [], activityLog: [], abTests: {}, warmup: {}, alerts: [], accountState: {} };
       }
     }
@@ -49,14 +50,14 @@ class CampaignDatabase {
       if (!fs.existsSync(DB_PATH)) {
         fs.writeFileSync(DB_PATH, JSON.stringify(this.data, null, 2), 'utf-8');
       }
-      const release = lockfile.lockSync(DB_PATH, { retries: { retries: 5, minTimeout: 50 } });
+      const release = lockfile.lockSync(DB_PATH, /** @type {any} */ ({ retries: 5, minTimeout: 50 }));
       const tempPath = DB_PATH + '.tmp';
       fs.writeFileSync(tempPath, JSON.stringify(this.data, null, 2), 'utf-8');
       fs.renameSync(tempPath, DB_PATH);
       release();
       this._dirtyCount = 0;
     } catch (err) {
-      console.error('Error saving campaign DB:', err.message);
+      console.error('Error saving campaign DB:', errOf(err).message);
     }
   }
 
@@ -80,10 +81,18 @@ class CampaignDatabase {
     }
   }
 
+  /**
+   * @param {string} email
+   * @returns {LeadRecord|null}
+   */
   getRecord(email) {
     return this.data.records[email] || null;
   }
 
+  /**
+   * @param {string} messageId
+   * @returns {LeadRecord|null}
+   */
   getRecordByMessageId(messageId) {
     if (!messageId) return null;
     const targetId = String(messageId).trim();
@@ -115,18 +124,21 @@ class CampaignDatabase {
       day: '2-digit',
     });
     const parts = formatter.formatToParts(new Date());
-    const year = parts.find(p => p.type === 'year').value;
-    const month = parts.find(p => p.type === 'month').value;
-    const day = parts.find(p => p.type === 'day').value;
+    const year = /** @type {string} */ (parts.find(p => p.type === 'year')?.value ?? '');
+    const month = /** @type {string} */ (parts.find(p => p.type === 'month')?.value ?? '');
+    const day = /** @type {string} */ (parts.find(p => p.type === 'day')?.value ?? '');
     return `${year}-${month}-${day}`;
   }
 
+  /**
+   * @param {string|number} accountId
+   */
   getDailyCount(accountId) {
     if (!this.data.dailyCounts) this.data.dailyCounts = {};
     if (!this.data.dailyCounts[accountId]) this.data.dailyCounts[accountId] = {};
 
     const today = this.getTodayDateString();
-    return this.data.dailyCounts[accountId][today] || 0;
+    return this.data.dailyCounts[accountId]?.[today] || 0;
   }
 
   getTotalDailyCount() {
@@ -134,12 +146,15 @@ class CampaignDatabase {
     if (this.data.dailyCounts) {
       const today = this.getTodayDateString();
       for (const accountId in this.data.dailyCounts) {
-        total += (this.data.dailyCounts[accountId][today] || 0);
+        total += (this.data.dailyCounts[accountId]?.[today] || 0);
       }
     }
     return total;
   }
 
+  /**
+   * @param {string|number} accountId
+   */
   incrementDailyCount(accountId) {
     if (!this.data.dailyCounts) this.data.dailyCounts = {};
     if (!this.data.dailyCounts[accountId]) this.data.dailyCounts[accountId] = {};
@@ -157,6 +172,10 @@ class CampaignDatabase {
    *
    * @param {string} email
    * @param {object} details
+   */
+  /**
+   * @param {string} email
+   * @param {Partial<LeadRecord>} details
    */
   addOrUpdateRecord(email, details) {
     const oldRecord = this.data.records[email];
@@ -189,7 +208,7 @@ class CampaignDatabase {
 
     const newStatus = this.data.records[email].status;
     if (newStatus && newStatus !== oldStatus) {
-      this._logActivity(email, oldStatus, newStatus);
+      this._logActivity(email, /** @type {string|null} */ (oldStatus ?? null), newStatus);
     }
 
     this._maybeSave();
@@ -202,14 +221,19 @@ class CampaignDatabase {
    * @param {string|null} fromStatus
    * @param {string} toStatus
    */
+  /**
+   * @param {string} email
+   * @param {string|null} fromStatus
+   * @param {string} toStatus
+   */
   _logActivity(email, fromStatus, toStatus) {
     if (!this.data.activityLog) this.data.activityLog = [];
-    this.data.activityLog.push({
+    this.data.activityLog.push(/** @type {{ email: string, from: string|null, to: string, at: number }} */ ({
       email,
-      from: fromStatus,
+      from: fromStatus ?? null,
       to: toStatus,
       at: Date.now(),
-    });
+    }));
     if (this.data.activityLog.length > 500) {
       this.data.activityLog = this.data.activityLog.slice(-500);
     }
@@ -273,7 +297,7 @@ class CampaignDatabase {
               'X-Attempt': String(attempt),
             },
           }, res => {
-            resolve(res.statusCode >= 200 && res.statusCode < 300);
+            resolve((res.statusCode || 0) >= 200 && (res.statusCode || 0) < 300);
             res.resume(); // consume response body to free socket
           });
           req.setTimeout(10000, () => { req.destroy(); resolve(false); });
@@ -296,7 +320,7 @@ class CampaignDatabase {
 
       console.error(`   ❌ Webhook failed after ${MAX_ATTEMPTS} attempts for ${email}. Giving up.`);
     } catch (e) {
-      console.error('Failed to dispatch webhook:', e.message);
+      console.error('Failed to dispatch webhook:', errOf(e).message);
     }
   }
 
@@ -305,9 +329,10 @@ class CampaignDatabase {
   /**
    * Returns aggregate campaign status counts.
    *
-   * @returns {{ pending: number, sent: number, followed_up_1: number, followed_up_2: number, bounced: number, failed: number, interested: number, completed_no_interest: number }}
+   * @returns {Record<string, number>}
    */
   getStats() {
+    /** @type {Record<string, number>} */
     const counts = {
       pending: 0,
       sent: 0,
@@ -323,8 +348,9 @@ class CampaignDatabase {
     };
 
     for (const record of Object.values(this.data.records)) {
-      if (record.status in counts) {
-        counts[record.status]++;
+      const status = record.status ?? '';
+      if (status in counts) {
+        counts[status]++;
       }
     }
 
@@ -348,20 +374,21 @@ class CampaignDatabase {
 
     for (const record of Object.values(this.data.records)) {
       if (String(record.accountId) === aid) {
-        if (['sent', 'followed_up_1', 'followed_up_2', 'interested', 'completed_no_interest'].includes(record.status)) {
+        const status = record.status || '';
+        if (['sent', 'followed_up_1', 'followed_up_2', 'interested', 'completed_no_interest'].includes(status)) {
           totalSent++;
         }
-        if (record.status === 'bounced') {
+        if (status === 'bounced') {
           bounceCount++;
           totalSent++;
         }
-        if (record.repliedAt || record.status === 'interested') {
+        if (record.repliedAt || status === 'interested') {
           replyCount++;
         }
-        if (record.openedAt || record.openCount > 0) {
+        if (record.openedAt || (record.openCount || 0) > 0) {
           openCount += (record.openCount || 1);
         }
-        if (record.clickedAt || record.clickCount > 0) {
+        if (record.clickedAt || (record.clickCount || 0) > 0) {
           clickCount += (record.clickCount || 1);
         }
         const ts = record.sentAt || record.followedUp1At || record.followedUp2At;
@@ -375,22 +402,25 @@ class CampaignDatabase {
     const replyRate = totalSent > 0 ? replyCount / totalSent : 0;
 
     // Circuit Breaker & Health State Transition Logic
+    /** @type {'healthy'|'paused'|'watch'|'recovering'} */
     let health = 'healthy';
-    if (this.data.accountState && this.data.accountState[aid]?.paused) {
+    /** @type {{ paused?: boolean, recovering?: boolean }|undefined} */
+    const accountFlags = this.data.accountState && this.data.accountState[aid];
+    if (accountFlags && accountFlags.paused) {
       health = 'paused';
     } else if (bounceRate > 0.04) {
       health = 'paused';
-      this.addAlert({
+      this.addAlert(/** @type {AbAlert} */ ({
         id: `bounce_${aid}_${Date.now()}`,
         type: 'bounce_alert',
         severity: 'critical',
         accountId: aid,
         message: `Account ${aid} paused automatically due to high bounce rate (${(bounceRate * 100).toFixed(1)}% > 4.0%).`,
         at: Date.now(),
-      });
+      }));
     } else if (bounceRate > 0.02) {
       health = 'watch';
-    } else if (this.data.accountState && this.data.accountState[aid]?.recovering) {
+    } else if (accountFlags && accountFlags.recovering) {
       health = 'recovering';
     }
 
@@ -414,18 +444,24 @@ class CampaignDatabase {
     return this.data.alerts || [];
   }
 
+  /**
+   * @param {AbAlert} alert
+   */
   addAlert(alert) {
     if (!this.data.alerts) this.data.alerts = [];
-    const exists = this.data.alerts.some(a => a.type === alert.type && a.accountId === alert.accountId);
+    const exists = /** @type {AbAlert[]} */ (this.data.alerts).some(a => a.type === alert.type && a.accountId === alert.accountId);
     if (!exists) {
       this.data.alerts.push(alert);
       this._maybeSave();
     }
   }
 
+  /**
+   * @param {string} alertId
+   */
   clearAlert(alertId) {
     if (!this.data.alerts) return;
-    this.data.alerts = this.data.alerts.filter(a => a.id !== alertId);
+    this.data.alerts = /** @type {AbAlert[]} */ (this.data.alerts).filter(a => a.id !== alertId);
     this._maybeSave();
   }
 
@@ -435,7 +471,7 @@ class CampaignDatabase {
    * Checks if an email address or company domain has been contacted in the last 90 days
    * or is permanently unsubscribed/bounced.
    *
-   * @param {string} target - Email address or domain
+   * @param {string} target Email address or domain
    * @returns {boolean} True if suppressed
    */
   isDomainSuppressed(target) {
@@ -454,7 +490,7 @@ class CampaignDatabase {
       const recDomain = recEmail.includes('@') ? recEmail.split('@')[1] : '';
 
       if (recEmail === cleanTarget || recDomain === domain) {
-        if (['bounced', 'unsubscribed', 'failed'].includes(record.status)) {
+        if (['bounced', 'unsubscribed', 'failed'].includes(record.status ?? '')) {
           return true;
         }
 
@@ -528,7 +564,7 @@ class CampaignDatabase {
         day: '2-digit',
       });
       const parts = formatter.formatToParts(target);
-      const dateStr = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+      const dateStr = `${parts.find(p => p.type === 'year')?.value ?? ''}-${parts.find(p => p.type === 'month')?.value ?? ''}-${parts.find(p => p.type === 'day')?.value ?? ''}`;
 
       let dayTotal = 0;
       if (this.data.dailyCounts) {
@@ -551,21 +587,30 @@ class CampaignDatabase {
    */
   getRecentActivity(limit) {
     const n = limit || 20;
-    const log = this.data.activityLog || [];
-    return log.slice(-n);
+    const log = /** @type {unknown[]} */ (this.data.activityLog || []);
+    return /** @type {Array<{ email: string, from: string|null, to: string, at: number }>} */ (log.slice(-n));
   }
 
   /* ── A/B Testing & Warmup Tracking ────────────────────────────── */
 
+  /**
+   * @param {string} testId
+   * @returns {AbTestResult|null}
+   */
   getAbTest(testId) {
     if (!this.data.abTests) this.data.abTests = {};
     return this.data.abTests[testId] || null;
   }
 
+  /**
+   * @param {string} testId
+   * @param {string} variant
+   * @param {'sent'|'reply'} result
+   */
   updateAbTest(testId, variant, result) {
     if (!this.data.abTests) this.data.abTests = {};
     if (!this.data.abTests[testId]) {
-      this.data.abTests[testId] = { variants: {} };
+      this.data.abTests[testId] = /** @type {AbTestResult} */ ({ variants: {} });
     }
     if (!this.data.abTests[testId].variants[variant]) {
       this.data.abTests[testId].variants[variant] = { sent: 0, replies: 0 };
@@ -575,11 +620,18 @@ class CampaignDatabase {
     this._maybeSave();
   }
 
+  /**
+   * @param {string|number} accountId
+   */
   getWarmupStatus(accountId) {
     if (!this.data.warmup) this.data.warmup = {};
-    return this.data.warmup[accountId] || { level: 1, currentVolume: 0 };
+    return /** @type {object} */ (this.data.warmup[accountId] || { level: 1, currentVolume: 0 });
   }
 
+  /**
+   * @param {string|number} accountId
+   * @param {object} data
+   */
   updateWarmupStatus(accountId, data) {
     if (!this.data.warmup) this.data.warmup = {};
     this.data.warmup[accountId] = { ...this.getWarmupStatus(accountId), ...data };

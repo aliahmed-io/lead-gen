@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Mail, Save, Plus, Trash2, ArrowLeft, RefreshCw,
-  Sparkles, CheckCircle, AlertTriangle, Eye, Code, Smartphone, Monitor, HelpCircle, FileText, Activity, Info, ShieldCheck, XCircle
+  Mail, Save, Plus, Trash2,
+  CheckCircle, AlertTriangle, Eye, Smartphone, Monitor, HelpCircle, FileText, Info, ShieldCheck, XCircle, Activity
 } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
-import { Button } from '@/components/ui/button';
+import { PageHeader, ErrorBanner } from '@/components/ui/page';
 
 export default function Templates() {
   const [templates, setTemplates] = useState<Record<string, { subject: string; text: string }>>({});
@@ -17,7 +17,16 @@ export default function Templates() {
   const [activeVariant, setActiveVariant] = useState(""); // "" means Variant A, "B", "C", etc.
   const [error, setError] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
-  const [templateSpamReport, setTemplateSpamReport] = useState<any>(null);
+  const [templateSpamReport, setTemplateSpamReport] = useState<{
+    score: number;
+    verdict?: string;
+    summary?: string;
+    rules: { name: string; rule?: string; passed: boolean; score?: number; description?: string }[];
+    recommendations?: string[];
+    spamAssassinRating?: string;
+    ratingLabel?: string;
+    [key: string]: unknown;
+  } | null>(null);
   const [testingSpam, setTestingSpam] = useState(false);
 
   const runTemplateSpamCheck = async (subject: string, body: string) => {
@@ -240,32 +249,26 @@ export default function Templates() {
     <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', fontFamily: 'var(--font-inter)' }}>
       
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>Email Sequences</h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Customize your sequence stages. Add variations for automatic A/B test rotations.
-          </p>
-        </div>
-        <button 
-          onClick={saveTemplates} 
-          disabled={saving} 
+      <PageHeader
+        title="Email Sequences"
+        subtitle="Customize your sequence stages. Add variations for automatic A/B test rotations."
+        onRefresh={saveTemplates}
+        refreshLoading={saving}
+      >
+        <button
+          onClick={saveTemplates}
+          disabled={saving}
           className="btn btn-primary"
           style={{ padding: '10px 24px', fontSize: '14px', gap: '8px' }}
         >
           <Save size={16} />
-          {saving ? "Saving..." : "Save Sequences"}
+          {saving ? 'Saving…' : 'Save Sequences'}
         </button>
-      </div>
+      </PageHeader>
 
       {/* Notifications */}
       <AnimatePresence>
-        {error && (
-          <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--danger-bg)', border: '1px solid rgba(181, 78, 69, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--danger)' }}>
-            <AlertTriangle size={15} style={{ flexShrink: 0 }} /> {error}
-          </motion.div>
-        )}
+        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
         {saved && (
           <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid rgba(74, 109, 75, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--success)' }}>
@@ -658,6 +661,7 @@ export default function Templates() {
             animate={{ opacity: 1, scale: 1 }}
             className="glass-panel-raised p-6 rounded-2xl max-w-lg w-full space-y-5"
           >
+            {!templateSpamReport && null}
             <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
               <div className="flex items-center gap-2.5">
                 <ShieldCheck className="text-[var(--honey-600)]" size={22} />
@@ -690,7 +694,7 @@ export default function Templates() {
             {/* Rules Checklist */}
             <div className="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1">
               <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Spam Filter Rules Checklist</h4>
-              {templateSpamReport.rules.map((r: any, idx: number) => (
+              {templateSpamReport.rules.map((r, idx: number) => (
                 <div key={idx} className="p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl flex items-start gap-3">
                   {r.passed ? (
                     <CheckCircle size={16} className="text-[var(--success)] shrink-0 mt-0.5" />
@@ -706,13 +710,13 @@ export default function Templates() {
             </div>
 
             {/* Recommendations */}
-            {templateSpamReport.recommendations.length > 0 && (
+            {(templateSpamReport.recommendations?.length ?? 0) > 0 && (
               <div className="p-4 bg-[var(--warning-bg)] border border-[var(--warning)]/20 rounded-xl space-y-1.5">
                 <h5 className="text-xs font-bold text-[var(--warning)] flex items-center gap-1.5">
                   <AlertTriangle size={14} /> Recommended Copy Adjustments
                 </h5>
                 <ul className="list-disc list-inside text-xs text-[var(--text-secondary)] space-y-1 pl-1">
-                  {templateSpamReport.recommendations.map((rec: string, i: number) => (
+                  {templateSpamReport.recommendations?.map((rec, i: number) => (
                     <li key={i}>{rec}</li>
                   ))}
                 </ul>

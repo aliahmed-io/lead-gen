@@ -22,6 +22,12 @@ export interface LeadRecord {
 export interface BusinessDbRecord {
   name?: string;
   email?: string;
+  companyName?: string;
+  contactName?: string;
+  firstName?: string;
+  lastName?: string;
+  qualityTier?: string;
+  qualityScore?: number;
   platform?: string;
   emailStatus?: string;
   updatedAt?: string;
@@ -62,15 +68,15 @@ export interface AccountHealth {
   id: string | number;
   email: string;
   appPassword?: string;
-  totpSecret?: string;
+  totpCode?: string;
+  totpSecondsRemaining?: number;
   firstName?: string;
   lastName?: string;
   senderName?: string;
   signature?: string;
   forwardingDestination?: string;
   adminEmail?: string;
-  adminPassword?: string;
-  adminSecret?: string;
+  hasAdminCredentials?: boolean;
   sentToday: number;
   totalSent: number;
   bounceCount: number;

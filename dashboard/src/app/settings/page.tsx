@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Save, AlertCircle, ShieldAlert, Clock, Mail, CheckCircle,
+  Save, ShieldAlert, Clock, Mail, CheckCircle,
   Zap, Link2, RefreshCw,
 } from 'lucide-react';
+import { PageHeader, ErrorBanner } from '@/components/ui/page';
 
 const Section = ({
   icon, label, accent, children,
@@ -104,22 +105,14 @@ export default function SettingsPage() {
   return (
     <div style={{ padding: '32px', maxWidth: '760px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '100px', fontFamily: 'var(--font-inter)' }}>
 
-      {/* ── Header ───────────────────────────────────────────────── */}
-      <div style={{ marginBottom: '8px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>Configuration</h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-          Schedule, safety thresholds, compliance, and integrations.
-        </p>
-      </div>
-
+            {/* ── Header ───────────────────────────────────────────────── */}
+      <PageHeader
+        title="Configuration"
+        subtitle="Schedule, safety thresholds, compliance, and integrations."
+      />
       {/* ── Alerts ──────────────────────────────────────────────── */}
       <AnimatePresence>
-        {error && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--danger-bg)', border: '1px solid rgba(181, 78, 69, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--danger)' }}>
-            <AlertCircle size={15} style={{ flexShrink: 0 }} /> {error}
-          </motion.div>
-        )}
+        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
         {saved && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid rgba(74, 109, 75, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--success)' }}>

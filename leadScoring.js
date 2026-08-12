@@ -2,14 +2,14 @@
 
 /**
  * Calculates a 0-100 engagement score for a lead based on their activity.
- * @param {object} record - Campaign lead record
+ * @param {LeadRecord} record - Campaign lead record
  * @returns {number} Score from 0 to 100
  */
 function calculateLeadScore(record) {
   if (!record) return 0;
 
   // Disqualified statuses get 0
-  if (['bounced', 'unsubscribed', 'failed'].includes(record.status)) {
+  if (['bounced', 'unsubscribed', 'failed'].includes(/** @type {string} */ (record.status ?? ''))) {
     return 0;
   }
 

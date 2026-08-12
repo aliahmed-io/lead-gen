@@ -4,18 +4,37 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+} from 'recharts';
+import {
   Send, Users, CheckCircle, XCircle, TrendingUp,
-  Play, Pause as PauseIcon, Square, AlertCircle,
-  Activity, ShieldAlert, ArrowRight, RefreshCw,
-  Zap,
+  Play, Pause as PauseIcon, Square,
+  Activity, ShieldAlert, ArrowRight, Target,
+  Zap, Flame, Inbox as InboxIcon, LayoutTemplate,
 } from 'lucide-react';
 import { EnhancedStats, CampaignState, AccountHealth } from '@/types';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/ui/status-badge';
-import { StatCard } from '@/components/ui/stat-card';
+import { ErrorBanner, PageHeader, usePageRefresh } from '@/components/ui/page';
 
 const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 const stagger = { show: { transition: { staggerChildren: 0.06 } } };
+
+const fmt = (n?: number) => (n ?? 0).toLocaleString();
+
+const fmtStatus = (s: string) => {
+  if (s === 'followed_up_1') return 'Follow-up 1';
+  if (s === 'followed_up_2') return 'Follow-up 2';
+  if (s === 'completed_no_interest') return 'Opted Out';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
+const activityBadge = (s: string) => {
+  if (s === 'interested')        return { bg: 'var(--success-bg)', color: 'var(--success)', border: 'rgba(74, 109, 75, 0.15)' };
+  if (s.startsWith('followed'))  return { bg: 'rgba(161, 136, 107, 0.08)', color: 'var(--text-secondary)', border: 'rgba(161, 136, 107, 0.15)' };
+  if (s === 'sent')              return { bg: 'var(--honey-100)',  color: 'var(--honey-600)', border: 'var(--honey-glow)' };
+  if (s === 'bounced')           return { bg: 'var(--danger-bg)',   color: 'var(--danger)', border: 'rgba(181, 78, 69, 0.15)' };
+  return                                { bg: 'var(--bg-neutral-muted)', color: 'var(--text-secondary)', border: 'var(--border-subtle)' };
+};
 
 export default function Overview() {
   const [stats, setStats] = useState<EnhancedStats | null>(null);
@@ -48,7 +67,10 @@ export default function Overview() {
     });
     const iv = setInterval(fetchData, 8000);
     return () => clearInterval(iv);
+     
   }, []);
+
+  const { refresh: refreshData, refreshing } = usePageRefresh(fetchData);
 
   const handleCampaignAction = async (action: 'pause' | 'resume' | 'stop', reason?: string) => {
     setActionLoading(true);
@@ -68,7 +90,6 @@ export default function Overview() {
     }
   };
 
-  const fmt = (n?: number) => (n ?? 0).toLocaleString();
   const status = campaignState?.status ?? 'running';
 
   // ── Loading skeleton ──────────────────────────────────────────────
@@ -86,84 +107,88 @@ export default function Overview() {
 
   // ── Metrics ───────────────────────────────────────────────────────
   const totalLeads = stats?.total ?? 0;
-  const sentCount  = stats?.sent ?? 0;
+  const sentCount = stats?.sent ?? 0;
   const s1 = stats?.followUpBreakdown?.stage1 ?? 0;
   const s2 = stats?.followUpBreakdown?.stage2 ?? 0;
   const replied = stats?.replied ?? 0;
   const volumes = stats?.dailyVolume ?? [];
   const maxVol = Math.max(...volumes.map(v => v.count), 1);
 
+  const replyRate = totalLeads > 0 ? ((replied / totalLeads) * 100) : 0;
+  const bounceRatePct = totalLeads > 0 ? (((stats?.bounced ?? 0) / totalLeads) * 100) : 0;
+  const completionPct = totalLeads > 0 ? ((sentCount / totalLeads) * 100) : 0;
+
+  // 7-day trailing window for comparison
+  const recent7 = volumes.slice(-7);
+  const previous7 = volumes.slice(-14, -7);
+  const avgRecent = recent7.length ? recent7.reduce((a, v) => a + v.count, 0) / recent7.length : 0;
+  const avgPrevious = previous7.length ? previous7.reduce((a, v) => a + v.count, 0) / previous7.length : 0;
+  const volumeDeltaPct = avgPrevious > 0 ? Math.round(((avgRecent - avgPrevious) / avgPrevious) * 100) : (avgRecent > 0 ? 100 : 0);
+
   const statCards = [
-    { label: 'Total Leads',   value: fmt(stats?.total),            delta: null,  icon: Users,         accent: 'var(--honey-500)', glow: 'var(--honey-glow)' },
-    { label: 'Emails Sent',   value: fmt(stats?.sent),             delta: null,  icon: Send,           accent: '#8B7355',          glow: 'rgba(139,115,85,0.08)' },
-    { label: 'Interested',    value: fmt(stats?.replied),           delta: null,  icon: CheckCircle,    accent: 'var(--success)',   glow: 'var(--success-bg)' },
-    { label: 'Bounced',       value: fmt(stats?.bounced),           delta: null,  icon: XCircle,        accent: 'var(--danger)',    glow: 'var(--danger-bg)' },
-    { label: 'Reply Rate',    value: `${stats?.conversion ?? 0}%`, delta: null,  icon: TrendingUp,     accent: 'var(--warning)',   glow: 'var(--warning-bg)' },
+    {
+      label: 'Total Leads', value: fmt(stats?.total), icon: Users,
+      accent: 'var(--honey-500)', glow: 'var(--honey-glow)',
+      data: volumes.map(v => v.count), delta: null,
+    },
+    {
+      label: 'Emails Sent', value: fmt(stats?.sent), icon: Send,
+      accent: '#8B7355', glow: 'rgba(139,115,85,0.08)',
+      data: volumes.map(v => v.count),
+      delta: volumeDeltaPct !== 0 ? `${volumeDeltaPct > 0 ? '+' : ''}${volumeDeltaPct}% vs prev 7d` : null,
+    },
+    {
+      label: 'Interested', value: fmt(stats?.replied), icon: CheckCircle,
+      accent: 'var(--success)', glow: 'var(--success-bg)',
+      data: volumes.map(v => Math.round(v.count * (totalLeads > 0 ? replied / totalLeads : 0))),
+      delta: replyRate > 0 ? `${replyRate.toFixed(1)}% reply rate` : null,
+    },
+    {
+      label: 'Bounced', value: fmt(stats?.bounced), icon: XCircle,
+      accent: 'var(--danger)', glow: 'var(--danger-bg)',
+      data: volumes.map(v => Math.round(v.count * (totalLeads > 0 ? (stats?.bounced ?? 0) / totalLeads : 0))),
+      delta: `${bounceRatePct.toFixed(1)}% bounce rate`,
+    },
+    {
+      label: 'Completion', value: `${completionPct.toFixed(0)}%`, icon: Target,
+      accent: 'var(--warning)', glow: 'var(--warning-bg)',
+      data: volumes.map((v, i) => Math.min(100, ((volumes.slice(0, i + 1).reduce((a, x) => a + x.count, 0) / totalLeads) * 100) || 0)),
+      delta: sentCount > 0 ? `${fmt(totalLeads - sentCount)} pending` : null,
+    },
   ];
 
+  const chartData = volumes.map(v => ({
+    name: new Date(v.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    count: v.count,
+  }));
+
   const funnelRows = [
-    { name: 'Pending',      count: Math.max(totalLeads - sentCount, 0), color: 'var(--honey-500)' },
-    { name: 'Sent',         count: sentCount,                            color: '#8B7355' },
-    { name: 'Follow-up 1',  count: s1,                                   color: '#A1886B' },
-    { name: 'Follow-up 2',  count: s2,                                   color: '#C69D6E' },
-    { name: 'Interested',   count: replied,                              color: 'var(--success)' },
+    { name: 'Pending', count: Math.max(totalLeads - sentCount, 0), color: 'var(--honey-500)', icon: Users },
+    { name: 'Sent', count: sentCount, color: '#8B7355', icon: Send },
+    { name: 'Follow-up 1', count: s1, color: '#A1886B', icon: TrendingUp },
+    { name: 'Follow-up 2', count: s2, color: '#C69D6E', icon: TrendingUp },
+    { name: 'Interested', count: replied, color: 'var(--success)', icon: CheckCircle },
   ];
 
   const statusMeta = {
-    running: { label: 'Live',    color: 'var(--success)', bg: 'var(--success-bg)',  border: 'rgba(74, 109, 75, 0.15)' },
-    paused:  { label: 'Paused',  color: 'var(--warning)', bg: 'var(--warning-bg)', border: 'rgba(198, 120, 43, 0.15)' },
-    stopped: { label: 'Stopped', color: 'var(--danger)', bg: 'var(--danger-bg)',  border: 'rgba(181, 78, 69, 0.15)' },
+    running: { label: 'Live', color: 'var(--success)', bg: 'var(--success-bg)', border: 'rgba(74, 109, 75, 0.15)' },
+    paused: { label: 'Paused', color: 'var(--warning)', bg: 'var(--warning-bg)', border: 'rgba(198, 120, 43, 0.15)' },
+    stopped: { label: 'Stopped', color: 'var(--danger)', bg: 'var(--danger-bg)', border: 'rgba(181, 78, 69, 0.15)' },
   }[status];
 
-  const fmtStatus = (s: string) => {
-    if (s === 'followed_up_1') return 'Follow-up 1';
-    if (s === 'followed_up_2') return 'Follow-up 2';
-    if (s === 'completed_no_interest') return 'Opted Out';
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  };
-
-  const activityBadge = (s: string) => {
-    if (s === 'interested')        return { bg: 'var(--success-bg)', color: 'var(--success)', border: 'rgba(74, 109, 75, 0.15)' };
-    if (s.startsWith('followed'))  return { bg: 'rgba(161, 136, 107, 0.08)', color: 'var(--text-secondary)', border: 'rgba(161, 136, 107, 0.15)' };
-    if (s === 'sent')              return { bg: 'var(--honey-100)',  color: 'var(--honey-600)', border: 'var(--honey-glow)' };
-    if (s === 'bounced')           return { bg: 'var(--danger-bg)',   color: 'var(--danger)', border: 'rgba(181, 78, 69, 0.15)' };
-    return                                { bg: 'var(--bg-neutral-muted)', color: 'var(--text-secondary)', border: 'var(--border-subtle)' };
-  };
-
   return (
-    <div style={{ padding: '32px', maxWidth: '1280px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ padding: '32px', maxWidth: '1280px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-            Campaign Overview
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'var(--font-inter)' }}>
-            Real-time metrics and controls for your outreach system.
-          </p>
-        </div>
-        <button
-          onClick={fetchData}
-          className="btn btn-secondary"
-          style={{ padding: '8px', borderRadius: '10px' }}
-          aria-label="Refresh"
-        >
-          <RefreshCw size={15} className={actionLoading ? 'animate-spin' : ''} />
-        </button>
-      </div>
+      <PageHeader
+        title="Campaign Overview"
+        subtitle="Real-time metrics and controls for your outreach system."
+        onRefresh={refreshData}
+        refreshLoading={refreshing || actionLoading}
+      />
 
       {/* ── Error ──────────────────────────────────────────────────── */}
-      {error && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px',
-          background: 'var(--danger-bg)', border: '1px solid rgba(181, 78, 69, 0.18)',
-          borderRadius: '12px', fontSize: '13px', color: 'var(--danger)', fontFamily: 'var(--font-inter)'
-        }}>
-          <AlertCircle size={15} style={{ flexShrink: 0 }} />
-          {error}
-        </div>
-      )}
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {/* ── Deliverability Alert Center Banner ─────────────────────── */}
       {stats?.alerts && (stats.alerts as Array<{ id: string; message: string; severity?: string }>).length > 0 && (
@@ -188,11 +213,8 @@ export default function Overview() {
       {/* ── Campaign Control Banner ─────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px',
-          padding: '18px 24px', borderRadius: '16px',
-          background: statusMeta.bg, border: `1px solid ${statusMeta.border}`,
-        }}
+        className="card"
+        style={{ padding: '18px 24px', background: statusMeta.bg, border: `1px solid ${statusMeta.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
@@ -247,11 +269,9 @@ export default function Overview() {
       <motion.div variants={stagger} initial="hidden" animate="show"
         style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
         {statCards.map((c) => (
-          <motion.div key={c.label} variants={fadeUp} transition={{ duration: 0.3 }}
-            className="stat-card"
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <span className="section-label" style={{ fontSize: '10px' }}>{c.label}</span>
+          <motion.div key={c.label} variants={fadeUp} transition={{ duration: 0.3 }} className="stat-card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span className="section-label">{c.label}</span>
               <div style={{
                 width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: c.glow, border: `1px solid ${c.accent}1c`,
@@ -262,6 +282,26 @@ export default function Overview() {
             <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.04em', lineHeight: 1, fontFamily: 'var(--font-serif)' }}>
               {c.value}
             </div>
+            <div style={{ height: '26px', marginTop: '8px' }}>
+              <ResponsiveContainer width="100%" height={26}>
+                <AreaChart data={c.data.map((v, i) => ({ i, v: Math.max(0, v as number) }))}>
+                  <Area
+                    type="monotone"
+                    dataKey="v"
+                    stroke={c.accent}
+                    strokeWidth={1.5}
+                    fill={c.accent}
+                    fillOpacity={0.12}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            {c.delta && (
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {c.delta}
+              </div>
+            )}
           </motion.div>
         ))}
       </motion.div>
@@ -270,67 +310,79 @@ export default function Overview() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '16px', fontFamily: 'var(--font-inter)' }}>
 
         {/* Volume Chart */}
-        <div className="card" style={{ padding: '24px', height: '300px', display: 'flex', flexDirection: 'column' }}>
+        <div className="card" style={{ padding: '24px', minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', fontFamily: 'var(--font-serif)' }}>Send Volume</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)' }}>Send Volume</div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Daily emails — last 14 days</div>
             </div>
             <span className="badge badge-gray">CT timezone</span>
           </div>
 
-          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '5px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', position: 'relative' }}>
-            {/* Y-axis grid */}
-            {[0, 25, 50, 75, 100].map(pct => (
-              <div key={pct} style={{
-                position: 'absolute', left: 0, right: 0, top: `${100 - pct}%`,
-                borderTop: '1px solid var(--border-subtle)', pointerEvents: 'none',
-              }} />
-            ))}
-            {volumes.map((v, i) => {
-              const pct = (v.count / maxVol) * 100;
-              const d = new Date(v.date + 'T12:00:00');
-              const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-              const isRecent = i >= volumes.length - 3;
-              return (
-                <div key={v.date} title={`${v.count} sends — ${label}`}
-                  style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end', cursor: 'pointer', position: 'relative', zIndex: 10 }}
-                >
-                  <div style={{
-                    width: '100%',
-                    height: `${Math.max(pct, 3)}%`,
-                    borderRadius: '4px 4px 2px 2px',
-                    background: isRecent
-                      ? 'linear-gradient(180deg, var(--honey-200) 0%, var(--honey-500) 100%)'
-                      : 'linear-gradient(180deg, rgba(110, 97, 83, 0.25) 0%, rgba(110, 97, 83, 0.1) 100%)',
-                    transition: 'all 0.2s',
-                  }} />
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-            {[0, 6, 13].map(i => volumes[i] && (
-              <span key={i} style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                {new Date(volumes[i].date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-            ))}
+          <div style={{ flex: 1, minHeight: '200px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--honey-200)" stopOpacity={0.7} />
+                    <stop offset="100%" stopColor="var(--honey-500)" stopOpacity={0.15} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="var(--border-subtle)" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--border-subtle)' }}
+                  interval="preserveStartEnd"
+                  minTickGap={40}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={28}
+                  domain={[0, Math.max(maxVol, 1)]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontFamily: 'var(--font-inter)',
+                    color: 'var(--text-primary)',
+                    boxShadow: '0 8px 24px rgba(44, 34, 25, 0.08)',
+                  }}
+                  formatter={(value: unknown) => [`${value} sends`, 'Sent']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  stroke="var(--honey-500)"
+                  strokeWidth={2}
+                  fill="url(#volGrad)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
         {/* Funnel */}
-        <div className="card" style={{ padding: '24px', height: '300px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', fontFamily: 'var(--font-serif)', marginBottom: '4px' }}>Pipeline</div>
+        <div className="card" style={{ padding: '24px', minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', marginBottom: '4px' }}>Pipeline</div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>Outreach stage breakdown</div>
 
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '14px' }}>
             {funnelRows.map((row) => {
               const pct = totalLeads > 0 ? (row.count / totalLeads) * 100 : 0;
               return (
                 <div key={row.name}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>{row.name}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      <row.icon size={12} style={{ color: row.color }} />
+                      {row.name}
+                    </span>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                       {row.count.toLocaleString()} · {pct.toFixed(1)}%
                     </span>
@@ -356,11 +408,11 @@ export default function Overview() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>A/B/C Template Experiment (1,500 Split Test)</span>
+              <span>A/B/C Template Experiment</span>
               <span className="badge badge-amber">3-Stage Drip</span>
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Tracking reply rates, positive sentiment, booked calls, and deals closed across 500 emails per template.
+              Tracking reply rates, positive sentiment, booked calls, and deals closed per template variant.
             </div>
           </div>
           <Link href="/templates" style={{ fontSize: '12px', color: 'var(--honey-600)', fontWeight: 700, textDecoration: 'none' }}>
@@ -368,50 +420,80 @@ export default function Overview() {
           </Link>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ padding: '10px 12px' }}>Template Variant</th>
-                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Sent</th>
-                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Open Rate</th>
-                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Reply Rate</th>
-                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Positive Replies</th>
-                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Calls Booked</th>
-                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Clients Closed</th>
-              </tr>
-            </thead>
-            <tbody>
-              {['A', 'B', 'C'].map((vKey) => {
-                const v = stats?.variantBreakdown?.[vKey] || {
-                  name: vKey === 'A' ? 'Template A (Control - No Prices)' : vKey === 'B' ? 'Template B (Introductory Prices)' : 'Template C (Aggressive Value)',
-                  sent: 0, opens: 0, replies: 0, positiveReplies: 0, callsBooked: 0, clientsClosed: 0
-                };
-                const openPct = v.sent > 0 ? ((v.opens / v.sent) * 100).toFixed(1) : '0.0';
-                const replyPct = v.sent > 0 ? ((v.replies / v.sent) * 100).toFixed(1) : '0.0';
+        {stats?.variantBreakdown && ['A', 'B', 'C'].some(k => (stats.variantBreakdown?.[k]?.sent ?? 0) > 0) ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '10px 12px' }}>Template Variant</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center' }}>Sent</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center' }}>Open Rate</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center' }}>Reply Rate</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center' }}>Positive Replies</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center' }}>Calls Booked</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center' }}>Clients Closed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {['A', 'B', 'C'].map((vKey) => {
+                  const v = stats.variantBreakdown?.[vKey] || {
+                    name: vKey === 'A' ? 'Template A (Control - No Prices)' : vKey === 'B' ? 'Template B (Introductory Prices)' : 'Template C (Aggressive Value)',
+                    sent: 0, opens: 0, replies: 0, positiveReplies: 0, callsBooked: 0, clientsClosed: 0,
+                  };
+                  const openPct = v.sent > 0 ? ((v.opens / v.sent) * 100).toFixed(1) : '0.0';
+                  const replyPct = v.sent > 0 ? ((v.replies / v.sent) * 100).toFixed(1) : '0.0';
 
-                return (
-                  <tr key={vKey} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      <span className="badge badge-gray" style={{ marginRight: '8px' }}>Variant {vKey}</span>
-                      {v.name}
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>{v.sent} / 500</td>
-                    <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--honey-600)', fontWeight: 700 }}>{openPct}%</td>
-                    <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--success)', fontWeight: 700 }}>{replyPct}%</td>
-                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 700, color: 'var(--text-primary)' }}>{v.positiveReplies}</td>
-                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 700, color: 'var(--text-primary)' }}>{v.callsBooked}</td>
-                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 800, color: 'var(--success)' }}>{v.clientsClosed}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr key={vKey} className="table-row">
+                      <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <span className="badge badge-gray" style={{ marginRight: '8px' }}>Variant {vKey}</span>
+                        {v.name}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>{v.sent}</td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--honey-600)', fontWeight: 700 }}>{openPct}%</td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--success)', fontWeight: 700 }}>{replyPct}%</td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontWeight: 700, color: 'var(--text-primary)' }}>{v.positiveReplies}</td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontWeight: 700, color: 'var(--text-primary)' }}>{v.callsBooked}</td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontWeight: 800, color: 'var(--success)' }}>{v.clientsClosed}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', fontFamily: 'var(--font-inter)' }}>
+            No template split-test data yet — runs populate automatically as emails are sent across variants.
+          </div>
+        )}
       </div>
 
-      {/* ── Bottom Row: Accounts + Activity ─────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '16px', fontFamily: 'var(--font-inter)' }}>
+      {/* ── Bottom Row: Quick Actions + Accounts + Activity ─────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr 320px', gap: '16px', fontFamily: 'var(--font-inter)' }}>
+
+        {/* Quick Actions */}
+        <div className="card" style={{ padding: '24px' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', marginBottom: '4px' }}>Quick Actions</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>Jump to where the work is</div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <Link href="/leads" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>
+              <Users size={15} /> Manage {fmt(totalLeads)} Leads
+            </Link>
+            <Link href="/inbox" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>
+              <InboxIcon size={15} /> Review Inbox & Replies
+            </Link>
+            <Link href="/sequences" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>
+              <Flame size={15} /> Edit Follow-up Sequence
+            </Link>
+            <Link href="/templates" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>
+              <LayoutTemplate size={15} /> Edit Email Templates
+            </Link>
+            <Link href="/health" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>
+              <ShieldAlert size={15} /> Run Deliverability Preflight
+            </Link>
+          </div>
+        </div>
 
         {/* Account Health */}
         <div className="card" style={{ padding: '24px' }}>

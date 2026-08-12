@@ -4,6 +4,7 @@ import path from 'path';
 import { AccountHealth } from '@/types';
 
 import { encryptPassword, isEncrypted, safeDecryptPassword } from '@/lib/crypto';
+import { generateTOTP } from '@/lib/totp';
 
 // ─── Rate Limiting (in-memory, per IP) ─────────────────────────────
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -139,15 +140,16 @@ export async function GET(request: Request) {
         id: accountId,
         email: acc.email as string,
         appPassword: safeDecryptPassword(acc.password as string),
-        totpSecret: acc.totpSecret as string | undefined,
+        ...(acc.totpSecret
+          ? await generateTOTP(acc.totpSecret as string)
+          : { totpCode: '------', totpSecondsRemaining: 30 }),
         firstName: (acc.firstName as string) || 'Ali',
         lastName: (acc.lastName as string) || 'Ahmed',
         senderName: (acc.senderName as string) || 'Ali Ahmed',
         signature: (acc.signature as string) || 'Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com',
         forwardingDestination: (acc.forwardingDestination as string) || (acc.email as string),
         adminEmail: (acc.adminEmail as string) || (acc.email as string),
-        adminPassword: acc.adminPassword as string | undefined,
-        adminSecret: acc.adminSecret as string | undefined,
+        hasAdminCredentials: Boolean(acc.adminPassword || acc.adminSecret),
         sentToday,
         totalSent,
         bounceCount,

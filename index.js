@@ -18,6 +18,7 @@
  */
 
 const { scrapeAllQueries } = require('./scraper');
+const { errOf } = require('./utils');
 const { findEmails } = require('./emailFinder');
 const { exportToExcel, printSummary } = require('./exporter');
 const { LeadsDatabase } = require('./db');
@@ -29,7 +30,7 @@ const { SEARCH_QUERIES, OUTPUT_FILE, DB_FILE } = require('./config');
 /* ------------------------------------------------------------------ */
 
 process.on('uncaughtException', (err) => {
-  console.error('\n\u26A0\uFE0F  [uncaughtException]', err.message);
+  console.error('\n\u26A0\uFE0F  [uncaughtException]', errOf(err).message);
   console.error(err.stack);
   try {
     if (db) /** @type {import('./db').LeadsDatabase} */ (db).save();
@@ -254,7 +255,7 @@ const RESTART_DELAY_MS = process.env.E2E_TESTS === 'true' ? 100 : 30_000;
   }
   try { allowSleep(); } catch { /* ignore */ }
 })().catch(err => {
-  console.error('\n\u274C Fatal error in auto-restart loop:', err.message);
+  console.error('\n\u274C Fatal error in auto-restart loop:', errOf(err).message);
   console.error(err.stack);
   try { allowSleep(); } catch { /* ignore */ }
   process.exit(1);

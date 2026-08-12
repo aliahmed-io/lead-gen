@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { errOf } = require('./utils');
 const path = require('path');
 const lockfile = require('proper-lockfile');
 
@@ -22,11 +23,11 @@ class InboxDatabase {
             fs.renameSync(INBOX_PATH, backupPath);
             console.error(`⚠️ Database file corrupt. Renamed to ${backupPath}`);
           } catch (renameErr) {
-            console.error(`⚠️ Failed to rename corrupt database: ${renameErr.message}`);
+            console.error(`⚠️ Failed to rename corrupt database: ${errOf(renameErr).message}`);
           }
-          throw new Error(`Fatal: Inbox database JSON is corrupt: ${err.message}`);
+          throw new Error(`Fatal: Inbox database JSON is corrupt: ${errOf(err).message}`);
         }
-        console.error('Error reading inbox_db.json. Starting fresh.', err.message);
+        console.error('Error reading inbox_db.json. Starting fresh.', errOf(err).message);
       }
     }
     return { threads: {} };
@@ -37,21 +38,22 @@ class InboxDatabase {
       if (!fs.existsSync(INBOX_PATH)) {
         fs.writeFileSync(INBOX_PATH, JSON.stringify(this.data, null, 2), 'utf-8');
       }
-      const release = lockfile.lockSync(INBOX_PATH, {
+      const release = lockfile.lockSync(INBOX_PATH, /** @type {any} */ ({
         retries: { retries: 5, minTimeout: 50 }
-      });
+      }));
       const tempPath = INBOX_PATH + '.tmp';
       fs.writeFileSync(tempPath, JSON.stringify(this.data, null, 2), 'utf-8');
       fs.renameSync(tempPath, INBOX_PATH);
       release();
     } catch (err) {
-      console.error('Error saving inbox DB:', err.message);
+      console.error('Error saving inbox DB:', errOf(err).message);
     }
   }
 
   /**
    * Saves or appends a message to a thread keyed by the lead's email address.
    * Direction: 'inbound' (from lead) or 'outbound' (sent by you).
+   * @param {{ leadEmail: string; fromAddress?: string; subject?: string; textBody?: string; htmlBody?: string; direction?: string; accountId?: string | number }} params
    */
   addMessage({ leadEmail, fromAddress, subject, textBody, htmlBody, direction, accountId }) {
     const key = leadEmail.toLowerCase();
@@ -84,6 +86,7 @@ class InboxDatabase {
     this.save();
   }
 
+  /** @param {string} leadEmail */
   getThread(leadEmail) {
     return this.data.threads[leadEmail.toLowerCase()] || null;
   }
@@ -93,6 +96,7 @@ class InboxDatabase {
       .sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
   }
 
+  /** @param {string} leadEmail */
   markRead(leadEmail) {
     const key = leadEmail.toLowerCase();
     if (this.data.threads[key]) {

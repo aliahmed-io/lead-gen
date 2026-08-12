@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   UserMinus, Trash2, Search, Plus, AlertCircle, CheckCircle, ShieldAlert
 } from 'lucide-react';
+import { PageHeader, ErrorBanner } from '@/components/ui/page';
 
 export default function UnsubscribesPage() {
   const [unsubscribed, setUnsubscribed] = useState<string[]>([]);
@@ -98,14 +99,14 @@ export default function UnsubscribesPage() {
     <div style={{ padding: '32px', maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '100px', fontFamily: 'var(--font-inter)' }}>
       
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div>
-        <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
-          Unsubscribe Management
-        </h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-          Global opt-out list. Outbound email outreach checker will automatically block sending to these addresses.
-        </p>
-      </div>
+      <PageHeader
+        title="Unsubscribe Management"
+        subtitle="Global opt-out list. Outbound email outreach checker will automatically block sending to these addresses."
+        onRefresh={fetchUnsubscribes}
+        refreshLoading={loading}
+      />
+
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {/* ── Quick Stats & Add form ──────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '24px', alignItems: 'stretch' }}>

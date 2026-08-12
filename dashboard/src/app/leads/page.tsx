@@ -6,12 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ChevronLeft, ChevronRight, UserCheck, UserMinus,
   ChevronDown, ChevronUp, Download, SlidersHorizontal, Upload,
-  Users, X, ShieldCheck, AlertTriangle, CheckCircle, ArrowUpDown, FileText
+  Users, X, ShieldCheck, CheckCircle, ArrowUpDown,
+  Flame, CircleDot, OctagonAlert
 } from 'lucide-react';
 import { LeadRecord } from '@/types';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { PageHeader, ErrorBanner } from '@/components/ui/page';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
@@ -159,7 +161,7 @@ export default function Leads() {
       .then(d => { setLeads(d.records || []); setTotal(d.total || 0); setTotalPages(d.totalPages || 0); setError(null); })
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [page, limit, status, platform, stateFilter, debouncedSearch, sortBy, sortOrder]);
+  }, [page, limit, status, platform, stateFilter, qualityTier, debouncedSearch, sortBy, sortOrder]);
 
   useEffect(() => {
     Promise.resolve().then(() => {
@@ -368,23 +370,15 @@ export default function Leads() {
     <div style={{ padding: '32px', maxWidth: '1600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', fontFamily: 'var(--font-inter)' }}>
 
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: 'var(--font-serif)' }}>
-            Leads Database
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {total.toLocaleString()} contacts · interactive sort and verify console
-          </p>
-        </div>
-        
-        {/* Header Action Buttons */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <Button variant="primary" icon={Upload} onClick={() => setShowImportModal(true)}>
-            Import CSV
-          </Button>
+      <PageHeader
+        title="Leads Database"
+        subtitle={`${total.toLocaleString()} contacts · interactive sort and verify console`}
+      >
+        <Button variant="primary" icon={Upload} onClick={() => setShowImportModal(true)}>
+          Import CSV
+        </Button>
 
-          <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }}>
             <button 
               onClick={() => setShowExportMenu(!showExportMenu)} 
               className="btn btn-secondary" 
@@ -436,15 +430,10 @@ export default function Leads() {
             )}
           </AnimatePresence>
         </div>
-      </div>
-      </div>
+      </PageHeader>
 
       {/* ── Error ──────────────────────────────────────────────────── */}
-      {error && (
-        <div style={{ padding: '12px 16px', background: 'var(--danger-bg)', border: '1px solid rgba(181, 78, 69, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <AlertTriangle size={14} /> {error}
-        </div>
-      )}
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {/* ── Filter Bar ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -469,9 +458,9 @@ export default function Leads() {
         {[
           { value: qualityTier, set: (v: string) => { setLoading(true); setQualityTier(v); setPage(1); }, opts: [
             { value: 'all', label: 'All Quality Tiers' },
-            { value: 'top', label: '🔥 Top Quality (Score 80-100)' },
-            { value: 'average', label: '📊 Average Quality (Score 50-79)' },
-            { value: 'low', label: '⚠️ Low Quality (Score < 50)' },
+            { value: 'top', label: 'Top Quality (Score 80-100)' },
+            { value: 'average', label: 'Average Quality (Score 50-79)' },
+            { value: 'low', label: 'Low Quality (Score < 50)' },
           ], label: 'Filter by Lead Quality' },
           { value: status, set: (v: string) => { setLoading(true); setStatus(v); setPage(1); }, opts: STATUS_OPTIONS, label: 'Filter by Status' },
           { value: platform, set: (v: string) => { setLoading(true); setPlatform(v); setPage(1); }, opts: PLATFORM_OPTIONS, label: 'Filter by Platform' },
@@ -714,13 +703,13 @@ export default function Leads() {
                     <td style={{ padding: '12px 16px', fontSize: '12px', whiteSpace: 'nowrap' }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '4px',
-                        padding: '2px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: 800,
-                        fontFamily: 'var(--font-mono)',
+                        padding: '2px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: 700,
                         background: lead.qualityTier === 'top' ? 'var(--honey-100)' : lead.qualityTier === 'average' ? 'var(--bg-elevated)' : 'var(--danger-bg)',
                         color: lead.qualityTier === 'top' ? 'var(--honey-700)' : lead.qualityTier === 'average' ? 'var(--text-secondary)' : 'var(--danger)',
                         border: lead.qualityTier === 'top' ? '1px solid var(--honey-500)' : '1px solid var(--border-subtle)',
                       }}>
-                        {lead.qualityTier === 'top' ? '🔥 Top' : lead.qualityTier === 'average' ? '📊 Avg' : '⚠️ Low'} ({lead.qualityScore || 65})
+                        {lead.qualityTier === 'top' ? <Flame size={10} /> : lead.qualityTier === 'average' ? <CircleDot size={10} /> : <OctagonAlert size={10} />}
+                        {lead.qualityTier === 'top' ? 'Top' : lead.qualityTier === 'average' ? 'Average' : 'Low'} ({lead.qualityScore ?? 0})
                       </span>
                     </td>
 

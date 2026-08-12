@@ -15,13 +15,13 @@
  */
 
 const dns = require('dns').promises;
+const { errOf } = require('./utils');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const pLimit = require('p-limit');
 const { chromium } = require('playwright');
 const {
   CONCURRENCY,
-  PLAYWRIGHT_EMAIL_CONCURRENCY,
   WEBSITE_TIMEOUT,
   PLAYWRIGHT_PAGE_TIMEOUT,
   USER_AGENTS,
@@ -426,7 +426,7 @@ async function fetchPage(url) {
     } catch (err) {
       clearTimeout(timeoutId);
       const code = err.code || '';
-      const msg = (err.message || '').toUpperCase();
+      const msg = (errOf(err).message || '').toUpperCase();
       const isNetworkError =
         NETWORK_ERROR_CODES.some((c) => code === c || msg.includes(c));
 
@@ -534,7 +534,7 @@ async function processWebsiteAxios(business) {
       }
     }
   } catch (err) {
-    const msg = err.message || '';
+    const msg = errOf(err).message || '';
     if (
       err.code === 'ECONNABORTED' ||
       msg.includes('timeout') ||
@@ -597,8 +597,11 @@ async function findEmails(businesses, db) {
     `\n\u{1F4E7} Phase 2 \u2014 Unified Email Extraction: processing ${withWebsites.length} websites...`
   );
 
-  const path = require('path');
-  const { exportToExcel } = require('./exporter');
+  // Guard against offline periods during long extraction runs.
+  await ensureOnline('email extraction');
+
+  // Excel export is deferred to the pipeline's final export step (exporter.js),
+  // so nothing is imported here to keep the per-lead loop lean.
 
   /** Browser-crash error signatures. */
   const BROWSER_CRASH_PATTERNS = [
@@ -610,7 +613,7 @@ async function findEmails(businesses, db) {
   ];
 
   function isBrowserCrash(err) {
-    const msg = (err && err.message) || '';
+    const msg = (err && errOf(err).message) || '';
     return BROWSER_CRASH_PATTERNS.some((p) => msg.includes(p));
   }
 
@@ -743,7 +746,10 @@ async function findEmails(businesses, db) {
                         browser.close().catch(() => {}),
                         new Promise(r => setTimeout(r, 5000))
                       ]); 
-                    } catch {}
+                    } catch (closeErr) {
+                      // Browser was already closed — safe to ignore during crash recovery.
+                      void closeErr;
+                    }
                     try {
                       browser = await launchBrowser();
                     } catch (launchErr) {
@@ -752,7 +758,7 @@ async function findEmails(businesses, db) {
                     }
                     emailStatus = 'error';
                   } else {
-                    const msg = err.message || '';
+                    const msg = errOf(err).message || '';
                     const isTimeout = msg.includes('timeout') || msg.includes('Navigation timeout');
                     emailStatus = isTimeout ? 'timeout' : 'error';
                   }
@@ -822,6 +828,10 @@ async function findEmails(businesses, db) {
     );
 
     await Promise.all(tasks);
+
+    console.log(
+      `\n\u2705 Phase 2 complete: ${completedCount} websites processed, emails found on ${foundCount}`
+    );
   } finally {
     if (browser) {
       await Promise.race([
@@ -836,6 +846,7 @@ async function findEmails(businesses, db) {
 
 module.exports = {
   findEmails,
+  ensureOnline,
   extractEmailsFromHtml,
   detectPlatform,
   isValidEmail,

@@ -2,18 +2,33 @@
 
 const campaignDb = require('./campaignDb');
 const templates = require('./templates');
-const { isWeekday } = require('./timeUtils');
+
+/**
+ * Returns true when the given date falls on a business day (Mon–Fri).
+ * The outreach scheduler skips weekends, so duration estimates only count
+ * weekdays toward the projected completion date.
+ */
+/**
+ * @param {Date} date
+ */
+function isBusinessDay(date) {
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+}
 
 /**
  * Campaign Dry-Run Preflight & Execution Simulator Engine
  * Validates campaign configuration, domain suppression, merge tags, SMTP access,
  * and projects total execution duration before launching a campaign.
  */
+/**
+ * @param {{ leads?: LeadRecord[], accounts?: EmailAccount[], dailyLimit?: number }} options
+ */
 function runPreflightAndSimulation({ leads = [], accounts = [], dailyLimit = 30 }) {
   const validation = {
     valid: true,
-    warnings: [],
-    errors: [],
+    warnings: /** @type {string[]} */ ([]),
+    errors: /** @type {string[]} */ ([]),
     checks: {
       mergeTags: true,
       suppression: true,
@@ -35,7 +50,7 @@ function runPreflightAndSimulation({ leads = [], accounts = [], dailyLimit = 30 
   }
 
   // 1. Check template availability
-  const mainTemplate = templates.getInitialEmail ? templates.getInitialEmail({ businessName: 'Test', city: 'Austin' }) : null;
+  const mainTemplate = templates.getEmail ? templates.getEmail('initial', { businessName: 'Test', city: 'Austin' }) : null;
   if (!mainTemplate || !mainTemplate.subject) {
     validation.errors.push('Primary cold email template missing');
     validation.valid = false;
@@ -75,7 +90,7 @@ function runPreflightAndSimulation({ leads = [], accounts = [], dailyLimit = 30 
   }
 
   // 3. Simulation Calculation
-  const activeMailboxes = accounts.filter(a => a.healthScore !== 'critical' && a.bounceRate <= 0.04);
+  const activeMailboxes = accounts.filter(a => a.healthScore !== 'critical' && ((/** @type {{ bounceRate?: number }} */ (a)).bounceRate ?? 0) <= 0.04);
   const activeCount = activeMailboxes.length || 1;
   const totalDailyCapacity = activeCount * dailyLimit;
 
@@ -87,9 +102,13 @@ function runPreflightAndSimulation({ leads = [], accounts = [], dailyLimit = 30 
   const daysToCompleteInitial = Math.ceil(initialSends / totalDailyCapacity) || 1;
   const totalDaysToComplete = Math.ceil(totalSends / totalDailyCapacity) || 1;
 
-  const startDate = new Date();
+  // Advance only across business days, matching the scheduler's weekend skip.
   const estimatedCompletionDate = new Date();
-  estimatedCompletionDate.setDate(startDate.getDate() + totalDaysToComplete);
+  let businessDaysRemaining = Math.max(1, totalDaysToComplete);
+  while (businessDaysRemaining > 0) {
+    estimatedCompletionDate.setDate(estimatedCompletionDate.getDate() + 1);
+    if (isBusinessDay(estimatedCompletionDate)) businessDaysRemaining--;
+  }
 
   const simulation = {
     totalLeads: leads.length,

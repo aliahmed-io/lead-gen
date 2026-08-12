@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { errOf } = require('./utils');
 const nodemailer = require('nodemailer');
 const { LeadsDatabase } = require('./db');
 const campaignDb = require('./campaignDb');
@@ -10,6 +11,9 @@ const { isWithinBusinessHours } = require('./timeUtils');
 const campaignState = require('./campaignState');
 const { decrypt, isEncrypted } = require('./cryptoUtils');
 
+/**
+ * @param {CampaignSettings} settings
+ */
 function getSenderDetails(settings) {
   const displayName = settings.senderDisplayName || 'Sales Team';
   const address = settings.physicalAddress || '123 Business St, City, State 12345';
@@ -41,13 +45,16 @@ function getSettings() {
  * If it looks encrypted, decrypt it. If it is plain text (legacy), use as-is
  * and log a warning so you know to re-save it encrypted.
  */
+/**
+ * @param {string|undefined} password
+ */
 function safeDecryptPassword(password) {
   if (!password) return '';
   if (isEncrypted(password)) {
     try {
       return decrypt(password);
     } catch (e) {
-      console.error('Failed to decrypt password:', e.message);
+      console.error('Failed to decrypt password:', errOf(e).message);
       return '';
     }
   }
@@ -63,7 +70,7 @@ function safeDecryptPassword(password) {
 function buildTransporters() {
   const settings = getSettings();
   if (settings.accounts && settings.accounts.length > 0) {
-    return settings.accounts.map(acc => {
+    return settings.accounts.map(/** @param {EmailAccount} acc */ (acc) => {
       const user = acc.user || acc.email;
       const pass = safeDecryptPassword(acc.pass || acc.password);
       const host = acc.smtpHost || acc.host || 'smtp.gmail.com';
@@ -107,8 +114,9 @@ function buildTransporters() {
 /**
  * Checks the bounce rate for an account and auto-pauses if it exceeds the threshold.
  *
- * @param {CampaignDatabase} campaignDb
- * @param {object} account
+ * @param {{ getAccountStats(id: string|number): { totalSent: number; bounceRate: number; bounceCount: number } }} campaignDb
+ * @param {{ id: string|number; user: string }} account
+ * @param {number} bounceThreshold
  * @returns {boolean} true if the account is safe to send, false if auto-paused.
  */
 function checkBounceRate(campaignDb, account, bounceThreshold) {
@@ -143,8 +151,8 @@ async function startCampaign() {
   console.log('📤 Syncing leads from leads_db.json to Campaign Database...');
   const leadsWithEmails = leadsDb.getAll().filter(b => b.emails && b.emails.length > 0);
 
-  for (const lead of leadsWithEmails) {
-    const primaryEmail = lead.emails[0].toLowerCase();
+  for (const lead of /** @type {LeadRecord[]} */ (leadsWithEmails)) {
+    const primaryEmail = (lead.emails || [])[0].toLowerCase();
     if (!campaignDb.getRecord(primaryEmail)) {
       campaignDb.addOrUpdateRecord(primaryEmail, {
         businessName: lead.name,
@@ -160,8 +168,8 @@ async function startCampaign() {
   const pendingQueue = campaignDb.getAllRecords()
     .filter(r => r.status === 'pending')
     .sort((a, b) => {
-      const aPriority = priorityPlatforms.includes(a.platform) ? 1 : 0;
-      const bPriority = priorityPlatforms.includes(b.platform) ? 1 : 0;
+      const aPriority = priorityPlatforms.includes(/** @type {string} */ (a.platform || '')) ? 1 : 0;
+      const bPriority = priorityPlatforms.includes(/** @type {string} */ (b.platform || '')) ? 1 : 0;
       return bPriority - aPriority;
     });
   const settings = getSettings();
@@ -208,7 +216,7 @@ async function startCampaign() {
     const account = transporters[accountIndex % transporters.length];
     accountIndex++;
 
-    const warmup = campaignDb.getWarmupStatus(account.id);
+    const warmup = /** @type {{ level?: number }} */ (campaignDb.getWarmupStatus(account.id));
     const accountMaxEmails = (warmup && warmup.level) ? warmup.level * 10 : settings.maxEmailsPerDay;
 
     const dailyCount = campaignDb.getDailyCount(account.id);
@@ -220,8 +228,8 @@ async function startCampaign() {
     }
 
     if (dailyCount >= accountMaxEmails) {
-      const allMaxed = transporters.every(t => {
-        const tWarmup = campaignDb.getWarmupStatus(t.id);
+      const allMaxed = transporters.every(/** @param {{ id: string|number }} t */ (t) => {
+        const tWarmup = /** @type {{ level?: number }} */ (campaignDb.getWarmupStatus(t.id));
         const tMax = (tWarmup && tWarmup.level) ? tWarmup.level * 10 : settings.maxEmailsPerDay;
         return campaignDb.getDailyCount(t.id) >= tMax;
       });
@@ -233,7 +241,7 @@ async function startCampaign() {
     }
 
     if (!checkBounceRate(campaignDb, account, settings.bounceThreshold || 0.05)) {
-      const healthyAccounts = transporters.filter(t => checkBounceRate(campaignDb, t, settings.bounceThreshold || 0.05));
+      const healthyAccounts = transporters.filter(/** @param {{ id: string|number; user: string }} t */ (t) => checkBounceRate(campaignDb, t, settings.bounceThreshold || 0.05));
       if (healthyAccounts.length === 0) {
         console.log('🛑 All accounts exceed bounce rate threshold. Stopping campaign.');
         campaignState.pause('All accounts exceeded bounce rate');
@@ -260,8 +268,9 @@ async function startCampaign() {
     console.log(`[Account ${account.id}] Verifying ${lead.email}...`);
     const verification = await verifyEmail(lead.email);
     if (!verification.valid) {
-      console.log(`   ❌ Bad Email: ${lead.email} (${verification.reason}). Marking as failed.`);
-      campaignDb.addOrUpdateRecord(lead.email, { status: 'failed', failReason: verification.reason });
+      const reason = /** @type {string} */ (verification.reason || 'Invalid email');
+      console.log(`   ❌ Bad Email: ${lead.email} (${reason}). Marking as failed.`);
+      campaignDb.addOrUpdateRecord(lead.email, { status: 'failed', failReason: reason });
       continue;
     }
 
@@ -283,7 +292,7 @@ async function startCampaign() {
       customSentence = genericCompliments[Math.floor(Math.random() * genericCompliments.length)];
     }
 
-    const emailData = templates.getInitialEmail({
+    const emailData = templates.getEmail('initial', {
       companyName: lead.businessName,
       website: lead.website || '',
       city: lead.city || '',
@@ -326,8 +335,8 @@ async function startCampaign() {
 
         console.log(`   ✅ Sent successfully! MessageId: ${info.messageId}`);
       } catch (err) {
-        console.error(`   ❌ SMTP Error sending to ${lead.email}: ${err.message}`);
-        campaignDb.addOrUpdateRecord(lead.email, { status: 'bounced', failReason: err.message });
+        console.error(`   ❌ SMTP Error sending to ${lead.email}: ${errOf(err).message}`);
+        campaignDb.addOrUpdateRecord(lead.email, { status: 'bounced', failReason: errOf(err).message });
         continue;
       }
     }

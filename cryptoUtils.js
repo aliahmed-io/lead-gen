@@ -15,6 +15,9 @@ function getKey() {
  * Encrypts a plain text string using AES-256-GCM.
  * Returns a string prefixed with 'ENC:' followed by the base64-encoded: IV + AuthTag + CipherText
  */
+/**
+ * @param {string} text
+ */
 function encrypt(text) {
   const iv = crypto.randomBytes(IV_LENGTH);
   const key = getKey();
@@ -27,6 +30,9 @@ function encrypt(text) {
 
 /**
  * Decrypts an 'ENC:' prefixed base64-encoded AES-256-GCM encrypted string.
+ */
+/**
+ * @param {string} encryptedString
  */
 function decrypt(encryptedString) {
   if (!isEncrypted(encryptedString)) {
@@ -45,6 +51,7 @@ function decrypt(encryptedString) {
 
 /**
  * Returns true if the string is prefixed with 'ENC:' indicating it is an encrypted blob.
+ * @param {unknown} value
  */
 function isEncrypted(value) {
   return typeof value === 'string' && value.startsWith('ENC:');

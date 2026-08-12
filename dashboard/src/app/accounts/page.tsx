@@ -7,22 +7,19 @@ import {
   ShieldAlert,
   Mail,
   AlertTriangle,
-  Send,
   Clock,
-  RefreshCw,
   CheckCircle,
   XCircle,
-  Activity,
   ChevronDown,
   ChevronUp,
+  Activity,
   Eye,
   EyeOff,
   Copy
 } from 'lucide-react';
 import { AccountHealth, Settings } from '@/types';
-import { generateTOTP } from '@/lib/totp';
 import { Modal } from '@/components/ui/modal';
-import { Button } from '@/components/ui/button';
+import { PageHeader, ErrorBanner } from '@/components/ui/page';
 
 interface DnsCheckResult {
   overall: 'good' | 'warning' | 'fail';
@@ -53,7 +50,27 @@ export default function Accounts() {
     password: '',
   });
   const [savingEdit, setSavingEdit] = useState(false);
-  const [spamReportModal, setSpamReportModal] = useState<{ email: string; report: any } | null>(null);
+  interface SpamReportRule {
+    name: string;
+    rule?: string;
+    passed: boolean;
+    score?: number;
+    description?: string;
+  }
+  interface SpamReport {
+    score: number;
+    verdict?: string;
+    summary?: string;
+    rules: SpamReportRule[];
+    recommendations?: string[];
+    spamAssassinRating?: string;
+    ratingLabel?: string;
+    [key: string]: unknown;
+  }
+  const [spamReportModal, setSpamReportModal] = useState<{
+    email: string;
+    report: SpamReport | null;
+  } | null>(null);
   const [spamLoading, setSpamLoading] = useState<Record<string, boolean>>({});
 
   const runSpamCheck = async (email: string) => {
@@ -78,6 +95,9 @@ export default function Accounts() {
   const openEditModal = (acc: AccountHealth) => {
     setEditingAccount(acc);
     setActiveTab('details');
+    // Credential fields are intentionally not pre-filled: the server never
+    // returns passwords, 2FA secrets, or admin credentials, so the edit form
+    // only applies changes the user types in explicitly.
     setEditForm({
       firstName: acc.firstName || 'Ali',
       lastName: acc.lastName || 'Ahmed',
@@ -85,9 +105,9 @@ export default function Accounts() {
       signature: acc.signature || 'Ali Ahmed\nFounder & Interactive Developer | Aethelon Labs\naethelonlabs.com',
       forwardingDestination: acc.forwardingDestination || acc.email,
       adminEmail: acc.adminEmail || acc.email,
-      adminPassword: acc.adminPassword || '',
-      adminSecret: acc.adminSecret || '',
-      password: acc.appPassword || '',
+      adminPassword: '',
+      adminSecret: '',
+      password: '',
     });
   };
 
@@ -119,6 +139,7 @@ export default function Accounts() {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [totpData, setTotpData] = useState<Record<string, { code: string; secondsRemaining: number }>>({});
+  const [totpStaleAt, setTotpStaleAt] = useState<number>(0);
   const [copiedTotpEmail, setCopiedTotpEmail] = useState<string | null>(null);
 
   const togglePasswordVisibility = (email: string) => {
@@ -139,25 +160,37 @@ export default function Accounts() {
     setTimeout(() => setCopiedTotpEmail(null), 2000);
   };
 
+  // Refresh live 2FA codes from the server so the TOTP secret never
+  // leaves the backend. Codes are requested once per 30-second window
+  // and stay valid until the next window starts.
   useEffect(() => {
     const updateCodes = async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const windowStart = Math.floor(now / 30) * 30;
+      if (totpStaleAt === windowStart) return;
+      setTotpStaleAt(windowStart);
+
       const newTotp: Record<string, { code: string; secondsRemaining: number }> = {};
-      for (const acc of accounts) {
-        if (acc.totpSecret) {
+      await Promise.all(
+        accounts.map(async (acc) => {
           try {
-            newTotp[acc.email] = await generateTOTP(acc.totpSecret);
+            const res = await fetch(`/api/accounts/totp?email=${encodeURIComponent(acc.email)}`);
+            if (res.ok) {
+              const data = await res.json();
+              newTotp[acc.email] = { code: data.code, secondsRemaining: data.secondsRemaining };
+            }
           } catch (e) {
             console.error(e);
           }
-        }
-      }
+        })
+      );
       setTotpData(newTotp);
     };
 
     updateCodes();
     const interval = setInterval(updateCodes, 1000);
     return () => clearInterval(interval);
-  }, [accounts]);
+  }, [accounts, totpStaleAt]);
 
   const checkDns = async (email: string) => {
     setDnsLoading(prev => ({ ...prev, [email]: true }));
@@ -261,16 +294,7 @@ export default function Accounts() {
   const criticalAccountsCount = accounts.filter(a => a.healthScore === 'critical').length;
   const warningAccountsCount = accounts.filter(a => a.healthScore === 'warning' || a.bounceRate > 0.03).length;
 
-  const formatDate = (timestamp: number | null) => {
-    if (!timestamp) return 'Never active';
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
+  
   const getScoreBadge = (score: 'good' | 'warning' | 'critical', rate: number) => {
     if (score === 'critical') {
       return (
@@ -296,28 +320,14 @@ export default function Accounts() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold text-[var(--text-primary)] tracking-tight font-serif">Outreach Mailboxes</h1>
-          <p className="text-[var(--text-secondary)] text-sm mt-1">Manage SMTP/IMAP rotation accounts, bounce thresholds, and warmups.</p>
-        </div>
-        <button
-          onClick={loadData}
-          disabled={refreshing}
-          className="p-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--honey-50)] transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-          title="Refresh Accounts"
-          aria-label="Refresh Accounts"
-        >
-          <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
-        </button>
-      </div>
+      <PageHeader
+        title="Outreach Mailboxes"
+        subtitle="Manage SMTP/IMAP rotation accounts, bounce thresholds, and warmups."
+        onRefresh={loadData}
+        refreshLoading={refreshing}
+      />
 
-      {error && (
-        <div className="glass-panel border-[var(--danger)]/20 bg-[var(--danger-bg)] p-4 rounded-xl flex items-center gap-3 text-[var(--danger)] text-sm font-semibold">
-          <AlertTriangle size={18} className="shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {/* Warning Banners */}
       {warningAccountsCount > 0 && (
@@ -417,7 +427,7 @@ export default function Accounts() {
                 )}
 
                 {/* Live 2FA Authentication Code Box */}
-                {account.totpSecret && (
+                {account.totpCode && account.totpCode !== '------' && (
                   <div className="mt-2 p-2 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-2 overflow-hidden">
                       <div className="relative w-5 h-5 flex items-center justify-center shrink-0">
@@ -946,7 +956,7 @@ export default function Accounts() {
       )}
 
       {/* Spam & Deliverability Audit Modal */}
-      {spamReportModal && (
+      {spamReportModal && spamReportModal.report && (
         <div className="overlay flex items-center justify-center p-4 z-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -985,7 +995,7 @@ export default function Accounts() {
             {/* Checklist */}
             <div className="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1">
               <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Rule Compliance Checklist</h4>
-              {spamReportModal.report.rules.map((r: any, idx: number) => (
+              {spamReportModal.report.rules.map((r, idx: number) => (
                 <div key={idx} className="p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl flex items-start gap-3">
                   {r.passed ? (
                     <CheckCircle size={16} className="text-[var(--success)] shrink-0 mt-0.5" />
@@ -1001,13 +1011,13 @@ export default function Accounts() {
             </div>
 
             {/* Actionable Recommendations */}
-            {spamReportModal.report.recommendations.length > 0 && (
+            {(spamReportModal.report.recommendations?.length ?? 0) > 0 && (
               <div className="p-4 bg-[var(--warning-bg)] border border-[var(--warning)]/20 rounded-xl space-y-1.5">
                 <h5 className="text-xs font-bold text-[var(--warning)] flex items-center gap-1.5">
                   <AlertTriangle size={14} /> Actionable Deliverability Recommendations
                 </h5>
                 <ul className="list-disc list-inside text-xs text-[var(--text-secondary)] space-y-1 pl-1">
-                  {spamReportModal.report.recommendations.map((rec: string, i: number) => (
+                  {spamReportModal.report.recommendations?.map((rec, i: number) => (
                     <li key={i}>{rec}</li>
                   ))}
                 </ul>

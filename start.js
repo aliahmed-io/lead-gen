@@ -10,8 +10,11 @@ const logFile = fs.createWriteStream(path.join(__dirname, 'audit.log'), { flags:
 const originalLog = console.log;
 const originalError = console.error;
 
+/**
+ * @param {unknown[]} args
+ */
 function formatArgs(args) {
-  return args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+  return args.map(/** @param {unknown} a */ (a) => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
 }
 
 console.log = function (...args) {
