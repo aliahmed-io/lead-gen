@@ -344,7 +344,7 @@ export default function Accounts() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4 md:space-y-5 font-sans">
       {/* Header */}
       <PageHeader
         title="Outreach Mailboxes"
@@ -357,17 +357,17 @@ export default function Accounts() {
           onClick={() => bulkTogglePause(false)}
           disabled={pausingAll || pausedAll}
           className="btn btn-ghost"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: pausedAll ? 0.5 : 1 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: pausedAll ? 0.5 : 1, padding: '6px 10px', fontSize: '12px' }}
         >
-          <Pause size={14} /> Pause All
+          <Pause size={13} /> Pause All
         </button>
         <button
           onClick={() => bulkTogglePause(true)}
           disabled={pausingAll || !pausedAll}
           className="btn btn-ghost"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: pausedAll ? 1 : 0.5 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: pausedAll ? 1 : 0.5, padding: '6px 10px', fontSize: '12px' }}
         >
-          <Play size={14} /> Resume All
+          <Play size={13} /> Resume All
         </button>
       </PageHeader>
 
@@ -375,7 +375,7 @@ export default function Accounts() {
 
       {/* Warning Banners */}
       {warningAccountsCount > 0 && (
-        <div className="glass-panel border-[var(--warning)]/20 bg-[var(--warning-bg)] p-5 rounded-2xl flex items-start gap-4">
+        <div className="glass-panel border-[var(--warning)]/20 bg-[var(--warning-bg)] p-3.5 md:p-4 rounded-xl flex items-start gap-3">
           <div className="p-2 bg-[var(--bg-surface)] rounded-xl border border-[var(--warning)]/20 text-[var(--warning)]">
             <AlertTriangle size={20} />
           </div>
@@ -390,7 +390,7 @@ export default function Accounts() {
       )}
 
       {criticalAccountsCount > 0 && (
-        <div className="glass-panel border-[var(--danger)]/20 bg-[var(--danger-bg)] p-5 rounded-2xl flex items-start gap-4">
+        <div className="glass-panel border-[var(--danger)]/20 bg-[var(--danger-bg)] p-3.5 md:p-4 rounded-xl flex items-start gap-3">
           <div className="p-2 bg-[var(--bg-surface)] rounded-xl border border-[var(--danger)]/20 text-[var(--danger)] animate-pulse">
             <ShieldAlert size={20} />
           </div>
@@ -405,7 +405,7 @@ export default function Accounts() {
       )}
 
       {/* Accounts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
         {accounts.map((account, index) => {
           const limitPct = (account.sentToday / dailyLimit) * 100;
           const bouncePct = (account.bounceRate * 100).toFixed(1);
@@ -416,35 +416,41 @@ export default function Accounts() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="card rounded-2xl p-6 relative overflow-hidden group flex flex-col justify-between min-h-[290px]"
+              className="card rounded-xl p-4 relative overflow-hidden group flex flex-col justify-between"
             >
               {/* Account Top Row */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="p-2 bg-[var(--honey-100)] border border-[var(--border-subtle)] rounded-xl text-[var(--honey-600)] group-hover:scale-105 transition-transform">
-                    <Mail size={18} />
-                  </div>
-                  {getScoreBadge(account.healthScore, account.bounceRate)}
-                </div>
-
-                <div className="space-y-0.5">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-[var(--text-primary)] truncate pr-2" title={account.email}>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(account)}
+                    className="flex items-center gap-2 min-w-0 text-left cursor-pointer group/btn"
+                    title="Details & Credentials"
+                  >
+                    <div className="p-1.5 bg-[var(--honey-100)] border border-[var(--border-subtle)] rounded-lg text-[var(--honey-600)] group-hover/btn:scale-105 transition-transform shrink-0">
+                      <Mail size={14} />
+                    </div>
+                    <h3 className="text-[13px] font-bold text-[var(--text-primary)] truncate group-hover/btn:underline underline-offset-4 decoration-[var(--honey-500)]" title={account.email}>
                       {account.email}
                     </h3>
+                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {getScoreBadge(account.healthScore, account.bounceRate)}
                     <button
+                      type="button"
                       onClick={() => openEditModal(account)}
-                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[var(--honey-100)] text-[var(--honey-700)] hover:bg-[var(--honey-200)] transition-colors cursor-pointer shrink-0 border border-[var(--border-subtle)]"
+                      className="p-1 text-[var(--text-muted)] hover:text-[var(--honey-600)] transition-colors cursor-pointer"
+                      title="Details & Credentials"
+                      aria-label="Details & Credentials"
                     >
-                      Details & Credentials
+                      <ChevronDown size={13} />
                     </button>
                   </div>
-                  <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">Mailbox ID: Account {account.id}</p>
                 </div>
 
                 {/* App Password Display Box */}
                 {account.appPassword && (
-                  <div className="mt-2 p-2 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
+                  <div className="p-1.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg flex items-center justify-between">
                     <div className="flex items-center gap-2 overflow-hidden">
                       <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">App Pass:</span>
                       <span className="text-xs font-mono font-semibold text-[var(--text-primary)] truncate">
@@ -472,7 +478,7 @@ export default function Accounts() {
 
                 {/* Live 2FA Authentication Code Box */}
                 {account.totpCode && account.totpCode !== '------' && (
-                  <div className="mt-2 p-2 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
+                  <div className="p-1.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg flex items-center justify-between">
                     <div className="flex items-center gap-2 overflow-hidden">
                       <div className="relative w-5 h-5 flex items-center justify-center shrink-0">
                         <svg className="w-5 h-5 -rotate-90" viewBox="0 0 36 36">
@@ -516,16 +522,16 @@ export default function Accounts() {
               </div>
               <button 
                 onClick={() => setDeleteTargetId(String(account.id))} 
-                className="absolute top-4 right-4 p-1.5 bg-[var(--danger-bg)] text-[var(--danger)] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--danger)] hover:text-white z-10 cursor-pointer border border-[var(--danger)]/15"
+                className="absolute top-2 right-2 p-1 bg-[var(--danger-bg)] text-[var(--danger)] rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--danger)] hover:text-white z-10 cursor-pointer border border-[var(--danger)]/15"
                 title="Delete Mailbox"
                 aria-label="Delete Mailbox"
               >
-                <ShieldAlert size={14} />
+                <ShieldAlert size={12} />
               </button>
 
               {/* DNS Status Panel */}
               {dnsResults[account.email] && (
-                <div className="mt-2 mb-2 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl text-xs">
+                <div className="mb-2 p-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg text-xs">
                   <div 
                     className="flex justify-between items-center cursor-pointer"
                     onClick={() => setDnsExpanded(p => ({ ...p, [account.email]: !p[account.email] }))}
@@ -566,13 +572,21 @@ export default function Accounts() {
                 </div>
               )}
 
+              {/* Detailed Metrics Row */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', borderTop: '1px solid var(--border-subtle)', paddingTop: '8px' }}>
+                <span style={{ fontSize: '11px' }}><span style={{ color: 'var(--text-muted)' }}>Opens </span><span className="font-mono font-bold" style={{ color: 'var(--text-primary)' }}>{((account.openRate || 0) * 100).toFixed(0)}%</span></span>
+                <span style={{ fontSize: '11px' }}><span style={{ color: 'var(--text-muted)' }}>Clicks </span><span className="font-mono font-bold" style={{ color: 'var(--text-primary)' }}>{((account.clickRate || 0) * 100).toFixed(0)}%</span></span>
+                <span style={{ fontSize: '11px' }}><span style={{ color: 'var(--text-muted)' }}>Replies </span><span className="font-mono font-bold" style={{ color: 'var(--success)' }}>{((account.replyRate || 0) * 100).toFixed(1)}%</span></span>
+                <span style={{ fontSize: '11px' }}><span style={{ color: 'var(--text-muted)' }}>Bounce </span><span className="font-mono font-bold" style={{ color: account.bounceRate > 0.04 ? 'var(--danger)' : account.bounceRate > 0.02 ? 'var(--warning)' : 'var(--success)' }}>{bouncePct}%</span></span>
+              </div>
+
               {/* Progress and Limits */}
-              <div className="space-y-2 my-2">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-[var(--text-secondary)]">Daily Limits Progress</span>
-                  <span className="text-[var(--text-primary)] font-bold font-mono">{account.sentToday} / {dailyLimit} sends</span>
+              <div className="space-y-1.5 mt-2">
+                <div className="flex justify-between items-center text-[11px] whitespace-nowrap">
+                  <span className="text-[var(--text-secondary)]">Daily Progress</span>
+                  <span className="text-[var(--text-primary)] font-bold font-mono">{account.sentToday} / {dailyLimit}</span>
                 </div>
-                <div className="progress-track">
+                <div className="progress-track" style={{ height: '5px' }}>
                   <div
                     style={{ width: `${Math.min(limitPct, 100)}%` }}
                     className="progress-fill"
@@ -580,53 +594,18 @@ export default function Accounts() {
                 </div>
               </div>
 
-              {/* Detailed Metrics Footer */}
-              <div className="grid grid-cols-4 gap-1 border-t border-[var(--border-subtle)] pt-3 text-center text-xs">
-                <div>
-                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Opens</p>
-                  <p className="text-xs font-bold text-[var(--text-primary)] mt-0.5 font-mono">
-                    {((account.openRate || 0) * 100).toFixed(0)}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Clicks</p>
-                  <p className="text-xs font-bold text-[var(--text-primary)] mt-0.5 font-mono">
-                    {((account.clickRate || 0) * 100).toFixed(0)}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Replies</p>
-                  <p className="text-xs font-bold text-[var(--success)] mt-0.5 font-mono">
-                    {((account.replyRate || 0) * 100).toFixed(1)}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Bounce</p>
-                  <p
-                    className={`text-xs font-bold mt-0.5 font-mono ${
-                      account.bounceRate > 0.04
-                        ? 'text-[var(--danger)]'
-                        : account.bounceRate > 0.02
-                        ? 'text-[var(--warning)]'
-                        : 'text-[var(--success)]'
-                    }`}
-                  >
-                    {bouncePct}%
-                  </p>
-                </div>
-              </div>
-
               {/* Last Active Timestamp & Reset Clock */}
               <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pt-2 mt-2 border-t border-[var(--border-subtle)]">
-                <div className="flex items-center gap-1.5">
-                  <Clock size={11} />
-                  <span>Resets at Midnight CT</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Clock size={11} className="shrink-0" />
+                  <span className="whitespace-nowrap truncate hidden sm:inline">Resets at Midnight CT</span>
+                  <span className="whitespace-nowrap sm:hidden">Daily reset: 00:00 CT</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <button
                     onClick={() => checkDns(account.email)}
                     disabled={dnsLoading[account.email]}
-                    className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                    className="flex items-center gap-1 whitespace-nowrap hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                   >
                     <Activity size={11} className={dnsLoading[account.email] ? "animate-spin" : ""} />
                     {dnsLoading[account.email] ? 'Checking...' : 'Check DNS'}
@@ -634,10 +613,10 @@ export default function Accounts() {
                   <button
                     onClick={() => runSpamCheck(account.email)}
                     disabled={spamLoading[account.email]}
-                    className="flex items-center gap-1 text-[var(--honey-600)] hover:underline font-bold transition-colors cursor-pointer"
+                    className="flex items-center gap-1 whitespace-nowrap text-[var(--honey-600)] hover:underline font-bold transition-colors cursor-pointer"
                   >
                     <ShieldCheck size={11} className={spamLoading[account.email] ? "animate-spin" : ""} />
-                    {spamLoading[account.email] ? 'Auditing...' : 'Run Spam Check'}
+                    {spamLoading[account.email] ? 'Auditing...' : 'Spam Check'}
                   </button>
                 </div>
               </div>
@@ -651,15 +630,15 @@ export default function Accounts() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: accounts.length * 0.05 }}
           onClick={() => setShowAddModal(true)}
-          className="card rounded-2xl p-6 hover:bg-[var(--honey-50)] border-dashed border-[var(--border-strong)] flex flex-col items-center justify-center cursor-pointer min-h-[280px]"
+          className="card rounded-xl p-4 hover:bg-[var(--honey-50)] border-dashed border-[var(--border-strong)] flex flex-col items-center justify-center cursor-pointer"
         >
-          <div className="w-12 h-12 bg-[var(--honey-100)] rounded-full flex items-center justify-center mb-4 border border-[var(--border-default)]">
+          <div className="w-9 h-9 bg-[var(--honey-100)] rounded-full flex items-center justify-center mb-2 border border-[var(--border-default)]">
             <svg className="w-6 h-6 text-[var(--honey-600)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
           </div>
-          <h3 className="text-sm font-bold text-[var(--text-primary)]">Add New Mailbox</h3>
-          <p className="text-xs text-[var(--text-muted)] mt-2 text-center">Connect a new SMTP/IMAP account for outreach.</p>
+          <h3 className="text-[13px] font-bold text-[var(--text-primary)]">Add New Mailbox</h3>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1 text-center">Connect a new SMTP/IMAP account.</p>
         </motion.div>
       </div>
 
