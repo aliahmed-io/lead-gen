@@ -624,22 +624,24 @@ export default function Accounts() {
         );
       })}
 
-        {/* Add Account Card */}
-        <motion.div
+        {/* Add Account Card — 7th grid slot */}
+        <motion.button
+          type="button"
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: accounts.length * 0.05 }}
           onClick={() => setShowAddModal(true)}
-          className="card rounded-xl p-4 hover:bg-[var(--honey-50)] border-dashed border-[var(--border-strong)] flex flex-col items-center justify-center cursor-pointer"
+          className="card rounded-2xl p-5 hover:bg-[var(--honey-50)] border-dashed border-[var(--border-strong)] flex flex-col items-center justify-center gap-1.5 cursor-pointer text-left"
+          aria-label="Add New Mailbox"
         >
-          <div className="w-9 h-9 bg-[var(--honey-100)] rounded-full flex items-center justify-center mb-2 border border-[var(--border-default)]">
-            <svg className="w-6 h-6 text-[var(--honey-600)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-10 h-10 bg-[var(--honey-100)] border border-[var(--border-subtle)] rounded-full flex items-center justify-center">
+            <svg className="w-5 h-5 text-[var(--honey-600)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
           </div>
           <h3 className="text-[13px] font-bold text-[var(--text-primary)]">Add New Mailbox</h3>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1 text-center">Connect a new SMTP/IMAP account.</p>
-        </motion.div>
+          <p className="text-[11px] text-[var(--text-muted)] text-center">Connect a new SMTP/IMAP account.</p>
+        </motion.button>
       </div>
 
       {showAddModal && (
