@@ -9,7 +9,7 @@
  * processed so re-runs skip them automatically.
  * 
  * @typedef {import('./scraper').BusinessDetails} BusinessDetails
- * @typedef {BusinessDetails & { _key?: string, addedAt?: string, updatedAt?: string }} StoredBusiness
+ * @typedef {BusinessDetails & { _key?: string, addedAt?: string, updatedAt?: string, qualityScore?: number, qualityGrade?: string, qualityTier?: string, qualityReasons?: string[] }} StoredBusiness
  */
 
 const fs = require('fs');
@@ -289,7 +289,7 @@ class LeadsDatabase {
 
   /**
    * Aggregate statistics about the current dataset.
-   * @returns {{total:number, withEmails:number, withWebsites:number, platforms:Record<string,number>, states:Record<string,number>}}
+   * @returns {{total:number, withEmails:number, withWebsites:number, platforms:Record<string,number>, states:Record<string,number>, qualityDistribution:Record<string,number>, avgQualityScore:number, avgRating:number, verifiedCount:number}}
    */
   getStats() {
     const all = this.getAll();
@@ -297,12 +297,35 @@ class LeadsDatabase {
     const platforms = {};
     /** @type {Record<string,number>} */
     const states = {};
+    /** @type {Record<string,number>} */
+    const qualityDistribution = {};
+    let qualityScoreSum = 0;
+    let qualityCount = 0;
+    let ratingSum = 0;
+    let ratingCount = 0;
+    let verifiedCount = 0;
 
     for (const b of all) {
       const p = b.platform || 'Unknown';
       platforms[p] = (platforms[p] || 0) + 1;
       const s = b.state || 'Unknown';
       states[s] = (states[s] || 0) + 1;
+
+      const tier = typeof b.qualityTier === 'string' && b.qualityTier ? b.qualityTier : (b.qualityGrade || '');
+      if (tier) {
+        qualityDistribution[tier] = (qualityDistribution[tier] || 0) + 1;
+      }
+      if (typeof b.qualityScore === 'number') {
+        qualityScoreSum += b.qualityScore;
+        qualityCount++;
+      }
+      if (typeof b.rating === 'number') {
+        ratingSum += /** @type {number} */ (b.rating);
+        ratingCount++;
+      }
+      if (b.emailStatus === 'verified' || (b.emailStatus || '').toLowerCase().includes('verified')) {
+        verifiedCount++;
+      }
     }
 
     return {
@@ -314,6 +337,10 @@ class LeadsDatabase {
       ).length,
       platforms,
       states,
+      qualityDistribution,
+      avgQualityScore: qualityCount > 0 ? Math.round(qualityScoreSum / qualityCount) : 0,
+      avgRating: ratingCount > 0 ? Math.round((ratingSum / ratingCount) * 10) / 10 : 0,
+      verifiedCount,
     };
   }
 

@@ -438,6 +438,99 @@ class CampaignDatabase {
     };
   }
 
+  /**
+   * Aggregates a deliverability summary across all sending accounts:
+   * per-account stats (via getAccountStats), plus 30-day daily trends of
+   * sent / bounced / replied / opened / clicked for charting.
+   * @returns {{ accounts: Array<{id:string, sentToday:number, totalSent:number, bounceCount:number, bounceRate:number, replyCount:number, replyRate:number, openCount:number, clickCount:number, lastActiveAt:number|null, health:string}>, daily: Array<{date:string, sent:number, bounced:number, replied:number, opened:number, clicked:number}>, overall: {totalSent:number, bounceCount:number, bounceRate:number, replyCount:number, replyRate:number, openCount:number, clickCount:number} }}
+   */
+  getDeliverabilitySummary() {
+    /** @type {Array<string>} */
+    let accountIds = [];
+    try {
+      const settingsPath = path.join(__dirname, 'settings.json');
+      if (fs.existsSync(settingsPath)) {
+        /** @type {{ accounts?: Array<{ id: string|number }|Record<string, unknown>> }} */
+        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        if (Array.isArray(settings.accounts)) {
+          accountIds = settings.accounts.map((a) => String((a && a.id) || ''));
+        } else if (settings.accounts && typeof settings.accounts === 'object') {
+          accountIds = Object.keys(settings.accounts);
+        }
+      }
+    } catch {
+      /* settings unreadable — fall back to account ids seen in records */
+    }
+    if (accountIds.length === 0) {
+      const seen = new Set();
+      for (const record of Object.values(this.data.records)) {
+        if (record && record.accountId !== null && record.accountId !== undefined) {
+          seen.add(String(record.accountId));
+        }
+      }
+      accountIds = Array.from(seen);
+    }
+
+    /** @type {Array<{id:string, sentToday:number, totalSent:number, bounceCount:number, bounceRate:number, replyCount:number, replyRate:number, openCount:number, clickCount:number, lastActiveAt:number|null, health:string}>} */
+    const accounts = accountIds.filter(id => id).map((id) => ({ id, ...this.getAccountStats(id) }));
+
+    /* Daily trends over the last 30 days */
+    const DAYS = 30;
+    const today = new Date();
+    /** @type {Array<{date:string, sent:number, bounced:number, replied:number, opened:number, clicked:number}>} */
+    const daily = [];
+    for (let i = DAYS - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const dayStart = d.getTime();
+      const dayEnd = dayStart + 86400000;
+      const row = { date: d.toISOString().slice(0, 10), sent: 0, bounced: 0, replied: 0, opened: 0, clicked: 0 };
+      for (const record of Object.values(this.data.records)) {
+        /** @type {Record<string, unknown>} */
+        const r = /** @type {Record<string, unknown>} */ (record);
+        const sendTs = /** @type {number|undefined} */ (r.sentAt) || /** @type {number|undefined} */ (r.followedUp1At) || /** @type {number|undefined} */ (r.followedUp2At);
+        const status = typeof r.status === 'string' ? r.status : '';
+        if (typeof sendTs === 'number' && sendTs >= dayStart && sendTs < dayEnd) {
+          row.sent++;
+          if (status === 'bounced' || r.bouncedAt) row.bounced++;
+          if (r.repliedAt || status === 'interested') row.replied++;
+          if (r.openedAt || typeof /** @type {number|undefined} */ (r.openCount) === 'number') row.opened++;
+          if (r.clickedAt || typeof /** @type {number|undefined} */ (r.clickCount) === 'number') row.clicked++;
+        }
+      }
+      daily.push(row);
+    }
+
+    /* Overall totals across accounts */
+    let totalSent = 0;
+    let bounceCount = 0;
+    let replyCount = 0;
+    let openCount = 0;
+    let clickCount = 0;
+    for (const a of accounts) {
+      totalSent += a.totalSent;
+      bounceCount += a.bounceCount;
+      replyCount += a.replyCount;
+      openCount += a.openCount;
+      clickCount += a.clickCount;
+    }
+
+    return {
+      accounts,
+      daily,
+      overall: {
+        totalSent,
+        bounceCount,
+        bounceRate: totalSent > 0 ? bounceCount / totalSent : 0,
+        replyCount,
+        replyRate: totalSent > 0 ? replyCount / totalSent : 0,
+        openCount,
+        clickCount,
+      },
+    };
+  }
+
   /* ── Deliverability Alerts ─────────────────────────────────────── */
 
   getAlerts() {

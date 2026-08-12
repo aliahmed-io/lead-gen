@@ -13,6 +13,8 @@
 const dns = require('dns').promises;
 const { chromium } = require('playwright');
 const { findEmails } = require('./emailFinder');
+const { verifyWithScoring } = require('./leadQuality');
+const { errOf } = require('./utils');
 const {
   HEADLESS,
   MAX_RESULTS_PER_QUERY,
@@ -53,6 +55,10 @@ const {
  * @property {string} [email]
  * @property {string} [emailStatus]
  * @property {string} [platform]
+ * @property {number} [qualityScore]
+ * @property {string} [qualityGrade]
+ * @property {string} [qualityTier]
+ * @property {string[]} [qualityReasons]
  */
 
 /* ------------------------------------------------------------------ */
@@ -695,6 +701,22 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
                 console.log(`lead no ${leadNum} , ${single.name}, phase 2 complete (no website)`);
                 console.log('completed starting a new lead');
               }
+              /* Pre-send quality gate: verify email + score the lead */
+              try {
+                const loaded = db.get(single);
+                if (loaded) {
+                  await verifyWithScoring(loaded);
+                  const qualityUpdates = /** @type {BusinessDetails} */ ({
+                    qualityScore: loaded.qualityScore,
+                    qualityGrade: loaded.qualityGrade,
+                    qualityTier: loaded.qualityTier,
+                    qualityReasons: loaded.qualityReasons,
+                  });
+                  db.update(loaded, qualityUpdates);
+                }
+              } catch (qErr) {
+                console.warn(`\u26A0\uFE0F  Lead ${leadNum} quality scoring skipped: ${errOf(qErr).message}`);
+              }
             } else {
               console.log(`   ⏭️ ${single.name} (already in DB)`);
             }
@@ -829,7 +851,6 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
               db.add(finalDetails);
               results.push(finalDetails);
               newCount++;
-
               const leadNum = ++global['leadCounter'];
               finalDetails.leadNum = leadNum;
               console.log(`lead no ${leadNum} , ${finalDetails.name}, phase 1 complete`);
@@ -838,6 +859,22 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
               } else {
                 console.log(`lead no ${leadNum} , ${finalDetails.name}, phase 2 complete (no website)`);
                 console.log('completed starting a new lead');
+              }
+              /* Pre-send quality gate: verify email + score the lead */
+              try {
+                const loaded = db.get(finalDetails);
+                if (loaded) {
+                  await verifyWithScoring(loaded);
+                  const qualityUpdates = /** @type {BusinessDetails} */ ({
+                    qualityScore: loaded.qualityScore,
+                    qualityGrade: loaded.qualityGrade,
+                    qualityTier: loaded.qualityTier,
+                    qualityReasons: loaded.qualityReasons,
+                  });
+                  db.update(loaded, qualityUpdates);
+                }
+              } catch (qErr) {
+                console.warn(`\u26A0\uFE0F  Lead ${leadNum} quality scoring skipped: ${errOf(qErr).message}`);
               }
             } else {
               console.log(

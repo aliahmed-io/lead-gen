@@ -16,7 +16,7 @@ export interface LeadRecord {
   state?: string;
   city?: string;
   website?: string;
-  [key: string]: string | number | boolean | undefined | null;
+  [key: string]: string | number | boolean | undefined | null | string[];
 }
 
 export interface BusinessDbRecord {
@@ -28,6 +28,8 @@ export interface BusinessDbRecord {
   lastName?: string;
   qualityTier?: string;
   qualityScore?: number;
+  qualityGrade?: string;
+  qualityReasons?: string[];
   platform?: string;
   emailStatus?: string;
   updatedAt?: string;

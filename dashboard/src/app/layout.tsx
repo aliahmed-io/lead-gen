@@ -4,7 +4,7 @@ import './globals.css';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, Mail, Settings, Activity, Terminal, Shield, UserMinus, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, Mail, Settings, Activity, Terminal, Shield, UserMinus, Zap, ShieldCheck } from 'lucide-react';
 import { CampaignState } from '@/types';
 import { ToastProvider } from '@/components/ui/toast';
 import { Inter, JetBrains_Mono, Playfair_Display } from 'next/font/google';
@@ -62,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     { name: 'Email Templates', href: '/templates', icon: Mail },
     { name: 'Accounts',        href: '/accounts',  icon: Shield },
     { name: 'Health Center',   href: '/health',    icon: Activity },
+    { name: 'Deliverability',  href: '/deliverability', icon: ShieldCheck },
     { name: 'Audit Logs',      href: '/logs',      icon: Terminal },
     { name: 'Configuration',   href: '/settings',  icon: Settings },
   ];
