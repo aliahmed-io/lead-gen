@@ -62,10 +62,14 @@ const {
 /**
  * Ensures the system has an active internet connection.
  * Freezes execution by sleeping in a loop if offline.
+ * Throws an error if offline for longer than MAX_OFFLINE_MS (5 minutes)
+ * so the auto-restart loop can save the DB and exit gracefully.
  * @param {string} [context] - optional context for warnings.
+ * @param {number} [maxOfflineMs] - max ms to wait offline before throwing (default 5min).
  */
-async function ensureOnline(context = '') {
+async function ensureOnline(context = '', maxOfflineMs = 5 * 60 * 1000) {
   let printedOffline = false;
+  let offlineSince = /** @type {number|null} */ (null);
   while (true) {
     try {
       await dns.lookup('google.com');
@@ -74,9 +78,17 @@ async function ensureOnline(context = '') {
       }
       break;
     } catch {
+      const now = Date.now();
       if (!printedOffline) {
+        offlineSince = now;
         console.warn(`\n\u26A0\uFE0F  [OFFLINE] Internet connection lost! Freezing ${context} execution...`);
+        console.warn(`   Will auto-save and exit if offline for more than ${maxOfflineMs / 60000} minutes.`);
         printedOffline = true;
+      }
+      if (offlineSince !== null && (now - offlineSince) >= maxOfflineMs) {
+        throw new Error(
+          `OFFLINE_TIMEOUT: No internet for ${maxOfflineMs / 60000} minutes during "${context}". Saving and exiting.`
+        );
       }
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
@@ -363,7 +375,7 @@ async function scrollResultsFeed(page, targetCount) {
     lastCount = count;
 
     await page.$eval(feedSel, (el) => (el.scrollTop = el.scrollHeight));
-    await randomDelay(2000, 3500);
+    await randomDelay(800, 1500);
 
     const endReached = await page.evaluate(() => {
       const feed = /** @type {HTMLElement|null} */ (document.querySelector('div[role="feed"]'));
@@ -621,6 +633,8 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
 
   console.log(`\n\u{1F50D} Searching Google Maps: "${query}"`);
 
+  let hasNetworkErrors = false;
+
   try {
     await ensureOnline('Google Maps query search');
     const url = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
@@ -695,8 +709,6 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
       return { success, results, newCount };
     }
 
-    // Removed the flaky fast-skip check. We will now check accurately during the visit loop.
-
     /* Scroll feed ------------------------------------------------- */
     await scrollResultsFeed(page, MAX_RESULTS_PER_QUERY);
 
@@ -722,8 +734,6 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
     console.log(`   Found ${targets.length} results in feed`);
 
     /* Visit each place page --------------------------------------- */
-    let first20AllInDb = true;
-
     for (let i = 0; i < targets.length; i++) {
       const target = targets[i];
       if (!target) continue;
@@ -757,12 +767,13 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
               await ensureOnline('detail page retry');
               await new Promise((r) => setTimeout(r, 3000));
             } else {
+              hasNetworkErrors = true;
               throw navErr;
             }
           }
         }
         if (!detailNavSuccess) {
-          first20AllInDb = false;
+          hasNetworkErrors = true;
           continue;
         }
 
@@ -774,63 +785,95 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
 
         const details = await extractBusinessDetails(page);
 
-        if (details && details.name) {
-          if (isValidBusiness(details)) {
-            const parsed = parseAddress(details.address || '');
-            details.city = parsed.city;
-            details.state = parsed.state;
+        // Detect if we got a browser/network error page (not a real business)
+        const isBrowserErrorPage = (/** @type {typeof details} */ d) => {
+          if (!d || !d.name) return false;
+          const n = d.name.toLowerCase();
+          return (
+            n.includes('internet') || n.includes('connection') ||
+            n.includes('الإنترنت') || n.includes('الانترنت') ||
+            n.includes('اتصال') || n.includes('خرائط google') ||
+            n.includes('google maps')
+          );
+        };
 
-            if (!db.has(details)) {
-              db.add(details);
-              results.push(details);
+        // If page loaded but data is missing (not a real business yet),
+        // retry the navigation up to 2 more times before giving up.
+        let finalDetails = details;
+        if (details && details.name && !isValidBusiness(details) && !isBrowserErrorPage(details)) {
+          for (let retryPage = 0; retryPage < 2; retryPage++) {
+            console.warn(
+              `   [${i + 1}/${targets.length}] ⚠️  Page missing data — retrying (${retryPage + 1}/2)...`
+            );
+            await ensureOnline('page data retry');
+            await new Promise(r => setTimeout(r, 2000 + retryPage * 1000));
+            try {
+              await page.goto(href, { waitUntil: 'domcontentloaded', timeout: MAPS_PAGE_TIMEOUT });
+              await page.waitForSelector('h1', { timeout: 8000 }).catch(() => null);
+              await randomDelay(800, 1500);
+              finalDetails = await extractBusinessDetails(page);
+              if (isValidBusiness(finalDetails)) break; // got good data
+            } catch {
+              // navigation failed again — keep trying
+            }
+          }
+        }
+
+        if (finalDetails && finalDetails.name) {
+          if (isValidBusiness(finalDetails)) {
+            const parsed = parseAddress(finalDetails.address || '');
+            finalDetails.city = parsed.city;
+            finalDetails.state = parsed.state;
+
+            if (!db.has(finalDetails)) {
+              db.add(finalDetails);
+              results.push(finalDetails);
               newCount++;
-              first20AllInDb = false; // We found a new lead!
-              
+
               const leadNum = ++global['leadCounter'];
-              details.leadNum = leadNum;
-              console.log(`lead no ${leadNum} , ${details.name}, phase 1 complete`);
-              if (details.website) {
-                await findEmails([details], db);
+              finalDetails.leadNum = leadNum;
+              console.log(`lead no ${leadNum} , ${finalDetails.name}, phase 1 complete`);
+              if (finalDetails.website) {
+                await findEmails([finalDetails], db);
               } else {
-                console.log(`lead no ${leadNum} , ${details.name}, phase 2 complete (no website)`);
+                console.log(`lead no ${leadNum} , ${finalDetails.name}, phase 2 complete (no website)`);
                 console.log('completed starting a new lead');
               }
             } else {
               console.log(
-                `   [${i + 1}/${targets.length}] ⏭️ ${label || details.name} (already in DB)`
+                `   [${i + 1}/${targets.length}] ⏭️ ${label || finalDetails.name} (already in DB)`
               );
             }
           } else {
-            console.warn(`   [${i + 1}/${targets.length}] ⚠️ Invalid/offline page, skipping.`);
-            first20AllInDb = false;
-          }
-        } else {
-          first20AllInDb = false;
-        }
-
-        /* If we just finished checking the 20th item (i == 19) and ALL of them were in DB, skip rest of query */
-        if (i === 19 && first20AllInDb) {
-          if (isFirstQueryOfSession) {
-            console.log(`   [Info] The first 20 leads are already in DB, but since we just restarted, we will NOT skip. We are resuming this query to get the rest of the leads!`);
-          } else {
-            console.log(`   ⏭️ The first 20 leads were all already in DB. Skipping the rest of this query.`);
-            break;
+            if (isBrowserErrorPage(finalDetails)) {
+              hasNetworkErrors = true;
+              console.warn(`   [${i + 1}/${targets.length}] ⚠️ Network error page detected. Will retry query later.`);
+              await ensureOnline('network error page recovery');
+            } else {
+              console.warn(`   [${i + 1}/${targets.length}] ⚠️ Invalid page (non-business), skipping.`);
+            }
           }
         }
 
         await randomDelay(RESULT_DELAY_MIN, RESULT_DELAY_MAX);
       } catch (err) {
+        hasNetworkErrors = true;
         const errMsg = err instanceof Error ? err.message : String(err);
         console.warn(
           `   [${i + 1}/${targets.length}] \u26A0\uFE0F  Error: ${errMsg}`
         );
-        first20AllInDb = false;
+        await ensureOnline('item error recovery');
       }
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error(`\u274C Query error "${query}": ${errMsg}`);
     success = false;
+  }
+
+  if (hasNetworkErrors) {
+    success = false;
+    console.warn(`   ⚠️ Query "${query}" had network glitches during lead extraction. Progress saved, but query will be retried on next run to capture all leads.`);
   }
 
   return { success, results, newCount };
@@ -859,6 +902,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
   const allNew = [];
   const counters = { total: 0, sinceBreak: 0 };
   let isFirstQueryOfSession = true;
+  let consecutiveFailures = 0; // track back-to-back query failures
 
   await ensureOnline('Google Maps scraper initialization');
 
@@ -951,6 +995,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
             db.markQueryCompleted(query);
             db.save();
             querySucceeded = true;
+            consecutiveFailures = 0; // reset on success
             if (onQueryComplete && scrapeResult.newCount > 0) {
               await onQueryComplete(scrapeResult.results);
             }
@@ -1002,9 +1047,29 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
       }
 
       if (!querySucceeded) {
+        consecutiveFailures++;
         console.error(
-          `   \u274C Query "${query}" failed after 3 attempts. Moving to next query (will retry on next run).`
+          `   ❌ Query "${query}" failed after 3 attempts. Moving to next query (will retry on next run).`
         );
+
+        // After 10 consecutive failures, the connection is likely down.
+        // Check if we're offline — if so, ensureOnline will either wait for
+        // recovery or throw OFFLINE_TIMEOUT after 5 minutes, triggering a
+        // graceful save+exit via the auto-restart loop.
+        if (consecutiveFailures >= 10) {
+          console.warn(
+            `\n⚠️  ${consecutiveFailures} consecutive query failures detected.`
+          );
+          await ensureOnline('consecutive failure recovery');
+          console.log('   ✅ Connection confirmed. Pausing 3min before continuing...');
+          await new Promise(r => setTimeout(r, 3 * 60 * 1000));
+          consecutiveFailures = 0; // reset after recovery pause
+          // Recycle browser after a long pause
+          try { await context.close(); } catch { /* ignore */ }
+          ({ context, page } = await createFreshContext(browser));
+          queriesSinceRecycle = 0;
+          console.log('   ✅ Browser recycled. Resuming scraping...');
+        }
       }
 
       /* Inter-query delay */

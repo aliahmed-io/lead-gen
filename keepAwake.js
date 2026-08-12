@@ -146,7 +146,7 @@ function createKeepAliveScript() {
       '"@',
       '',
       'while ($true) {',
-      '    [SleepGuard]::SetThreadExecutionState(0x80000003) | Out-Null',
+      '    [SleepGuard]::SetThreadExecutionState(0x80000001) | Out-Null',
       '    Start-Sleep -Seconds 30',
       '}',
     ].join('\r\n'),
@@ -197,6 +197,20 @@ function preventSleep() {
     );
     safeExec('powercfg /setactive SCHEME_CURRENT');
 
+    /* ── Keep network adapters alive (no power-off on idle) ──────── */
+    // Disable "Allow computer to turn off this device to save power"
+    // on ALL network adapters so the NIC stays connected during scraping.
+    safeExec(
+      'powershell -NoProfile -ExecutionPolicy Bypass -Command "' +
+      'Get-NetAdapter | ForEach-Object { ' +
+      'try { Set-NetAdapterPowerManagement -Name $_.Name -AllowComputerToTurnOffDevice Disabled -ErrorAction SilentlyContinue } catch {} ' +
+      '}"'
+    );
+    // Also prevent network adapter from being suspended during idle
+    safeExec(
+      'powercfg /change monitor-timeout-ac 0'
+    );
+
     /* ── Spawn SetThreadExecutionState helper ────────────────── */
     try {
       tempScriptPath = createKeepAliveScript();
@@ -224,7 +238,8 @@ function preventSleep() {
     console.log('\u{1F50B} Sleep prevention active:');
     console.log('   \u2022 System standby & hibernate disabled');
     console.log('   \u2022 Lid close action \u2192 do nothing');
-    console.log('   \u2022 SetThreadExecutionState keep-alive running');
+    console.log('   \u2022 Screen sleep still allowed (only system wake prevented)');
+    console.log('   \u2022 Network adapters locked ON (power-off disabled)');
   } else if (process.platform === 'darwin') {
     try {
       keepAliveProcess = spawn('caffeinate', ['-i', '-s', '-d'], {
