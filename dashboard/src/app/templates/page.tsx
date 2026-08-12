@@ -310,7 +310,7 @@ export default function Templates() {
       </div>
 
       {/* Two Column Layout: Editor & Preview */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
         
         {/* Left: Template Editor */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

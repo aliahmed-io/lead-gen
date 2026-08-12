@@ -109,7 +109,7 @@ export default function UnsubscribesPage() {
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {/* ── Quick Stats & Add form ──────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '24px', alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
         
         {/* Stat Card */}
         <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '130px' }}>

@@ -257,8 +257,8 @@ export default function SettingsPage() {
       </Section>
 
       {/* ── Sticky Save Bar ─────────────────────────────────────── */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 'var(--sidebar-w)', right: 0, zIndex: 40,
+      <div className="settings-sticky-bar" style={{
+        position: 'fixed', bottom: 0, left: 'var(--sidebar-w, 0px)', right: 0, zIndex: 40,
         padding: '16px 32px',
         background: 'linear-gradient(0deg, var(--bg-base) 60%, transparent)',
         display: 'flex', alignItems: 'center', justifyContent: 'flex-end',

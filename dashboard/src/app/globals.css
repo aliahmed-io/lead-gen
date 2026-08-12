@@ -459,3 +459,79 @@ select.input {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Responsive / mobile utilities  (< 1024px = "mobile")
+   ══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1023px) {
+  .mobile-only        { display: block !important; }
+  .mobile-flex        { display: flex !important; }
+  .desktop-only       { display: none !important; }
+}
+@media (min-width: 1024px) {
+  .mobile-only        { display: none !important; }
+  .mobile-flex        { display: none !important; }
+}
+
+/* Page header: smaller serif title on small screens, actions full width when squeezed */
+.page-header-title {
+  font-size: clamp(20px, 3.2vw, 26px);
+}
+
+/* Modals: give room for the 56px mobile top bar, wider on phones */
+.modal-panel {
+  margin-top: 56px;
+}
+@media (min-width: 1024px) {
+  .modal-panel { margin-top: 0; }
+}
+
+/* Generic page wrapper: softer padding on phones */
+.page-wrap {
+  padding: 32px;
+}
+@media (max-width: 767px) {
+  .page-wrap { padding: 20px 16px; }
+}
+
+/* Mobile top bar (fixed above the content) */
+.mobile-topbar {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ─── Page Container ──────────────────────────────────────────────── */
+/* Default inner padding used by several pages; softer on phones.     */
+.page-container {
+  padding: 32px;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+@media (max-width: 767px) {
+  .page-container { padding: 20px 16px; }
+}
+
+/* ─── Inbox: stack thread list above message pane on phones ───────── */
+@media (max-width: 1023px) {
+  .inbox-sidebar {
+    width: 100% !important;
+    max-height: 45vh;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+  .inbox-main {
+    min-height: 40vh;
+  }
+}
+
+/* ─── Settings: sticky save bar mobile-safe ───────────────────────── */
+@media (max-width: 1023px) {
+  .settings-sticky-bar {
+    left: 0 !important;
+  }
+}

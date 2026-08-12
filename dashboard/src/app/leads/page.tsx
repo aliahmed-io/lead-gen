@@ -664,8 +664,73 @@ export default function Leads() {
         )}
       </AnimatePresence>
 
+      {/* ── Mobile Card List ────────────────────────────────────────── */}
+      <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {leads.map((lead, idx) => {
+          const st = statusStyle(lead.status);
+          const isSelected = lead.key ? selectedEmails.includes(lead.key) : false;
+          return (
+            <div
+              key={lead.key || lead.email || idx}
+              style={{
+                background: 'var(--bg-surface)', border: `1px solid ${isSelected ? 'var(--honey-500)' : 'var(--border-default)'}`,
+                borderRadius: '14px', padding: '14px 16px', boxShadow: '0 4px 20px rgba(44, 34, 25, 0.015)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', padding: '2px', cursor: 'pointer' }} aria-label={`Select ${lead.email}`}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => lead.key && toggleSelectRow(lead.key)}
+                    style={{ width: '18px', height: '18px', accentColor: 'var(--honey-500)', cursor: 'pointer' }}
+                  />
+                </label>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{lead.businessName || 'Unknown'}</strong>
+                    {lead.enrichmentOwner ? (
+                      <span style={{ fontSize: '10px', fontWeight: 700, background: 'var(--honey-100)', color: 'var(--honey-700)', border: '1px solid var(--honey-500)', borderRadius: '99px', padding: '1px 6px' }}>
+                        👤 {lead.enrichmentOwner}
+                      </span>
+                    ) : lead.enrichmentSource ? (
+                      <span style={{ fontSize: '10px', fontWeight: 700, background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '99px', padding: '1px 6px' }}>
+                        {lead.enrichmentSource === 'website' ? 'Website' : lead.enrichmentSource === 'owner_name' ? 'Owner' : lead.enrichmentSource === 'search' ? 'Search' : 'Pattern'}
+                      </span>
+                    ) : null}
+                  </div>
+                  <a href={lead.website || undefined} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                    {lead.website || '—'}
+                  </a>
+                  <a href={`mailto:${lead.email}`} style={{ display: 'block', fontSize: '13px', color: 'var(--honey-600)', fontFamily: 'var(--font-mono)', fontWeight: 600, marginTop: '4px', wordBreak: 'break-all' }}>
+                    {lead.email}
+                  </a>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: 700, background: st.bg, color: st.color, border: `1px solid ${st.border}` }}>
+                      {st.label}
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: 700,
+                      background: lead.qualityTier === 'top' ? 'var(--honey-100)' : lead.qualityTier === 'average' ? 'var(--bg-elevated)' : 'var(--danger-bg)',
+                      color: lead.qualityTier === 'top' ? 'var(--honey-700)' : lead.qualityTier === 'average' ? 'var(--text-secondary)' : 'var(--danger)',
+                      border: lead.qualityTier === 'top' ? '1px solid var(--honey-500)' : '1px solid var(--border-subtle)',
+                    }}>
+                      {lead.qualityTier === 'top' ? 'Top' : lead.qualityTier === 'average' ? 'Average' : 'Low'} ({lead.qualityScore ?? 0})
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {leads.length === 0 && !loading && (
+          <div style={{ textAlign: 'center', padding: '32px 16px', fontSize: '13px', color: 'var(--text-muted)' }}>
+            No leads found matching the current filters.
+          </div>
+        )}
+      </div>
+
       {/* ── Table (Scrollable Spreadsheet) ─────────────────────────── */}
-      <div style={{ 
+      <div className="desktop-only" style={{ 
         background: 'var(--bg-surface)', 
         border: '1px solid var(--border-default)', 
         borderRadius: '16px', 

@@ -20,8 +20,8 @@ export const PageHeader: React.FC<{
   actions?: React.ReactNode;
   children?: React.ReactNode;
 }> = ({ title, subtitle, backHref, onRefresh, refreshLoading, actions, children }) => (
-  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', minWidth: 0 }}>
+  <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', minWidth: 0, flex: '1 1 55%' }}>
       {backHref && (
         <Link
           href={backHref}
@@ -34,12 +34,14 @@ export const PageHeader: React.FC<{
       )}
       <div style={{ minWidth: 0 }}>
         <h1
+          className="page-header-title"
           style={{
-            fontSize: '26px',
+            fontSize: 'clamp(20px, 3.2vw, 26px)',
             fontWeight: 800,
             color: 'var(--text-primary)',
             letterSpacing: '-0.02em',
             lineHeight: 1.2,
+            wordBreak: 'break-word',
           }}
         >
           {title}

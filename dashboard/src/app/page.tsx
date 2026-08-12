@@ -268,7 +268,7 @@ export default function Overview() {
 
       {/* ── Stat Cards ─────────────────────────────────────────────── */}
       <motion.div variants={stagger} initial="hidden" animate="show"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
         {statCards.map((c) => (
           <motion.div key={c.label} variants={fadeUp} transition={{ duration: 0.3 }} className="stat-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -308,7 +308,7 @@ export default function Overview() {
       </motion.div>
 
       {/* ── Charts Row ─────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '16px', fontFamily: 'var(--font-inter)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', fontFamily: 'var(--font-inter)' }}>
 
         {/* Volume Chart */}
         <div className="card" style={{ padding: '24px', minHeight: '300px', display: 'flex', flexDirection: 'column' }}>
@@ -470,7 +470,7 @@ export default function Overview() {
       </div>
 
       {/* ── Bottom Row: Quick Actions + Accounts + Activity ─────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr 320px', gap: '16px', fontFamily: 'var(--font-inter)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', fontFamily: 'var(--font-inter)' }}>
 
         {/* Quick Actions */}
         <div className="card" style={{ padding: '24px' }}>
