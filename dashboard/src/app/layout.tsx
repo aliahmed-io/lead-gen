@@ -7,24 +7,35 @@ import { useEffect, useState } from 'react';
 import { LayoutDashboard, Users, Mail, Settings, Activity, Terminal, Shield, UserMinus, Zap, ShieldCheck } from 'lucide-react';
 import { CampaignState } from '@/types';
 import { ToastProvider } from '@/components/ui/toast';
-import { Inter, JetBrains_Mono, Playfair_Display } from 'next/font/google';
+// Self-hosted fonts (previously next/font/google — build-time Google fetch was
+// unreliable, so the subset files are checked into public/fonts/).
+import localFont from 'next/font/local';
 
-const inter = Inter({
-  subsets: ['latin'],
+const inter = localFont({
+  src: '../../public/fonts/inter-latin.woff2',
   variable: '--font-inter',
   display: 'swap',
+  preload: true,
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
+const jetbrainsMono = localFont({
+  src: [
+    { path: '../../public/fonts/jetbrains-mono-regular.ttf', weight: '400' },
+    { path: '../../public/fonts/jetbrains-mono-bold.ttf', weight: '700' },
+  ],
   variable: '--font-mono',
   display: 'swap',
+  preload: true,
 });
 
-const playfair = Playfair_Display({
-  subsets: ['latin'],
+const playfair = localFont({
+  src: [
+    { path: '../../public/fonts/playfair-regular.ttf', weight: '400' },
+    { path: '../../public/fonts/playfair-bold.ttf', weight: '700' },
+  ],
   variable: '--font-serif',
   display: 'swap',
+  preload: true,
 });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

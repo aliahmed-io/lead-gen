@@ -33,6 +33,7 @@
     "templates.js",
     "timeUtils.js",
     "utils.js",
+    "emailPatternEnricher.js",
     "verifier.js",
     "websiteAuditor.js",
     "global.d.ts",

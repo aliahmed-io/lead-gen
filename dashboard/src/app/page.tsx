@@ -52,7 +52,8 @@ export default function Overview() {
       if (!sr.ok || !cr.ok || !ar.ok) throw new Error('Failed to fetch dashboard data');
       setStats(await sr.json());
       setCampaignState(await cr.json());
-      setAccounts(await ar.json());
+      const accountsJson = await ar.json();
+      setAccounts(accountsJson.accounts || accountsJson);
       setError(null);
     } catch (e: unknown) {
       setError((e as Error).message);

@@ -15,7 +15,9 @@ import {
   Activity,
   Eye,
   EyeOff,
-  Copy
+  Copy,
+  Pause,
+  Play
 } from 'lucide-react';
 import { AccountHealth, Settings } from '@/types';
 import { Modal } from '@/components/ui/modal';
@@ -30,6 +32,7 @@ interface DnsCheckResult {
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<AccountHealth[]>([]);
+  const [pausedAll, setPausedAll] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -243,6 +246,27 @@ export default function Accounts() {
     }
   };
 
+  // Bulk pause/resume all accounts — persisted in campaign_db.json accountState
+  // so the sender worker respects the toggle during execution.
+  const [pausingAll, setPausingAll] = useState(false);
+  const bulkTogglePause = async (resume: boolean) => {
+    setPausingAll(true);
+    try {
+      const res = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setPauseAll', paused: !resume }),
+      });
+      if (!res.ok) throw new Error(`Failed to ${resume ? 'resume' : 'pause'} all accounts`);
+      setError(null);
+      await loadData();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setPausingAll(false);
+    }
+  };
+
   const loadData = async () => {
     setRefreshing(true);
     try {
@@ -258,7 +282,9 @@ export default function Accounts() {
       const accountsData = await accountsRes.json();
       const settingsData = await settingsRes.json();
 
-      setAccounts(accountsData);
+      // GET shape: { accounts: AccountHealth[], paused: boolean }
+      setAccounts(accountsData.accounts || accountsData);
+      setPausedAll(Boolean(accountsData.paused));
       setSettings(settingsData);
       setError(null);
     } catch (err) {
@@ -325,7 +351,25 @@ export default function Accounts() {
         subtitle="Manage SMTP/IMAP rotation accounts, bounce thresholds, and warmups."
         onRefresh={loadData}
         refreshLoading={refreshing}
-      />
+      >
+        {/* Bulk Pause/Resume all accounts */}
+        <button
+          onClick={() => bulkTogglePause(false)}
+          disabled={pausingAll || pausedAll}
+          className="btn btn-ghost"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: pausedAll ? 0.5 : 1 }}
+        >
+          <Pause size={14} /> Pause All
+        </button>
+        <button
+          onClick={() => bulkTogglePause(true)}
+          disabled={pausingAll || !pausedAll}
+          className="btn btn-ghost"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: pausedAll ? 1 : 0.5 }}
+        >
+          <Play size={14} /> Resume All
+        </button>
+      </PageHeader>
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 

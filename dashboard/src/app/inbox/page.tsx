@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Mail, Send, Inbox as InboxIcon, RefreshCw, Trash2 } from 'lucide-react';
+import { Mail, Send, Inbox as InboxIcon, RefreshCw, Trash2, CheckCheck, Archive } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
 interface Message {
@@ -31,6 +31,10 @@ export default function InboxPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
+  // Bulk selection states
+  const [selectedThreads, setSelectedThreads] = useState<string[]>([]);
+  const [bulkWorking, setBulkWorking] = useState(false);
+
   const fetchThreads = async () => {
     try {
       const res = await fetch('/api/inbox');
@@ -52,6 +56,54 @@ export default function InboxPage() {
   }, []);
 
   const unreadCount = threads.filter(t => t.unread).length;
+
+  const clearSelection = () => setSelectedThreads([]);
+  const toggleThreadSelection = (leadEmail: string) => {
+    setSelectedThreads(prev => prev.includes(leadEmail) ? prev.filter(e => e !== leadEmail) : [...prev, leadEmail]);
+  };
+
+  const bulkMarkRead = async () => {
+    if (!selectedThreads.length) return;
+    setBulkWorking(true);
+    try {
+      const res = await fetch('/api/inbox/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_read', leadEmails: selectedThreads }),
+      });
+      if (!res.ok) throw new Error('Bulk mark read failed');
+      setThreads(prev => prev.map(t => selectedThreads.includes(t.leadEmail) ? { ...t, unread: false } : t));
+      showToast(`Marked ${selectedThreads.length} thread${selectedThreads.length === 1 ? '' : 's'} as read.`, 'success');
+      clearSelection();
+    } catch (e: unknown) {
+      showToast((e as Error).message, 'error');
+    } finally {
+      setBulkWorking(false);
+    }
+  };
+
+  const bulkDelete = async () => {
+    if (!selectedThreads.length) return;
+    setBulkWorking(true);
+    try {
+      const res = await fetch('/api/inbox/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', leadEmails: selectedThreads }),
+      });
+      if (!res.ok) throw new Error('Bulk delete failed');
+      setThreads(prev => prev.filter(t => !selectedThreads.includes(t.leadEmail)));
+      if (selectedThread && selectedThreads.includes(selectedThread.leadEmail)) {
+        setSelectedThread(null);
+      }
+      showToast(`Deleted ${selectedThreads.length} thread${selectedThreads.length === 1 ? '' : 's'}.`, 'success');
+      clearSelection();
+    } catch (e: unknown) {
+      showToast((e as Error).message, 'error');
+    } finally {
+      setBulkWorking(false);
+    }
+  };
 
   const selectThread = async (thread: Thread) => {
     setSelectedThread(thread);
@@ -130,7 +182,37 @@ export default function InboxPage() {
             </button>
           </div>
         </div>
-        
+
+        {/* Bulk Actions Toolbar */}
+        {selectedThreads.length > 0 && (
+          <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--honey-50)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span className="badge badge-amber">{selectedThreads.length}</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>selected</span>
+            <button
+              onClick={bulkMarkRead}
+              disabled={bulkWorking}
+              className="btn btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '11px', gap: '5px', display: 'inline-flex', alignItems: 'center' }}
+            >
+              <CheckCheck size={12} /> Mark All Read
+            </button>
+            <button
+              onClick={bulkDelete}
+              disabled={bulkWorking}
+              className="btn"
+              style={{ padding: '6px 12px', fontSize: '11px', gap: '5px', background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(181, 78, 69, 0.15)', display: 'inline-flex', alignItems: 'center' }}
+            >
+              <Trash2 size={12} /> Delete
+            </button>
+                        <button
+              onClick={clearSelection}
+              disabled={bulkWorking}
+              style={{ background: 'none', border: 'none', fontSize: '11px', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 8px', fontWeight: 600 }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {threads.length === 0 ? (
             <div style={{ padding: '40px 20px', color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -141,19 +223,33 @@ export default function InboxPage() {
           ) : (
             threads.map(thread => {
               const lastMsg = thread.messages[thread.messages.length - 1];
+              const isSelectedThread = selectedThreads.includes(thread.leadEmail);
               return (
-                <div 
+                <div
                   key={thread.leadEmail}
                   onClick={() => selectThread(thread)}
                   style={{
                     padding: '16px 20px',
                     borderBottom: '1px solid var(--border-subtle)',
                     cursor: 'pointer',
-                    background: selectedThread?.leadEmail === thread.leadEmail ? 'var(--bg-active)' : 'transparent',
+                    background: isSelectedThread ? 'var(--honey-50)' : (selectedThread?.leadEmail === thread.leadEmail ? 'var(--bg-active)' : 'transparent'),
                     display: 'flex',
                     gap: '12px'
                   }}
                 >
+                  {/* Thread checkbox for bulk actions */}
+                  <div
+                    onClick={e => { e.stopPropagation(); toggleThreadSelection(thread.leadEmail); }}
+                    style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelectedThread}
+                      onChange={() => {}}
+                      style={{ cursor: 'pointer', accentColor: 'var(--honey-500)', width: '14px', height: '14px' }}
+                      aria-label={`Select thread from ${thread.leadEmail}`}
+                    />
+                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                       <div style={{ fontWeight: thread.unread ? 600 : 500, fontSize: '14px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -167,6 +263,21 @@ export default function InboxPage() {
                       {lastMsg?.text?.substring(0, 80) || ''}
                     </div>
                   </div>
+                  {/* Mark single thread as read */}
+                  {!thread.unread ? null : (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        setThreads(prev => prev.map(t => t.leadEmail === thread.leadEmail ? { ...t, unread: false } : t));
+                        fetch('/api/inbox', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadEmail: thread.leadEmail }) }).catch(() => {});
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                      title="Mark as read"
+                      aria-label="Mark thread as read"
+                    >
+                      <Archive size={13} />
+                    </button>
+                  )}
                   {thread.unread && (
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--honey-500)', marginTop: '6px', boxShadow: '0 0 6px var(--honey-glow)' }} />
                   )}

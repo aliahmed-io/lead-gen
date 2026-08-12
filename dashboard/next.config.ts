@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  turbopack: {},
+  turbopack: { root: import.meta.dirname },
   webpack: (config) => {
     config.watchOptions = {
       ...config.watchOptions,

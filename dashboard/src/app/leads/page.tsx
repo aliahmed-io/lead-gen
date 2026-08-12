@@ -7,7 +7,8 @@ import {
   Search, ChevronLeft, ChevronRight, UserCheck, UserMinus,
   ChevronDown, ChevronUp, Download, SlidersHorizontal, Upload,
   Users, X, ShieldCheck, CheckCircle, ArrowUpDown,
-  Flame, CircleDot, OctagonAlert
+  Flame, CircleDot, OctagonAlert, MailPlus, RefreshCw, Undo2, Trash2,
+  ScanSearch
 } from 'lucide-react';
 import { LeadRecord } from '@/types';
 import { useToast } from '@/components/ui/toast';
@@ -83,6 +84,11 @@ export default function Leads() {
 
   // Verification Report Modal States
   const [verificationResults, setVerificationResults] = useState<{ email: string; valid: boolean; reason: string }[] | null>(null);
+
+  // Enrichment Modal States
+  const [enrichResults, setEnrichResults] = useState<{ enriched: number; found: number; results: Array<{ businessName: string; domain: string; email: string | null; method: string; smtpValid: boolean; tried: string[] }> } | null>(null);
+  const [enrichConfirm, setEnrichConfirm] = useState(false);
+  const [enrichTarget, setEnrichTarget] = useState<'selected' | 'allMissing' | null>(null);
 
   // CSV Import States
   const { showToast } = useToast();
@@ -185,10 +191,20 @@ export default function Leads() {
     setBulkLoading(true);
     setError(null);
     try {
+      /* Campaign actions are keyed by lead email — resolve selected record
+       * keys to their emails (leads without emails are harmlessly skipped). */
+      const selectedEmailList = selectedEmails
+        .map(k => leads.find(l => l.key === k)?.email)
+        .filter((e): e is string => !!e);
+      if (selectedEmailList.length === 0) {
+        showToast('The selected leads have no email addresses yet — use Enrich Emails to find them.', 'info');
+        setSelectedEmails([]);
+        return;
+      }
       const res = await fetch('/api/leads', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ action, emails: selectedEmails }) 
+        body: JSON.stringify({ action, emails: selectedEmailList }) 
       });
       if (!res.ok) throw new Error(`${action} bulk action failed`);
       const d = await res.json();
@@ -208,15 +224,77 @@ export default function Leads() {
     }
   };
 
+  // Leads-DB bulk actions (reset / delete / unsuppress) via /api/leads/bulk
+  const handleLeadsDbBulkAction = async (action: 'reset_to_pending' | 'delete' | 'unsuppress') => {
+    if (!selectedEmails.length) return;
+    setBulkLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/leads/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, emails: selectedEmails }),
+      });
+      if (!res.ok) throw new Error(`${action} bulk action failed`);
+      const d = await res.json();
+      if (d.success) {
+        setSelectedEmails([]);
+        setSelectingAllMatching(false);
+        fetchLeads(true);
+        showToast(
+          action === 'delete'
+            ? `Deleted ${d.count} lead record${d.count === 1 ? '' : 's'} from the database.`
+            : `${action === 'reset_to_pending' ? 'Requeued' : 'Unsuppressed'} ${d.count} lead${d.count === 1 ? '' : 's'} back to Pending.`,
+          'success'
+        );
+      }
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // Pattern-probe email enrichment for leads without emails
+  const runEnrichment = async (target: 'selected' | 'allMissing') => {
+    setBulkLoading(true);
+    setError(null);
+    setEnrichResults(null);
+    setEnrichConfirm(false);
+    try {
+      const body = target === 'allMissing' ? { allMissing: true } : { emails: selectedEmails };
+      const res = await fetch('/api/leads/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Email enrichment failed');
+      const d = await res.json();
+      setEnrichResults({ enriched: d.enriched ?? 0, found: d.found ?? 0, results: d.results || [] });
+      setSelectedEmails([]);
+      setSelectingAllMatching(false);
+      fetchLeads(true);
+      if (d.found > 0) {
+        showToast(`Enrichment complete: found ${d.found} of ${d.enriched} missing email${d.enriched === 1 ? '' : 's'}.`, 'success');
+      } else {
+        showToast(`Enrichment complete: no emails were found for ${d.enriched} lead${d.enriched === 1 ? '' : 's'}. Some mail servers block probes.`, 'info');
+      }
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   // Checkbox functions
-  const allCurrentPageSelected = leads.length > 0 && leads.every(l => !l.email || selectedEmails.includes(l.email));
+  const allCurrentPageSelected = leads.length > 0 && leads.every(l => !l.key || selectedEmails.includes(l.key));
   
   const handleSelectAll = (checked: boolean) => {
-    const pageEmails = leads.map(l => l.email).filter((e): e is string => !!e);
+    const pageKeys = leads.map(l => l.key).filter((k): k is string => !!k);
     if (checked) {
-      setSelectedEmails(prev => Array.from(new Set([...prev, ...pageEmails])));
+      setSelectedEmails(prev => Array.from(new Set([...prev, ...pageKeys])));
     } else {
-      setSelectedEmails(prev => prev.filter(e => !pageEmails.includes(e)));
+      setSelectedEmails(prev => prev.filter(e => !pageKeys.includes(e)));
       setSelectingAllMatching(false);
     }
   };
@@ -276,7 +354,7 @@ export default function Leads() {
   };
 
   const exportSelected = () => {
-    const selectedRecords = leads.filter(l => l.email && selectedEmails.includes(l.email));
+    const selectedRecords = leads.filter(l => l.key && selectedEmails.includes(l.key));
     triggerCSVDownload(selectedRecords, `selected_leads_${selectedRecords.length}.csv`);
   };
 
@@ -374,6 +452,10 @@ export default function Leads() {
         title="Leads Database"
         subtitle={`${total.toLocaleString()} contacts · interactive sort and verify console`}
       >
+        {/* Enrich emails for all leads that have a website but no email address */}
+        <Button variant="secondary" icon={ScanSearch} onClick={() => { setEnrichTarget('allMissing'); setEnrichConfirm(true); }}>
+          Enrich Emails
+        </Button>
         <Button variant="primary" icon={Upload} onClick={() => setShowImportModal(true)}>
           Import CSV
         </Button>
@@ -519,6 +601,28 @@ export default function Leads() {
 
               <div style={{ height: '16px', width: '1px', background: 'var(--border-strong)', margin: '0 4px' }} />
 
+              <button onClick={() => { setEnrichTarget('selected'); setEnrichConfirm(true); }} disabled={bulkLoading} className="btn"
+                style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', padding: '7px 14px' }}>
+                <ScanSearch size={13} /> Enrich Selected
+              </button>
+
+              <button onClick={() => handleLeadsDbBulkAction('reset_to_pending')} disabled={bulkLoading} className="btn"
+                style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', padding: '7px 14px' }}>
+                <Undo2 size={13} /> Reset to Pending
+              </button>
+
+              <button onClick={() => handleLeadsDbBulkAction('unsuppress')} disabled={bulkLoading} className="btn"
+                style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', padding: '7px 14px' }}>
+                <RefreshCw size={13} /> Unsuppress
+              </button>
+
+              <button onClick={() => handleLeadsDbBulkAction('delete')} disabled={bulkLoading} className="btn"
+                style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(181, 78, 69, 0.15)', padding: '7px 14px' }}>
+                <Trash2 size={13} /> Delete
+              </button>
+
+              <div style={{ height: '16px', width: '1px', background: 'var(--border-strong)', margin: '0 4px' }} />
+
               <button 
                 onClick={() => { setSelectedEmails([]); setSelectingAllMatching(false); }} 
                 className="btn btn-secondary"
@@ -622,13 +726,13 @@ export default function Leads() {
                   </td>
                 </tr>
               ) : leads.map((lead, idx) => {
-                const isSelected = lead.email ? selectedEmails.includes(lead.email) : false;
+                const isSelected = lead.key ? selectedEmails.includes(lead.key) : false;
                 const st = statusStyle(lead.status);
 
                 return (
                   <tr
-                    key={lead.email || idx}
-                    onClick={() => lead.email && toggleSelectRow(lead.email)}
+                    key={lead.key || lead.email || idx}
+                    onClick={() => lead.key && toggleSelectRow(lead.key)}
                     style={{
                       borderBottom: '1px solid var(--border-subtle)',
                       cursor: 'pointer',
@@ -654,9 +758,9 @@ export default function Leads() {
                       background: isSelected ? 'var(--honey-50)' : 'var(--bg-surface)',
                       borderRight: '1px solid var(--border-subtle)'
                     }} onClick={e => e.stopPropagation()}>
-                      {lead.email && (
+                      {lead.key && (
                         <input type="checkbox" checked={isSelected}
-                          onChange={e => handleSelectRow(lead.email!, e.target.checked)}
+                          onChange={e => handleSelectRow(lead.key!, e.target.checked)}
                           style={{ cursor: 'pointer', accentColor: 'var(--honey-500)', width: '14px', height: '14px' }}
                           aria-label={`Select lead ${lead.businessName || lead.email}`}
                         />
@@ -859,6 +963,103 @@ export default function Leads() {
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Performing validation & database operations.</p>
         </div>
       )}
+      {/* ── Email Enrichment Confirmation Modal ────────────────────── */}
+      <Modal
+        isOpen={enrichConfirm}
+        onClose={() => setEnrichConfirm(false)}
+        title="Enrich Emails via Pattern Probing"
+        confirmLabel={enrichTarget === 'allMissing' ? 'Enrich All Missing' : 'Enrich Selected'}
+        confirmVariant="primary"
+        onConfirm={() => enrichTarget && runEnrichment(enrichTarget)}
+        loading={bulkLoading}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            {enrichTarget === 'allMissing'
+              ? 'This will probe every lead in the database that has a website but no email address. Leads that already have an email are skipped.'
+              : `This will probe the ${selectedEmails.length} selected lead${selectedEmails.length === 1 ? '' : 's'} for missing email addresses. Leads that already have an email are skipped.`}
+          </p>
+          <div style={{ padding: '10px 12px', background: 'var(--bg-neutral-muted)', border: '1px solid var(--border-subtle)', borderRadius: '10px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--text-primary)' }}>How it works:</strong> common mailbox patterns are tried at each lead&#8217;s domain (e.g. owner@, hello@, info@, contact@, plus the business name). Each candidate is verified against the domain&#8217;s MX records with a direct SMTP handshake — no real email is ever sent. Servers that block probes get a best-effort generic mailbox suggestion.
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            Discovered emails are written directly into the lead records and scored against the quality gate, so they appear in the table immediately.
+          </p>
+        </div>
+      </Modal>
+
+      {/* ── Email Enrichment Results Modal ─────────────────────────── */}
+      <AnimatePresence>
+        {enrichResults && (
+          <div className="overlay flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="glass-panel-raised p-6 rounded-2xl max-w-xl w-full space-y-4"
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            >
+              <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MailPlus size={20} className="text-[var(--honey-600)]" /> Email Enrichment Report
+                </h2>
+                <button onClick={() => setEnrichResults(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ padding: '12px', background: 'var(--success-bg)', borderRadius: '12px', border: '1px solid rgba(74, 109, 75, 0.15)', textAlign: 'center' }}>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--success)' }}>{enrichResults.found}</span>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--success)', textTransform: 'uppercase', marginTop: '2px' }}>Emails Found</div>
+                </div>
+                <div style={{ padding: '12px', background: 'var(--bg-neutral-muted)', borderRadius: '12px', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-secondary)' }}>{enrichResults.enriched}</span>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Leads Probed</div>
+                </div>
+              </div>
+
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                ℹ️ Emails marked <span style={{ fontWeight: 700, color: 'var(--success)' }}>Verified</span> passed a direct SMTP mailbox check. Unverified suggestions come from servers that block probes — double-check before sending at scale.
+              </p>
+
+              <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: '10px', background: 'var(--bg-neutral-muted)', padding: '10px' }} className="space-y-2">
+                {enrichResults.results.map((r, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                    padding: '8px 10px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                    borderRadius: '8px', fontSize: '12px'
+                  }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.businessName}>
+                        {r.businessName}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {r.email || '—'} · {r.domain}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', flexShrink: 0,
+                      background: r.email ? (r.smtpValid ? 'var(--success-bg)' : 'var(--honey-100)') : 'var(--danger-bg)',
+                      color: r.email ? (r.smtpValid ? 'var(--success)' : 'var(--honey-700)') : 'var(--danger)',
+                      border: `1px solid ${r.email ? (r.smtpValid ? 'rgba(74, 109, 75, 0.15)' : 'var(--honey-500)') : 'rgba(181, 78, 69, 0.15)'}`
+                    }}>
+                      {r.email ? (r.smtpValid ? 'Verified' : 'Best guess') : 'Not found'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '10px', borderTop: '1px solid var(--border-subtle)' }}>
+                <button onClick={() => setEnrichResults(null)} className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '13px' }}>
+                  Acknowledge Report
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* CSV Import Modal */}
       <Modal
         isOpen={showImportModal}

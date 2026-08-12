@@ -1,4 +1,5 @@
 export interface LeadRecord {
+  key?: string;
   email?: string;
   businessName?: string;
   platform?: string;
@@ -89,6 +90,7 @@ export interface AccountHealth {
   clickRate?: number;
   lastActiveAt: number | null;
   healthScore: 'good' | 'warning' | 'critical';
+  paused?: boolean;
 }
 
 export interface DeliverabilityAlert {

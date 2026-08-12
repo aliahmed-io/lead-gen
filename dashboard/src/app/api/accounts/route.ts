@@ -80,6 +80,7 @@ export async function GET(request: Request) {
         clickCount?: number;
       }>;
       dailyCounts: Record<string, Record<string, number>>;
+      accountState?: Record<string, unknown>;
     }
 
     let campaignData: CampaignData = { records: {}, dailyCounts: {} };
@@ -90,6 +91,8 @@ export async function GET(request: Request) {
     }
     if (!campaignData.records) campaignData.records = {};
     if (!campaignData.dailyCounts) campaignData.dailyCounts = {};
+
+    const pauseAll = Boolean((campaignData.accountState as Record<string, unknown> | undefined)?.pauseAll);
 
     const todayStr = getTodayDateString();
     const accounts: AccountHealth[] = [];
@@ -160,17 +163,18 @@ export async function GET(request: Request) {
         clickRate,
         lastActiveAt,
         healthScore,
+        paused: pauseAll,
       });
     }
 
-    return NextResponse.json(accounts);
+    return NextResponse.json({ accounts, paused: pauseAll });
   } catch (err: unknown) {
     console.error('Error calculating account health:', (err as Error).message);
     return NextResponse.json({ error: 'Failed to retrieve accounts health' }, { status: 500 });
   }
 }
 
-// ─── POST — Add Account ─────────────────────────────────────────────
+// ─── POST — Add Account (or bulk action: {action:'setPauseAll', paused}) ─
 export async function POST(request: Request) {
   const ip = request.headers.get('x-forwarded-for') || 'unknown';
   if (isRateLimited(ip)) {
@@ -179,6 +183,26 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+
+    // Bulk actions dispatch by payload shape: { action, ... }
+    if (body?.action === 'setPauseAll') {
+      const paused = Boolean(body?.paused);
+      let campaignData: Record<string, unknown> = { accountState: {} };
+      if (fs.existsSync(campaignDbPath)) {
+        try {
+          campaignData = JSON.parse(fs.readFileSync(campaignDbPath, 'utf8'));
+        } catch {}
+      }
+      if (!campaignData.accountState || typeof campaignData.accountState !== 'object') {
+        campaignData.accountState = {};
+      }
+      (campaignData.accountState as Record<string, unknown>).pauseAll = paused;
+      (campaignData.accountState as Record<string, unknown>).pauseAllAt = Date.now();
+      const tempPath = campaignDbPath + '.tmp';
+      fs.writeFileSync(tempPath, JSON.stringify(campaignData, null, 2), 'utf8');
+      fs.renameSync(tempPath, campaignDbPath);
+      return NextResponse.json({ success: true, paused });
+    }
 
     const allowedFields = ['email', 'password', 'smtpHost', 'imapHost', 'smtpPort', 'imapPort'];
     const sanitized: Record<string, string> = {};

@@ -52,9 +52,10 @@ export async function GET(request: Request) {
     let rawRecords: LeadRecord[] = [];
     if (data.businesses) {
       const businesses = data.businesses as Record<string, BusinessDbRecord>;
-      rawRecords = Object.values(businesses).map((b) => {
+      rawRecords = Object.entries(businesses).map(([key, b]) => {
         const campaignRecord = campaignData.records[b.email || ''];
         return {
+          key,
           email: b.email,
           businessName: b.name || b.companyName,
           contactName: b.contactName,
