@@ -404,8 +404,8 @@ export default function Accounts() {
         </div>
       )}
 
-      {/* Accounts Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
+      {/* Accounts Grid — 6 equal slots */}
+      <div className="accounts-6grid">
         {accounts.map((account, index) => {
           const limitPct = (account.sentToday / dailyLimit) * 100;
           const bouncePct = (account.bounceRate * 100).toFixed(1);
@@ -416,7 +416,7 @@ export default function Accounts() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="card rounded-xl p-4 relative overflow-hidden group flex flex-col justify-between"
+              className="card rounded-2xl p-5 relative overflow-hidden group flex flex-col justify-between"
             >
               {/* Account Top Row */}
               <div className="space-y-2.5">
@@ -621,8 +621,8 @@ export default function Accounts() {
                 </div>
               </div>
             </motion.div>
-          );
-        })}
+        );
+      })}
 
         {/* Add Account Card */}
         <motion.div
