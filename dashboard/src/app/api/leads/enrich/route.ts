@@ -4,9 +4,13 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 
 /**
- * /api/leads/enrich — Enrich leads that have no email via pattern probing
- * (MX + SMTP handshake) and write found emails back to leads_db.json with
- * pre-send quality rescore.
+ * /api/leads/enrich — Enrich leads that have no email through the
+ * owner-discovery pipeline (deep website harvest, owner identity search,
+ * name-pattern SMTP verification, graded fallbacks) and write found emails
+ * back to leads_db.json with pre-send quality rescore.
+ *
+ * Each result also carries pipeline metadata (confidence, source, ownerName,
+ * stages) so the dashboard can grade lead quality per email found.
  *
  * The actual probing runs in the repo's scripts/enrich_emails_cli.js wrapper
  * (root CommonJS context) via child_process — the dashboard's Turbopack
@@ -31,9 +35,11 @@ export async function POST(request: Request) {
 
     const args = enrichAll ? ['all'] : ['keys', ...keyList];
 
+    /* generous timeout: each lead may crawl up to 8 pages + 2 searches + SMTP probes (~25s worst case) */
+    const timeoutMs = Math.max(60000, 40000 + (enrichAll ? 60 : keyList.length) * 30000);
     const result = await new Promise<string>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Enrichment timed out')), 60000);
-      execFile(process.execPath, [CLI, ...args], { timeout: 60000 }, (err, stdout, stderr) => {
+      const timeout = setTimeout(() => reject(new Error('Enrichment timed out')), timeoutMs);
+      execFile(process.execPath, [CLI, ...args], { timeout: timeoutMs }, (err, stdout, stderr) => {
         clearTimeout(timeout);
         if (err) reject(new Error(stderr || err.message));
         else resolve(stdout.trim());

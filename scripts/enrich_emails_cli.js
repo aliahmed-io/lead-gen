@@ -70,9 +70,14 @@ async function main() {
 
   for (const { record } of toEnrich) {
     const website = String(record.website || '');
-    /** @type {{ name?: string; businessName?: string; website?: string; key?: string }} */
-    const lead = { name: String(record.name || record.businessName || record.key || ''), website };
-    /** @type {{ found: boolean; email?: string; method?: string; smtpValid?: boolean; tried?: string[] }} */
+    /** @type {{ name?: string; businessName?: string; website?: string; key?: string; city?: string; state?: string }} */
+    const lead = {
+      name: String(record.name || record.businessName || record.key || ''),
+      website,
+      city: String(record.city || ''),
+      state: String(record.state || ''),
+    };
+    /** @type {{ found: boolean; email?: string; method?: string; smtpValid?: boolean; tried?: string[]; confidence?: number; source?: string; ownerName?: string; stages?: string[] }} */
     const res = await enrichLead(lead);
 
     let domain = '';
@@ -85,6 +90,11 @@ async function main() {
       foundCount++;
       record.email = res.email;
       record.emailStatus = 'pattern_found';
+      record.enrichedAt = new Date().toISOString();
+      /* pipeline metadata — shown in the dashboard results modal */
+      record.enrichmentOwner = res.ownerName || '';
+      record.enrichmentSource = String(res.source || 'none');
+      record.enrichmentConfidence = typeof res.confidence === 'number' ? res.confidence : 0;
       const scored = scoreEnrichedLead(record);
       if (typeof scored.score === 'number') record.qualityScore = scored.score;
       if (scored.grade) record.qualityGrade = scored.grade;
@@ -97,8 +107,12 @@ async function main() {
       businessName: String(record.name || record.businessName || record.key),
       domain,
       email: res.email || null,
-      method: String(res.method || 'pattern_probe'),
+      method: String(res.method || 'none'),
       smtpValid: Boolean(res.smtpValid),
+      confidence: typeof res.confidence === 'number' ? res.confidence : 0,
+      source: String(res.source || 'none'),
+      ownerName: res.ownerName || null,
+      stages: Array.isArray(res.stages) ? res.stages : [],
     });
 
     await new Promise(r => setTimeout(r, 250));

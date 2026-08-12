@@ -33,6 +33,12 @@ export interface BusinessDbRecord {
   qualityReasons?: string[];
   platform?: string;
   emailStatus?: string;
+  /* owner-discovery enrichment metadata */
+  enrichmentOwner?: string;
+  enrichmentSource?: string;
+  enrichmentConfidence?: number;
+  enrichmentMethod?: string;
+  enrichedAt?: string;
   updatedAt?: string;
   state?: string;
   city?: string;

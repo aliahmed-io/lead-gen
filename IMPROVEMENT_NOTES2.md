@@ -51,3 +51,38 @@ FIX IN PROGRESS: self-host fonts to make builds deterministic.
 - NOTE: root DB file is leads_db.json (was absent; smoke test created one with testcafe.example.com — DELETE it before commit? e2e tests EXPECT leads_db.json to exist? tier1 tests check missing-file handling; a leftover temp DB may break tests — remove leads_db.json + campaign_db.json edits before tests, or run e2e first to check).
 - Also added public/fonts to repo (fine).
 - git commit after all pass: `git add -A && git commit -m "Add Enrich Emails (pattern probing + MX/SMTP verification) and bulk actions (leads/inbox/accounts)" && git push`
+
+## ROUND: Owner discovery pipeline upgrade (user approved advanced plan)
+
+### Modules built (Phase 2 done, not yet verified/wired):
+- `/home/ubuntu/lead-gen/websiteHarvester.js` — harvestWebsite(lead) → {emails, roleEmails, persons[{name,role,source,confidence}], pagesVisited, domain}. Crawls HARVEST_PATHS (home, /about variants, /team, /leadership, /staff, /people, /contact variants) with 4s timeout, max 8 pages, 25s total. Person extraction: JSON-LD Person, h-card, text near ROLE_KEYWORDS (owner/founder/ceo/principal/president/proprietor/head chef/gm...), title tag hints. Role rank → confidence 55-85. Reuses emailFinder.extractEmailsFromHtml + extractDomain.
+- `/home/ubuntu/lead-gen/ownerResolver.js` — resolveOwnerIdentity(lead) → ranked OwnerCandidate[]; nameVariants(name) → [first, first.last@, f.last@, firstlast@, flast@]. DuckDuckGo HTML endpoint (https://html.duckduckgo.com/html/?q=...) parsed for name+role near role keywords, max 2 queries, 8s timeout, 15-min in-memory cache per business+location.
+- `/home/ubuntu/lead-gen/emailPatternEnricher.js` — REWRITTEN orchestrator: enrichLead(lead) → {found,email,method('owner_verified'|'site_email_verified'|'pattern_smtp'|'role_guess'|'none'),smtpValid,confidence(0-100),source('owner_name'|'website'|'search'|'pattern'|'guess'|'none'),ownerName,tried,stages}. Stages: mx_ok → website_harvest → owner_identified → fallback_probe. Pipeline: MX check → harvest → resolve persons → verify name variants per person (break on first verified) → verify site emails → generic pattern ladder → role_guess fallback (conf 30).
+- enrichLeads signature unchanged.
+
+### Remaining to do (Phase 3):
+1. Update `scripts/enrich_emails_cli.js`: pass city/state (record.city/record.state), record enrichmentMeta (ownerName → record.ownerName? pick field names: enrichmentOwner, enrichmentSource, enrichmentConfidence), method + smtpValid in results. Also write record.emailStatus='pattern_found' as before. NOTE leads_db record fields: check what exists (name, businessName, website, email, status, city, state).
+2. Dashboard `/api/leads/enrich/route.ts`: check whether it spawns the CLI or has inline logic — earlier it was rewritten to execFile CLI wrapper. Just update results JSON shape passthrough.
+3. Leads page results modal: show ownerName, source, confidence (badge). Header enrich button unchanged.
+4. Update PIPELINE_DESIGN.md is done; optionally delete it after commit or keep as doc.
+5. Verify: root tsc (add websiteHarvester.js + ownerResolver.js to tsconfig.json include), eslint *.js (watch for unused vars in ownerResolver), e2e runner (96 tests), dashboard tsc+eslint+build.
+6. Commit + push.
+
+### Key facts:
+- tsconfig.json include list: "emailPatternEnricher.js" already there; add "websiteHarvester.js" + "ownerResolver.js".
+- DuckDuckGo HTML endpoint worked in test? NOT yet tested — verify CLI end-to-end with a real business (e.g., a halal business website from halal_leads_db.json at /home/ubuntu/lead-gen/halal_leads_db.json, or create temp leads_db.json and delete after).
+- Dashboard fonts self-hosted at dashboard/public/fonts (build deterministic). Build cmd: cd dashboard && npm run build.
+- Root verify: npx tsc --noEmit; npx eslint *.js; node e2e_tests/runner.js.
+
+### Debug findings (pipeline e2e):
+- Harvest WORKS: Tecovas found alton.chaney@tecovas.com → site_email_verified conf=60, SMTP verified. Chain stores (Allen Edmonds etc.) correctly fell to role_guess fallback (no owner info on site).
+- DuckDuckGo HTML endpoint served a JS CAPTCHA puzzle (anomaly-modal) → no results parsed. Need fallback: use Bing public results page (https://www.bing.com/search?q=...) which returns parseable HTML server-side.
+
+### Wiring status (Phase 3 progress):
+- CLI (`scripts/enrich_emails_cli.js`) UPDATED: passes city/state, writes record.enrichmentOwner/enrichmentSource/enrichmentConfidence/enrichedAt, returns confidence/source/ownerName/stages.
+- `/dashboard/src/app/api/leads/enrich/route.ts` UPDATED: dynamic timeout (Math.max(60000, 40000 + count*30000)), docs updated; result passthrough already covers new fields.
+- Leads page results modal UPDATED: shows 👤 ownerName badge, N% confident badge, source label, 'Owner Verified' pill (method==='owner_verified'). state type extended.
+- REMAINING: add enrichment fields (enrichmentOwner, enrichmentSource, enrichmentConfidence, enrichedAt) to the leads GET row mapping (dashboard/src/app/api/leads/route.ts ~line 52-80) + LeadRecord type (src/types.ts) so table can show owner name. Leads GET row mapping is at lines 52-80 with fields key,email,businessName,...,qualityReasons — add enrichmentOwner/enrichmentSource/enrichmentConfidence + BusinessDbRecord type update if needed.
+- Also add enrichmentSource display in leads table (small column or part of email cell) — optional; at minimum expose in API.
+- Then: tsconfig already includes websiteHarvester.js + ownerResolver.js. Root tsc+eslint, dashboard tsc+eslint+build (npm run build 3x OK), pipeline_e2e_test passes (Tecovas owner email verified), remove pipeline_e2e_test.js before commit (or keep as e2e).
+- Commit message idea: "Upgrade Enrich Emails to person-first owner discovery pipeline (website harvest + owner search + name-pattern SMTP verification)"

@@ -86,7 +86,7 @@ export default function Leads() {
   const [verificationResults, setVerificationResults] = useState<{ email: string; valid: boolean; reason: string }[] | null>(null);
 
   // Enrichment Modal States
-  const [enrichResults, setEnrichResults] = useState<{ enriched: number; found: number; results: Array<{ businessName: string; domain: string; email: string | null; method: string; smtpValid: boolean; tried: string[] }> } | null>(null);
+  const [enrichResults, setEnrichResults] = useState<{ enriched: number; found: number; results: Array<{ businessName: string; domain: string; email: string | null; method: string; smtpValid: boolean; tried: string[]; confidence: number; source: string; ownerName: string | null }> } | null>(null);
   const [enrichConfirm, setEnrichConfirm] = useState(false);
   const [enrichTarget, setEnrichTarget] = useState<'selected' | 'allMissing' | null>(null);
 
@@ -773,8 +773,20 @@ export default function Leads() {
                     </td>
 
                     {/* Email */}
-                    <td style={{ padding: '12px 16px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                      {lead.email}
+                    <td style={{ padding: '12px 16px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '240px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>{lead.email || '—'}</div>
+                        {lead.enrichmentOwner ? (
+                          <div style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', color: 'var(--honey-700)', fontWeight: 600 }}>
+                            👤 {lead.enrichmentOwner}
+                            {typeof lead.enrichmentConfidence === 'number' && lead.enrichmentConfidence > 0 ? ` · ${lead.enrichmentConfidence}%` : ''}
+                          </div>
+                        ) : lead.enrichmentSource ? (
+                          <div style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', color: 'var(--text-muted)' }}>
+                            Enriched via {lead.enrichmentSource === 'website' ? 'website scan' : lead.enrichmentSource === 'owner_name' ? 'owner discovery' : lead.enrichmentSource === 'search' ? 'search' : lead.enrichmentSource === 'pattern' ? 'pattern probe' : 'enrichment'}
+                          </div>
+                        ) : null}
+                      </div>
                     </td>
 
                     {/* Website */}
@@ -1020,7 +1032,7 @@ export default function Leads() {
               </div>
 
               <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                ℹ️ Emails marked <span style={{ fontWeight: 700, color: 'var(--success)' }}>Verified</span> passed a direct SMTP mailbox check. Unverified suggestions come from servers that block probes — double-check before sending at scale.
+                ℹ️ The pipeline first tries to find the <span style={{ fontWeight: 700 }}>owner&apos;s personal email</span> (deep website harvest + owner search + name-pattern SMTP verification), then falls back to generic mailboxes. Emails marked <span style={{ fontWeight: 700, color: 'var(--success)' }}>Verified</span> passed a direct SMTP mailbox check. The confidence score reflects how the email was found — owner-verified emails are the strongest.
               </p>
 
               <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: '10px', background: 'var(--bg-neutral-muted)', padding: '10px' }} className="space-y-2">
@@ -1037,14 +1049,29 @@ export default function Leads() {
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                         {r.email || '—'} · {r.domain}
                       </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                        {r.ownerName ? (
+                          <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 6px', borderRadius: '8px', background: 'var(--honey-100)', color: 'var(--honey-700)', border: '1px solid var(--honey-500)' }}>
+                            👤 {r.ownerName}
+                          </span>
+                        ) : null}
+                        {r.confidence > 0 ? (
+                          <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 6px', borderRadius: '8px', background: 'var(--bg-neutral-muted)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                            {r.confidence}% confident
+                          </span>
+                        ) : null}
+                        <span style={{ fontSize: '9px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                          {r.source === 'owner_name' ? 'owner verified' : r.source === 'search' ? 'owner found via search' : r.source === 'website' ? 'from website' : r.source === 'pattern' ? 'pattern probe' : r.source === 'guess' ? 'best guess' : ''}
+                        </span>
+                      </div>
                     </div>
                     <span style={{
                       fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', flexShrink: 0,
-                      background: r.email ? (r.smtpValid ? 'var(--success-bg)' : 'var(--honey-100)') : 'var(--danger-bg)',
-                      color: r.email ? (r.smtpValid ? 'var(--success)' : 'var(--honey-700)') : 'var(--danger)',
-                      border: `1px solid ${r.email ? (r.smtpValid ? 'rgba(74, 109, 75, 0.15)' : 'var(--honey-500)') : 'rgba(181, 78, 69, 0.15)'}`
+                      background: r.email ? (r.smtpValid ? (r.confidence >= 65 ? 'var(--success-bg)' : 'var(--honey-100)') : 'var(--honey-100)') : 'var(--danger-bg)',
+                      color: r.email ? (r.smtpValid ? (r.confidence >= 65 ? 'var(--success)' : 'var(--honey-700)') : 'var(--honey-700)') : 'var(--danger)',
+                      border: `1px solid ${r.email ? (r.smtpValid ? (r.confidence >= 65 ? 'rgba(74, 109, 75, 0.15)' : 'var(--honey-500)') : 'var(--honey-500)') : 'rgba(181, 78, 69, 0.15)'}`
                     }}>
-                      {r.email ? (r.smtpValid ? 'Verified' : 'Best guess') : 'Not found'}
+                      {r.email ? (r.method === 'owner_verified' ? 'Owner Verified' : r.smtpValid ? 'Verified' : 'Best guess') : 'Not found'}
                     </span>
                   </div>
                 ))}

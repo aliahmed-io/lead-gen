@@ -37,7 +37,9 @@
     "verifier.js",
     "websiteAuditor.js",
     "global.d.ts",
-    "script-env.d.ts"
+    "script-env.d.ts",
+    "websiteHarvester.js",
+    "ownerResolver.js"
   ],
   "exclude": [
     "node_modules",

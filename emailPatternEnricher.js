@@ -1,115 +1,66 @@
 // @ts-check
 /**
  * @module emailPatternEnricher
- * @description Enriches leads that have NO email address by probing common
- * email name patterns at their domain and verifying via MX + SMTP handshake.
+ * @description Person-first owner discovery pipeline for leads WITHOUT emails.
  *
- * This is deliberately a DIFFERENT method from the scraper's website HTML
- * scrape: the scraper extracts emails already published on the business's
- * site, while this module *guesses* plausible mailbox names at the domain
- * (e.g. owner@, contact@, info@, firstname@, first.last@) and confirms the
- * mailbox exists by talking to the mail server directly — without ever
- * sending a real email.
+ * It is deliberately DIFFERENT from the scraper's website HTML scrape
+ * (emailFinder.js): the scraper harvests everything the scraper job finds
+ * while crawling for businesses. This pipeline runs on demand per lead and
+ * chains four stages to maximize the chance of finding the OWNER's personal
+ * email, not just info@:
+ *
+ *   Stage 1 — websiteHarvester: deep crawl of about/team/contact pages for
+ *     emails AND person names near owner-ish role keywords (JSON-LD Person,
+ *     h-cards, "Meet our owner John Smith" text, title hints).
+ *   Stage 2 — ownerResolver: public search-engine lookups
+ *     ("[business]" [city] owner) to find the human behind the business.
+ *   Stage 3 — name-pattern derivation + SMTP verification: for each ranked
+ *     person, generate john@, john.smith@, j.smith@, johnsmith@, jsmith@ and
+ *     confirm the mailbox with a raw RCPT TO handshake (no email sent).
+ *   Stage 4 — fallback ladder: verified generic patterns (owner@, hello@,
+ *     info@...), then best-effort generic guess if the server blocks probes.
+ *
+ * The first verified PERSONAL email wins. Confidence and source metadata
+ * travel with the result so the dashboard can grade lead quality.
  *
  * Usage:
  *   const { enrichLead, enrichLeads } = require('./emailPatternEnricher');
- *   const result = await enrichLead({ name: 'Acme', website: 'https://acme.com', businessName: 'Acme' });
- *   // result = { found: true/false, email: '...', method, smtpValid }
- *
- * The SMTP probe is best-effort: servers that block probes are treated as
- * valid so false negatives don't silently hide reachable mailboxes.
+ *   const res = await enrichLead({ name: 'Acme', website: 'https://acme.com', city: 'Austin', state: 'TX' });
+ *   // res = { found, email, method, smtpValid, confidence, source, ownerName, tried, stages }
  */
-const { getMxRecords } = (() => {
-  // verifier.js does not export getMxRecords, so we implement a minimal MX
-  // lookup here (same semantics: sorted by priority, 5s timeout).
-  const dns = require('dns').promises;
-  /**
-   * @param {string} domain
-   * @returns {Promise<Array<{exchange: string, priority: number}>|null>}
-   */
-  async function getMxRecords(domain) {
-    let timeoutId;
-    try {
-      const lookup = dns.resolveMx(domain);
-      lookup.catch(() => {});
-      const timeout = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error('DNS lookup timed out')), 5000);
-      });
-      const records = await Promise.race([lookup, timeout]);
-      if (!records || records.length === 0) return null;
-      return /** @type {Array<{exchange: string, priority: number}>} */ (records).sort((a, b) => (a.priority || 0) - (b.priority || 0));
-    } catch {
-      return null;
-    } finally {
-      if (timeoutId) clearTimeout(timeoutId);
-    }
-  }
-  return { getMxRecords };
-})();
+const dns = require('dns').promises;
+const { harvestWebsite } = require('./websiteHarvester');
+const { resolveOwnerIdentity, nameVariants } = require('./ownerResolver');
 
 /* ------------------------------------------------------------------ */
-/*  Pattern probing                                                   */
+/*  MX lookup                                                         */
 /* ------------------------------------------------------------------ */
 
 /**
- * Common mailbox prefixes tried in priority order.
- * Role mailboxes (info@/contact@) are tried LAST — they are reachable but
- * reply slower, so personal patterns are always preferred.
- */
-const PERSONAL_PATTERNS = [
-  'owner', 'founder', 'ceo', 'hello', 'admin', 'mail', 'office',
-  'manager', 'info2', 'team', 'staff', 'reception', 'bookings', 'reserve',
-];
-
-/**
- * @typedef {Object} EnrichLeadInput
- * @property {string} [name]
- * @property {string} [businessName]
- * @property {string} [website]
- * @property {string} [email]
- * @property {string[]} [emails]
- */
-
-/**
- * @typedef {Object} EnrichResult
- * @property {boolean} found
- * @property {string} [email]
- * @property {string} [method] - 'pattern_smtp' | 'pattern_mx' | 'role_guess'
- * @property {boolean} smtpValid
- * @property {string[]} [tried] - email candidates attempted
- */
-
-
-/**
- * Build candidate mailboxes for a domain.
- * @param {EnrichLeadInput} lead
  * @param {string} domain
- * @returns {string[]}
+ * @returns {Promise<Array<{exchange: string, priority: number}>|null>}
  */
-function buildCandidates(lead, domain) {
-  const candidates = [];
-
-  /* Try personal-style prefixes first (best reply rates) */
-  for (const prefix of PERSONAL_PATTERNS) candidates.push(`${prefix}@${domain}`);
-
-  /* Try the business's own name when it looks like a safe mailbox part */
-  const name = (lead.name || lead.businessName || '').trim().toLowerCase();
-  const cleanName = name
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/&\s*/g, 'and')
-    .replace(/\s+/g, '')
-    .slice(0, 20);
-  if (cleanName && cleanName.length >= 3 && !/^(info|contact|sales|support|admin|store|shop|the|my)$/i.test(cleanName)) {
-    candidates.push(`${cleanName}@${domain}`);
-    /* first-name style: use the first word of the name */
-    const first = cleanName.split(/[-_]/)[0];
-    if (first && first.length >= 3 && first !== cleanName) {
-      candidates.push(`${first}@${domain}`);
-    }
+async function getMxRecords(domain) {
+  let timeoutId;
+  try {
+    const lookup = dns.resolveMx(domain);
+    lookup.catch(() => {});
+    const timeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('DNS lookup timed out')), 5000);
+    });
+    const records = await Promise.race([lookup, timeout]);
+    if (!records || records.length === 0) return null;
+    return /** @type {Array<{exchange: string, priority: number}>} */ (records).sort((a, b) => (a.priority || 0) - (b.priority || 0));
+  } catch {
+    return null;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
-
-  return candidates;
 }
+
+/* ------------------------------------------------------------------ */
+/*  SMTP probe                                                        */
+/* ------------------------------------------------------------------ */
 
 /**
  * Probe one mailbox at one MX host via raw SMTP handshake (no DATA stage).
@@ -172,57 +123,208 @@ function smtpProbe(email, mxHost) {
   });
 }
 
+/* ------------------------------------------------------------------ */
+/*  Domain helpers                                                    */
+/* ------------------------------------------------------------------ */
+
 /**
- * Enrich a single lead with a verified email via pattern probing.
- * Returns the first candidate that passes SMTP verification; if all probes
- * are blocked by the server, falls back to the most generic valid-looking
- * candidate; otherwise returns found:false.
+ * @param {string} website
+ * @returns {string}
+ */
+function domainFrom(website) {
+  try {
+    const u = website.startsWith('http') ? new URL(website) : new URL(`https://${website}`);
+    return u.hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Verification of derived candidates                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Verify personal-pattern candidates derived from an owner candidate's name.
+ * @param {string} personName
+ * @param {string} domain
+ * @param {string} mxHost
+ * @param {Set<string>} tried
+ * @returns {Promise<{email: string|null, method: string}>}
+ */
+async function verifyNameCandidates(personName, domain, mxHost, tried) {
+  const base = nameVariants(personName);
+  for (const v of base) {
+    /* variants that end with @ (first.last@) get the domain appended */
+    const candidate = v.endsWith('@') ? `${v}${domain}` : `${v}@${domain}`;
+    tried.add(candidate);
+    try {
+      const probe = await smtpProbe(candidate, mxHost);
+      if (probe.valid) return { email: candidate, method: 'owner_verified' };
+    } catch {
+      /* keep trying */
+    }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  return { email: null, method: '' };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Generic pattern probing (fallback stage)                          */
+/* ------------------------------------------------------------------ */
+
+const PERSONAL_PATTERNS = [
+  'owner', 'founder', 'ceo', 'hello', 'admin', 'mail', 'office',
+  'manager', 'info2', 'team', 'staff', 'reception', 'bookings', 'reserve',
+];
+
+/**
+ * @param {import('./websiteHarvester').HarvestResult} harvest
+ * @returns {string[]}
+ */
+function genericCandidates(harvest) {
+  /** @type {string[]} */
+  const out = [];
+  /* emails already published on the site (non-role ones) are the best signals */
+  for (const e of harvest.emails) {
+    if (e.includes('@') && !out.includes(e)) out.push(e);
+  }
+  for (const prefix of PERSONAL_PATTERNS) {
+    out.push(`${prefix}@${harvest.domain}`);
+  }
+  for (const e of harvest.roleEmails) {
+    if (!out.includes(e)) out.push(e);
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Public API                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @typedef {Object} EnrichLeadInput
+ * @property {string} [name]
+ * @property {string} [businessName]
+ * @property {string} [website]
+ * @property {string} [email]
+ * @property {string} [city]
+ * @property {string} [state]
+ */
+
+/**
+ * @typedef {Object} EnrichResult
+ * @property {boolean} found
+ * @property {string} [email]
+ * @property {string} method - 'owner_verified' | 'site_email_verified' | 'pattern_smtp' | 'role_guess' | 'none'
+ * @property {boolean} smtpValid
+ * @property {number} confidence - 0..100
+ * @property {string} source - 'owner_name' | 'website' | 'search' | 'pattern' | 'guess' | 'none'
+ * @property {string} [ownerName]
+ * @property {string[]} tried
+ * @property {string[]} stages - pipeline stages that actually ran
+ */
+
+/**
+ * Run the full owner-discovery pipeline for one lead.
  * @param {EnrichLeadInput} lead
  * @returns {Promise<EnrichResult>}
  */
 async function enrichLead(lead) {
-  const target = (lead.website || '').trim();
-  if (!target) return { found: false, smtpValid: false, tried: [] };
+  /** @type {string[]} */
+  const stages = [];
+  const tried = new Set();
+  const website = (lead.website || '').trim();
+  if (!website) return { found: false, method: 'none', smtpValid: false, confidence: 0, source: 'none', tried: [], stages };
 
-  /* domain extraction */
-  let domain = target;
+  const domain = domainFrom(website);
+  if (!domain) return { found: false, method: 'none', smtpValid: false, confidence: 0, source: 'none', tried: [], stages };
+
+  /* Step 0: the domain must accept mail at all */
+  const mx = await getMxRecords(domain);
+  if (!mx || mx.length === 0) {
+    return { found: false, method: 'none', smtpValid: false, confidence: 0, source: 'none', tried: [], stages: ['mx_check_failed'] };
+  }
+  stages.push('mx_ok');
+  const host = mx[0].exchange;
+
+  /* Step 1: deep website harvest */
+  let harvest;
   try {
-    const u = target.startsWith('http') ? new URL(target) : new URL(`https://${target}`);
-    domain = u.hostname.replace(/^www\./, '');
+    harvest = await harvestWebsite({ website, name: lead.name || '', businessName: lead.businessName || '', city: lead.city || '', state: lead.state || '' });
+    stages.push('website_harvest');
   } catch {
-    return { found: false, smtpValid: false, tried: [] };
+    harvest = { emails: [], roleEmails: [], persons: [], pagesVisited: 0, domain };
   }
 
-  const candidates = buildCandidates(lead, domain);
-  const tried = [...candidates];
+  /* Step 2: owner identity resolution */
+  let persons;
+  try {
+    persons = await resolveOwnerIdentity({ website, name: lead.name || '', businessName: lead.businessName || '', city: lead.city || '', state: lead.state || '', persons: harvest.persons });
+    if (persons.length > 0) stages.push('owner_identified');
+  } catch {
+    persons = harvest.persons.map(p => ({ name: p.name, role: p.role, source: 'website_text', confidence: p.confidence }));
+  }
 
-  /* Step 1: domain must accept mail */
-  const mx = await getMxRecords(domain);
-  if (!mx || mx.length === 0) return { found: false, smtpValid: false, tried };
-
-  /* Step 2: probe candidates until one is accepted */
-  const host = mx[0].exchange;
-  for (const candidate of candidates) {
-    try {
-      const probe = await smtpProbe(candidate, host);
-      if (probe.valid) {
-        return {
-          found: true,
-          email: candidate,
-          method: 'pattern_smtp',
-          smtpValid: true,
-          tried,
-        };
-      }
-    } catch {
-      /* probe failed — keep trying next candidate */
+  /* Step 3: verify name-derived candidates for each ranked person */
+  /** @type {{ email: string|null, method: string, confidence: number, source: string, ownerName: string }} */
+  let best = { email: null, method: '', confidence: 0, source: '', ownerName: '' };
+  for (const p of persons) {
+    const derived = await verifyNameCandidates(p.name, domain, host, tried);
+    if (derived.email) {
+      best = {
+        email: derived.email,
+        method: derived.method,
+        confidence: Math.min(100, p.confidence + 10),
+        source: p.source === 'search' ? 'search' : 'owner_name',
+        ownerName: p.name,
+      };
+      break; /* first verified personal email wins */
     }
   }
+  if (best.email) {
+    return {
+      found: true, email: best.email, method: best.method, smtpValid: true,
+      confidence: best.confidence, source: best.source, ownerName: best.ownerName,
+      tried: Array.from(tried), stages,
+    };
+  }
 
-  /* Step 3: server blocked all probes (temp errors / firewall).
-   * Prefer the generic mailbox as a best-effort fallback. */
-  const generic = candidates.find(c => /^info|contact|hello|admin/.test(c)) || candidates[0];
-  return { found: true, email: generic, method: 'role_guess', smtpValid: false, tried };
+  /* Step 4a: site-discovered personal emails — verify them */
+  for (const e of harvest.emails) {
+    tried.add(e);
+    try {
+      const probe = await smtpProbe(e, host);
+      if (probe.valid) {
+        return { found: true, email: e, method: 'site_email_verified', smtpValid: true, confidence: 60, source: 'website', tried: Array.from(tried), stages };
+      }
+    } catch { /* continue */ }
+  }
+  stages.push('fallback_probe');
+
+  /* Step 4b: generic pattern ladder */
+  for (const c of genericCandidates(harvest)) {
+    if (tried.has(c)) continue;
+    tried.add(c);
+    try {
+      const probe = await smtpProbe(c, host);
+      if (probe.valid) {
+        const isRole = /^(info|contact|sales|support|hello|admin|mail|office|team|staff)\b/i.test(c);
+        return {
+          found: true, email: c, method: 'pattern_smtp', smtpValid: true,
+          confidence: isRole ? 50 : 65, source: 'pattern', tried: Array.from(tried), stages,
+        };
+      }
+    } catch { /* continue */ }
+  }
+
+  /* Step 4c: server blocked probes — best-effort generic guess */
+  const all = genericCandidates(harvest);
+  const generic = all.find(c => /^(info|contact|hello|admin)\b@/i.test(c)) || all[0] || `${domain}@${domain}`;
+  return {
+    found: true, email: generic, method: 'role_guess', smtpValid: false,
+    confidence: 30, source: 'guess', tried: Array.from(tried), stages,
+  };
 }
 
 /**
@@ -236,13 +338,13 @@ async function enrichLeads(leads, onFound) {
   let done = 0;
   for (const lead of leads) {
     const result = await enrichLead(lead);
-    if (result.found && typeof onFound === 'function') onFound(/** @type {string} */ (result.email), done, leads.length);
+    if (result.found && result.email && typeof onFound === 'function') onFound(result.email, done, leads.length);
     results.push(result);
     done++;
-    /* polite pacing — DNS/SMTP servers dislike bursts */
+    /* polite pacing — DNS/SMTP/search servers dislike bursts */
     await new Promise(r => setTimeout(r, 250));
   }
   return results;
 }
 
-module.exports = { enrichLead, enrichLeads, buildCandidates };
+module.exports = { enrichLead, enrichLeads, getMxRecords, smtpProbe };
