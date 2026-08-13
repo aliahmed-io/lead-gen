@@ -5,8 +5,13 @@ import lockfile from 'proper-lockfile';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { leads = [] } = body;
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+    }
+    const { leads = [] } = (body && typeof body === 'object' ? body : {}) as { leads?: unknown };
 
     if (!Array.isArray(leads) || leads.length === 0) {
       return NextResponse.json({ error: 'No valid leads provided for import' }, { status: 400 });

@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-const dbPath = path.resolve(process.cwd(), '../../leads_db.json');
-const campaignDbPath = path.resolve(process.cwd(), '../../campaign_db.json');
+const dbPath = path.resolve(process.cwd(), '../leads_db.json');
+const campaignDbPath = path.resolve(process.cwd(), '../campaign_db.json');
 
 /**
  * Leads-database bulk actions: delete, reset_to_pending, unsuppress.

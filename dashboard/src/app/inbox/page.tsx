@@ -66,7 +66,7 @@ export default function InboxPage() {
     if (!selectedThreads.length) return;
     setBulkWorking(true);
     try {
-      const res = await fetch('/api/inbox/bulk', {
+      const res = await fetch('/api/inbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'mark_read', leadEmails: selectedThreads }),
@@ -86,7 +86,7 @@ export default function InboxPage() {
     if (!selectedThreads.length) return;
     setBulkWorking(true);
     try {
-      const res = await fetch('/api/inbox/bulk', {
+      const res = await fetch('/api/inbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete', leadEmails: selectedThreads }),
@@ -132,7 +132,7 @@ export default function InboxPage() {
     if (!selectedThread || !replyText.trim()) return;
     setSending(true);
     try {
-      const res = await fetch('/api/inbox/reply', {
+      const res = await fetch('/api/inbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

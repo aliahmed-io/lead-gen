@@ -73,5 +73,6 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(destination, { status: 302 });
+  const redirectTarget = destination === '/' ? new URL('/', request.url) : destination;
+  return NextResponse.redirect(redirectTarget, { status: 302 });
 }
