@@ -16,6 +16,34 @@ export async function GET() {
     { name: 'Business Hours Clock', category: 'Timing', status: 'pass', detail: 'Mon-Fri Central Time schedule active' }
   ];
 
+  // Real runtime checks
+  const encryptionKeySet = Boolean(process.env.ENCRYPTION_KEY);
+  checks.push({
+    name: 'Encryption Key',
+    category: 'Security',
+    status: encryptionKeySet ? 'pass' : 'warn',
+    detail: encryptionKeySet
+      ? 'Account passwords can be decrypted for SMTP/IMAP'
+      : 'ENCRYPTION_KEY missing — passwords cannot be decrypted; re-save account credentials or set the key'
+  });
+
+  let configuredAccounts = 0;
+  try {
+    const settingsPath = path.resolve(process.cwd(), '../settings.json');
+    if (fs.existsSync(settingsPath)) {
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      configuredAccounts = Array.isArray(settings?.accounts) ? settings.accounts.length : 0;
+    }
+  } catch {}
+  checks.push({
+    name: 'SMTP Accounts Configured',
+    category: 'Deliverability',
+    status: configuredAccounts > 0 ? 'pass' : 'fail',
+    detail: configuredAccounts > 0
+      ? `${configuredAccounts} mailbox(es) configured for rotation`
+      : 'No SMTP accounts configured — outreach cannot send'
+  });
+
   const campaignPath = path.resolve(process.cwd(), '../campaign_db.json');
   if (fs.existsSync(campaignPath)) {
     try {

@@ -754,3 +754,64 @@
 [INFO] 2026-06-20T16:00:00.053Z - 
 ✅ IMAP Scan Complete!
 [INFO] 2026-06-20T16:00:00.054Z - ❌ No SMTP accounts found in .env file! Skipping sender module.
+[INFO] 2026-08-13T00:58:06.286Z - ======================================================
+[INFO] 2026-08-13T00:58:06.287Z - 🤖 MASTER SCHEDULER ONLINE
+[INFO] 2026-08-13T00:58:06.287Z - ======================================================
+[INFO] 2026-08-13T00:58:06.287Z -  - Sender Queue:     Runs immediately, then checks hourly
+[INFO] 2026-08-13T00:58:06.287Z -  - IMAP Scanner:     Scheduled every hour
+[INFO] 2026-08-13T00:58:06.287Z -  - Follow-ups:       Scheduled daily at 9:15 AM (Texas Time)
+[INFO] 2026-08-13T00:58:06.287Z -  - Safety Controls:  Auto-pauses on Nights, Weekends, and Holidays
+[INFO] 2026-08-13T00:58:06.287Z - ======================================================
+
+[ERROR] 2026-08-13T00:58:06.288Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T00:58:06.289Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T00:58:06.289Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T00:58:06.289Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T00:58:06.289Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T00:58:06.289Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[INFO] 2026-08-13T00:58:06.289Z - 📤 Syncing leads from leads_db.json to Campaign Database...
+[INFO] 2026-08-13T00:58:06.289Z - 
+📊 Campaign Status:
+[INFO] 2026-08-13T00:58:06.290Z -    Total Leads: 0
+[INFO] 2026-08-13T00:58:06.290Z -    Pending Sends in Queue: 0
+[INFO] 2026-08-13T00:58:06.290Z -    Using Accounts: 6
+[INFO] 2026-08-13T00:58:06.290Z -    Daily Limit Per Account: 80
+[INFO] 2026-08-13T00:58:06.290Z -    Global Daily Limit: 480
+[INFO] 2026-08-13T00:58:06.290Z - 
+
+[INFO] 2026-08-13T00:58:06.290Z - ✅ No pending leads in the queue. Done.
+[INFO] 2026-08-13T01:00:00.095Z - 
+⏰ [CRON] Hourly tick: Scanning IMAP and checking Sender queue...
+[INFO] 2026-08-13T01:00:00.096Z - 🔍 Starting reply detection scan...
+
+[ERROR] 2026-08-13T01:00:00.096Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.096Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.096Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.096Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.096Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.096Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[INFO] 2026-08-13T01:00:00.102Z - ⏳ Connecting to IMAP Account 1782082773692uq5t (ali@tryaethelon.com)...
+[INFO] 2026-08-13T01:00:00.160Z - ⏳ Connecting to IMAP Account 1782082773692eb68 (ali@aethelonlabs.com)...
+[INFO] 2026-08-13T01:00:00.184Z - ⏳ Connecting to IMAP Account 1782082773692c42a (ali@aethelonstudio.com)...
+[INFO] 2026-08-13T01:00:00.203Z - ⏳ Connecting to IMAP Account 1782082773692b69v (ali@getaethelon.com)...
+[INFO] 2026-08-13T01:00:00.224Z - ⏳ Connecting to IMAP Account 17820827736924312 (ali@aethelonhq.com)...
+[INFO] 2026-08-13T01:00:00.244Z - ⏳ Connecting to IMAP Account 17820827736939uc9 (ali@aethelonmail.com)...
+[INFO] 2026-08-13T01:00:00.263Z - 
+✅ Scan complete: 0 replies, 0 bounces, 0 unsubscribes across 6 accounts.
+[ERROR] 2026-08-13T01:00:00.264Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.264Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.264Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.264Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.264Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[ERROR] 2026-08-13T01:00:00.264Z - Failed to decrypt password: ENCRYPTION_KEY is not set in .env — cannot encrypt/decrypt passwords.
+[INFO] 2026-08-13T01:00:00.264Z - 📤 Syncing leads from leads_db.json to Campaign Database...
+[INFO] 2026-08-13T01:00:00.264Z - 
+📊 Campaign Status:
+[INFO] 2026-08-13T01:00:00.264Z -    Total Leads: 0
+[INFO] 2026-08-13T01:00:00.264Z -    Pending Sends in Queue: 0
+[INFO] 2026-08-13T01:00:00.264Z -    Using Accounts: 6
+[INFO] 2026-08-13T01:00:00.264Z -    Daily Limit Per Account: 80
+[INFO] 2026-08-13T01:00:00.264Z -    Global Daily Limit: 480
+[INFO] 2026-08-13T01:00:00.264Z - 
+
+[INFO] 2026-08-13T01:00:00.264Z - ✅ No pending leads in the queue. Done.

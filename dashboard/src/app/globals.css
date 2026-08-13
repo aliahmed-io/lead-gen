@@ -519,6 +519,7 @@ select.input {
 @media (max-width: 1023px) {
   .inbox-sidebar {
     width: 100% !important;
+    min-width: 0 !important;
     max-height: 45vh;
     border-right: none !important;
     border-bottom: 1px solid var(--border-subtle);
@@ -526,6 +527,12 @@ select.input {
   }
   .inbox-main {
     min-height: 40vh;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden;
+  }
+  .inbox-main > div {
+    max-width: 100%;
   }
 }
 

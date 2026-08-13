@@ -163,7 +163,7 @@ export default function InboxPage() {
     <div className="page-container" style={{ padding: 0, height: '100%', display: 'flex' }}>
       
       {/* Sidebar */}
-      <div style={{ width: '350px', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)' }}>
+      <div className="inbox-sidebar" style={{ width: '350px', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)' }}>
         <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center', gap: '8px' }}>
