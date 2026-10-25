@@ -57,6 +57,11 @@ function exportToExcel(leads) {
       Description: (l.description || '').slice(0, 300),
       'Maps URL': l.mapsUrl || '',
       'Scraped Date': scrapedDate,
+      'Owner Name':l.targetReview?.ownerName||'',
+      'Targeting Status':require('./runtime/targeting').assess(l).status,
+      'Employee Count':l.targetReview?.employeeCount||'',
+      'Owner Source URL':l.targetReview?.ownerSourceUrl||'',
+      'Size Source URL':l.targetReview?.sizeSourceUrl||'',
     };
   });
 

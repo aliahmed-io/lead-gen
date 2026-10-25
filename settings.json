@@ -16,12 +16,22 @@
       "step": 2,
       "templateKey": "followup2",
       "delayDays": 4
+    },
+    {
+      "step": 3,
+      "templateKey": "followup3",
+      "delayDays": 5
+    },
+    {
+      "step": 4,
+      "templateKey": "breakup",
+      "delayDays": 7
     }
   ],
   "delayMinMs": 180000,
   "delayMaxMs": 480000,
-  "maxEmailsPerDay": 80,
-  "maxDailyTotal": 480,
+  "maxEmailsPerDay": 25,
+  "maxDailyTotal": 150,
   "startHour": 9,
   "endHour": 17,
   "bounceThreshold": 0.03,

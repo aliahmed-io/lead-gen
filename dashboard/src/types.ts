@@ -16,18 +16,33 @@ export interface LeadRecord {
   state?: string;
   city?: string;
   website?: string;
-  [key: string]: string | number | boolean | undefined | null;
+  callBooked?: boolean;
+  proposalSent?: boolean;
+  clientClosed?: boolean;
+  dealValue?: number;
+  notes?: string;
+  qualityTier?: string;
+  qualityScore?: number;
+  auditDetails?: Record<string, unknown>;
+  [key: string]: string | number | boolean | undefined | null | Record<string, unknown>;
 }
 
 export interface BusinessDbRecord {
   name?: string;
+  companyName?: string;
+  contactName?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
+  emails?: string[];
   platform?: string;
   emailStatus?: string;
   updatedAt?: string;
   state?: string;
   city?: string;
   website?: string;
+  qualityTier?: string;
+  qualityScore?: number;
 }
 
 export interface Stats {
@@ -81,6 +96,65 @@ export interface AccountHealth {
   clickRate?: number;
   lastActiveAt: number | null;
   healthScore: 'good' | 'warning' | 'critical';
+  healthScoreNumber?: number;
+  healthStatus?: 'healthy' | 'warning' | 'degraded' | 'critical' | 'paused';
+  autoPaused?: boolean;
+  autoPauseReason?: string;
+  consecutiveErrors?: number;
+  totalErrors?: number;
+  lastError?: string;
+  lastErrorAt?: number;
+  lastErrorType?: string;
+  lastSmtpStatus?: 'pass' | 'fail' | 'pending';
+  lastSmtpLatencyMs?: number;
+  lastImapStatus?: 'pass' | 'fail' | 'pending';
+  lastImapLatencyMs?: number;
+  dnsResult?: {
+    overall: 'good' | 'warning' | 'fail';
+    summary?: string;
+    spf?: { pass: boolean; warning?: string };
+    dmarc?: { pass: boolean; warning?: string };
+    mx?: { pass: boolean; warning?: string };
+  };
+}
+
+export interface AccountDiagnosticReport {
+  accountId: string;
+  email: string;
+  timestamp: number;
+  smtp: { status: 'pass' | 'fail' | 'pending'; latencyMs: number; error: string | null };
+  imap: { status: 'pass' | 'fail' | 'pending'; latencyMs: number; error: string | null };
+  dns: {
+    domain?: string | null;
+    overall: 'good' | 'warning' | 'fail';
+    spf?: { pass: boolean; warning?: string | null };
+    dmarc?: { pass: boolean; warning?: string | null };
+    mx?: { pass: boolean; warning?: string | null };
+    summary?: string;
+  } | null;
+  healthScore: number;
+  healthStatus: 'healthy' | 'warning' | 'degraded' | 'critical';
+  details: string[];
+}
+
+export interface SystemHealthResponse {
+  overall: 'good' | 'warning' | 'critical';
+  healthScore: number;
+  summary: {
+    totalAccounts: number;
+    healthyAccounts: number;
+    warningAccounts: number;
+    criticalAccounts: number;
+    pausedAccounts: number;
+  };
+  checks: Array<{
+    name: string;
+    category: string;
+    status: 'pass' | 'warn' | 'fail';
+    detail: string;
+  }>;
+  alerts: DeliverabilityAlert[];
+  timestamp: number;
 }
 
 export interface DeliverabilityAlert {
@@ -112,3 +186,19 @@ export interface EnhancedStats extends Stats {
   alerts?: DeliverabilityAlert[];
   variantBreakdown?: Record<string, { name: string; sent: number; opens: number; replies: number; positiveReplies: number; callsBooked: number; clientsClosed: number }>;
 }
+
+export interface SpamRule {
+  rule: string;
+  description: string;
+  passed: boolean;
+  score: number;
+}
+
+export interface SpamReport {
+  score: number;
+  spamAssassinRating: number;
+  ratingLabel: 'EXCELLENT' | 'GOOD' | 'MODERATE' | 'POOR' | 'SPAM_RISK' | string;
+  rules: SpamRule[];
+  recommendations: string[];
+}
+

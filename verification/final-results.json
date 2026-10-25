@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-23",
+  "installedProject": "D:/leadgen",
+  "sourceFilesInstalled": 151,
+  "originalFilesPreservedAndHashed": 100,
+  "originalDataAndLegacyFilesPreservedAndHashed": 30,
+  "deletedFiles": 0,
+  "runtimeRegressionTests": {
+    "passed": 30,
+    "failed": 0
+  },
+  "browserChecks": {
+    "passed": 12,
+    "failed": 0,
+    "mode": "production",
+    "fixtureDataOnly": true
+  },
+  "runtimeLint": "passed",
+  "dashboardLint": "passed",
+  "sourceBuild": "passed",
+  "dashboardProductionBuild": "passed",
+  "backupAndRestoreToNewDirectory": "passed",
+  "campaignStatus": "paused",
+  "workerStatus": "offline",
+  "approvedQueueRecords": 0,
+  "quarantinedQueueRecords": 1116,
+  "generatedQueueMatches": 1090,
+  "liveEmailEnabled": false,
+  "emailsSentDuringRepair": 0,
+  "originalCredentialDecryptFailures": 0,
+  "limitations": [
+    "Credential rotation and repository history cleanup require owner action.",
+    "Provider diagnostics, received-message authentication, live reply and opt-out pilot have not been performed.",
+    "Lead relevance and real-world accuracy require manual review.",
+    "Dependency vulnerability certification and full accessibility certification were not completed.",
+    "Node 22 prints an experimental SQLite warning."
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-23",
+  "runtimeTestsPassed": 46,
+  "browserChecksPassed": 13,
+  "runtimeLint": "passed",
+  "dashboardLint": "passed",
+  "sourceBuild": "passed",
+  "productionBuild": "passed",
+  "originalProtectedFilesVerified": 100,
+  "sourceFilesVerified": 156,
+  "windowsTask": "LeadGen Account Protection",
+  "taskVerifiedRunning": true,
+  "monitorCurrent": true,
+  "monitor": {
+    "status": "online",
+    "heartbeatAt": 1792772264790,
+    "lastCycleAt": 1792772264491,
+    "lastCompletedAt": 1792772264790,
+    "checked": 0,
+    "failed": 0
+  },
+  "perAccountCeiling": 100,
+  "totalCeiling": 600,
+  "includesFollowupsAndManualReplies": true,
+  "credentialCsvAppPasswordsMatchAllSix": true,
+  "accounts": [
+    {
+      "account": 1,
+      "paused": true,
+      "reason": "auth",
+      "smtpStatus": "fail",
+      "smtpResponseCode": 535,
+      "imapStatus": "fail",
+      "nextHealthCheckAt": 1792775806583
+    },
+    {
+      "account": 2,
+      "paused": true,
+      "reason": "auth",
+      "smtpStatus": "fail",
+      "smtpResponseCode": 535,
+      "imapStatus": "fail",
+      "nextHealthCheckAt": 1792775808302
+    },
+    {
+      "account": 3,
+      "paused": true,
+      "reason": "auth",
+      "smtpStatus": "fail",
+      "smtpResponseCode": 535,
+      "imapStatus": "fail",
+      "nextHealthCheckAt": 1792775810307
+    },
+    {
+      "account": 4,
+      "paused": true,
+      "reason": "auth",
+      "smtpStatus": "fail",
+      "smtpResponseCode": 535,
+      "imapStatus": "fail",
+      "nextHealthCheckAt": 1792775812140
+    },
+    {
+      "account": 5,
+      "paused": true,
+      "reason": "auth",
+      "smtpStatus": "fail",
+      "smtpResponseCode": 535,
+      "imapStatus": "fail",
+      "nextHealthCheckAt": 1792775814107
+    },
+    {
+      "account": 6,
+      "paused": true,
+      "reason": "auth",
+      "smtpStatus": "fail",
+      "smtpResponseCode": 535,
+      "imapStatus": "fail",
+      "nextHealthCheckAt": 1792775816003
+    }
+  ],
+  "liveEmailEnabled": false,
+  "campaign": "paused",
+  "emailsSent": 0,
+  "limitations": [
+    "Provider rejects the supplied app credentials; matching source files does not establish active provider access.",
+    "Monitoring depends on this computer being awake and the user signed in.",
+    "Available errors, bounces and received feedback do not expose every complaint or spam-folder placement.",
+    "Reputation-related holds require review; temporary recovery requires cooldown and spaced successful diagnostics."
+  ]
+}

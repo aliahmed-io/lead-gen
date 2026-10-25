@@ -1,0 +1,133 @@
+const test = require('node:test');
+const assert = require('node:assert');
+const path = require('path');
+const accountHealthEngine = require('../accountHealthEngine');
+const campaignDb = require('../campaignDb');
+
+test('Account Health Engine - Unit & Circuit Breaker Tests', async (t) => {
+  await t.test('1. Classifies error types accurately', () => {
+    assert.strictEqual(
+      accountHealthEngine.classifyError(new Error('535 5.7.8 Username and Password not accepted')),
+      'AUTH_FAILURE'
+    );
+    assert.strictEqual(
+      accountHealthEngine.classifyError('Application-specific password required'),
+      'AUTH_FAILURE'
+    );
+    assert.strictEqual(
+      accountHealthEngine.classifyError(new Error('550 5.7.1 Message rejected due to spam content')),
+      'SPAM_REJECTION'
+    );
+    assert.strictEqual(
+      accountHealthEngine.classifyError('IP blocked due to poor reputation'),
+      'SPAM_REJECTION'
+    );
+    assert.strictEqual(
+      accountHealthEngine.classifyError(new Error('421 4.7.0 Try again later, closing connection')),
+      'RATE_LIMITED'
+    );
+    assert.strictEqual(
+      accountHealthEngine.classifyError('550 User unknown'),
+      'HARD_BOUNCE'
+    );
+    assert.strictEqual(
+      accountHealthEngine.classifyError(new Error('connect ETIMEDOUT 74.125.20.108:465')),
+      'CONNECTION_ERROR'
+    );
+  });
+
+  await t.test('2. Health Score calculations for healthy vs degraded states', () => {
+    // Clean account: 0 bounce, 0 errors
+    const clean = accountHealthEngine.calculateHealthScore({ bounceRate: 0 }, { consecutiveErrors: 0 });
+    assert.strictEqual(clean.score, 100);
+    assert.strictEqual(clean.status, 'healthy');
+
+    // Minor bounce: 2.5%
+    const minorBounce = accountHealthEngine.calculateHealthScore({ bounceRate: 0.025 }, { consecutiveErrors: 0 });
+    assert.strictEqual(minorBounce.score, 85);
+    assert.strictEqual(minorBounce.status, 'healthy');
+
+    // Elevated bounce: 3.5%
+    const elevated = accountHealthEngine.calculateHealthScore({ bounceRate: 0.035 }, { consecutiveErrors: 0 });
+    assert.strictEqual(elevated.score, 75);
+    assert.strictEqual(elevated.status, 'warning');
+
+    // High bounce: 4.5%
+    const criticalBounce = accountHealthEngine.calculateHealthScore({ bounceRate: 0.045 }, { consecutiveErrors: 0 });
+    assert.strictEqual(criticalBounce.score, 60);
+    assert.strictEqual(criticalBounce.status, 'degraded');
+
+    // Errors penalty: 2 consecutive errors
+    const withErrors = accountHealthEngine.calculateHealthScore({ bounceRate: 0 }, { consecutiveErrors: 2 });
+    assert.strictEqual(withErrors.score, 70);
+    assert.strictEqual(withErrors.status, 'warning');
+
+    // Auto-paused account capped at max 45
+    const paused = accountHealthEngine.calculateHealthScore({ bounceRate: 0 }, { autoPaused: true });
+    assert.ok(paused.score <= 45);
+    assert.strictEqual(paused.status, 'critical');
+  });
+
+  await t.test('3. Circuit breaker trips immediately on AUTH_FAILURE', () => {
+    const testAccountId = 'test_auth_trip_' + Date.now();
+    accountHealthEngine.recordSendError(testAccountId, new Error('535 5.7.8 Authentication failed'));
+
+    const state = campaignDb.getAccountState(testAccountId);
+    assert.strictEqual(state.autoPaused, true);
+    assert.strictEqual(state.lastErrorType, 'AUTH_FAILURE');
+    assert.ok(state.autoPauseReason.includes('Authentication Failure'));
+
+    const health = accountHealthEngine.isAccountHealthy(testAccountId);
+    assert.strictEqual(health.safe, false);
+
+    // Clean up
+    accountHealthEngine.unpauseAccount(testAccountId);
+    const restored = campaignDb.getAccountState(testAccountId);
+    assert.strictEqual(restored.autoPaused, false);
+  });
+
+  await t.test('4. Circuit breaker trips immediately on SPAM_REJECTION', () => {
+    const testAccountId = 'test_spam_trip_' + Date.now();
+    accountHealthEngine.recordSendError(testAccountId, new Error('550 5.7.1 Spam policy violation'));
+
+    const state = campaignDb.getAccountState(testAccountId);
+    assert.strictEqual(state.autoPaused, true);
+    assert.strictEqual(state.lastErrorType, 'SPAM_REJECTION');
+    assert.ok(state.autoPauseReason.includes('Spam Rejection'));
+
+    // Clean up
+    accountHealthEngine.unpauseAccount(testAccountId);
+  });
+
+  await t.test('5. Circuit breaker trips on 3 consecutive send errors', () => {
+    const testAccountId = 'test_consec_trip_' + Date.now();
+
+    accountHealthEngine.recordSendError(testAccountId, new Error('ETIMEDOUT'));
+    assert.strictEqual(Boolean(campaignDb.getAccountState(testAccountId).autoPaused), false);
+
+    accountHealthEngine.recordSendError(testAccountId, new Error('ETIMEDOUT'));
+    assert.strictEqual(Boolean(campaignDb.getAccountState(testAccountId).autoPaused), false);
+
+    // Third consecutive error trips circuit breaker
+    accountHealthEngine.recordSendError(testAccountId, new Error('ETIMEDOUT'));
+    assert.strictEqual(campaignDb.getAccountState(testAccountId).autoPaused, true);
+    assert.ok(campaignDb.getAccountState(testAccountId).autoPauseReason.includes('consecutive'));
+
+    // Success resets consecutive errors
+    accountHealthEngine.unpauseAccount(testAccountId);
+    accountHealthEngine.recordSendSuccess(testAccountId);
+    assert.strictEqual(campaignDb.getAccountState(testAccountId).consecutiveErrors, 0);
+  });
+
+  await t.test('6. Manual pause and unpause toggle', () => {
+    const testAccountId = 'test_manual_toggle_' + Date.now();
+
+    accountHealthEngine.pauseAccount(testAccountId, 'Manual maintenance');
+    assert.strictEqual(campaignDb.getAccountState(testAccountId).autoPaused, true);
+    assert.strictEqual(accountHealthEngine.isAccountHealthy(testAccountId).safe, false);
+
+    accountHealthEngine.unpauseAccount(testAccountId);
+    assert.strictEqual(campaignDb.getAccountState(testAccountId).autoPaused, false);
+    assert.strictEqual(accountHealthEngine.isAccountHealthy(testAccountId).safe, true);
+  });
+});

@@ -9,7 +9,7 @@ const hd = new Holidays('US', 'TX');
  * 
  * Returns: { valid: boolean, reason?: string }
  */
-function isWithinBusinessHours(startHour = 9, endHour = 17) {
+function isWithinBusinessHours(startHour = 9, endHour = 17, now = Date.now()) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago',
     hour: 'numeric',
@@ -20,7 +20,7 @@ function isWithinBusinessHours(startHour = 9, endHour = 17) {
     hour12: false
   });
   
-  const parts = formatter.formatToParts(new Date());
+  const parts = formatter.formatToParts(new Date(now));
   
   const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
   const weekday = parts.find(p => p.type === 'weekday').value;

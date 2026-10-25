@@ -1,0 +1,2 @@
+import type {LeadMetadata,PortfolioMatch,ProposalDraft} from './leadIntelligence';
+export interface EnrichedThread{leadEmail:string;accountId:number|string;messages:Array<{id:string;direction:'inbound'|'outbound';from:string;subject:string;text:string;html?:string;receivedAt:number}>;lastMessageAt:number;unread:boolean;leadInfo:LeadMetadata|null;portfolioMatch:PortfolioMatch;proposals:ProposalDraft[];sentiment:'meeting_requested'|'interested'|'uninterested'|'neutral';}

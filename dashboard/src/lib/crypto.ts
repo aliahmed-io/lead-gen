@@ -39,6 +39,9 @@ export function isEncrypted(value: string): boolean {
   return typeof value === 'string' && value.startsWith('ENC:');
 }
 
+export const encrypt = encryptPassword;
+export const decrypt = decryptPassword;
+
 export function safeDecryptPassword(password: string): string {
   if (!password) return '';
   if (isEncrypted(password)) {

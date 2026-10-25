@@ -67,6 +67,9 @@ export default function UnsubscribesPage() {
   };
 
   const handleRemove = async (email: string) => {
+    const reason=prompt('Why should this opt-out be removed? Include evidence of renewed permission.');
+    if(!reason||reason.trim().length<10)return;
+    if(!confirm('Remove this opt-out? Future outreach still requires a new reviewed enrollment.'))return;
     setDeletingEmail(email);
     setError(null);
     setSuccess(null);
@@ -74,6 +77,7 @@ export default function UnsubscribesPage() {
     try {
       const res = await fetch(`/api/unsubscribes?email=${encodeURIComponent(email)}`, {
         method: 'DELETE',
+        headers:{'Content-Type':'application/json'},body:JSON.stringify({reason}),
       });
 
       const data = await res.json();
@@ -117,7 +121,7 @@ export default function UnsubscribesPage() {
             {loading ? '...' : unsubscribed.length}
           </span>
           <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-            Active CAN-SPAM compliance filters
+            Active opt-out records
           </span>
         </div>
 

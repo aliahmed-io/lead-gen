@@ -4,6 +4,7 @@
  * All tunable parameters live here for easy adjustment.
  */
 
+const fs = require('fs');
 const path = require('path');
 
 /* ------------------------------------------------------------------ */
@@ -11,12 +12,14 @@ const path = require('path');
 /* ------------------------------------------------------------------ */
 
 /** @type {string} Path for the Excel output file */
-const OUTPUT_FILE = 'leads.xlsx';
+const workingRoot=path.resolve(process.env.LEADGEN_DATA_DIR||path.join(__dirname,'data-working'));
+const OUTPUT_FILE = path.join(workingRoot, 'exports/leads.xlsx');
+fs.mkdirSync(path.dirname(OUTPUT_FILE),{recursive:true});
 
 /** @type {string} Path for the JSON database file */
-const DB_FILE = path.resolve(__dirname, 'leads_db.json');
+const DB_FILE = path.join(workingRoot,'leadgen.sqlite');
 
-const isE2E = process.env.E2E_TESTS === 'true';
+const isE2E = process.env.LEADGEN_TEST_MODE === '1';
 
 const delayArg = process.argv.find(arg => arg.startsWith('--delay='));
 const delayVal = delayArg ? parseInt(delayArg.split('=')[1] || '', 10) : null;
@@ -632,7 +635,19 @@ const ALL_QUERIES = [
 
 const queryArg = process.argv.find(arg => arg.startsWith('--query='));
 const queryVal = queryArg ? (queryArg.split('=')[1] || '').replace(/^["']|["']$/g, '') : null;
-const SEARCH_QUERIES = queryVal ? [queryVal] : (isE2E ? ['test query'] : ALL_QUERIES);
+
+let dynamicQueries = ALL_QUERIES;
+const sqFile = path.join(workingRoot,'search_queries.json');
+if (fs.existsSync(sqFile)) {
+  try {
+    const rawSq = JSON.parse(fs.readFileSync(sqFile, 'utf8'));
+    if (Array.isArray(rawSq.queries) && rawSq.queries.length > 0) {
+      dynamicQueries = rawSq.queries.map((/** @type {any} */ q) => (typeof q === 'string' ? q : (q && q.query) ? q.query : String(q)));
+    }
+  } catch {}
+}
+
+const SEARCH_QUERIES = queryVal ? [queryVal] : (isE2E ? ['test query'] : dynamicQueries);
 
 /* ------------------------------------------------------------------ */
 /*  Email scanning                                                    */

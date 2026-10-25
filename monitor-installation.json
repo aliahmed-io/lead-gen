@@ -1,0 +1,110 @@
+{
+  "changes": [
+    {
+      "file": "runtime/protection.js",
+      "before": null,
+      "sha256": "31792837215128f93ea1b02fff7184bb67f0a97b68cfc4c814c2875108b6f4c7"
+    },
+    {
+      "file": "runtime/monitor.js",
+      "before": null,
+      "sha256": "333e9d6be9aeea1613d6618b67849054f11112cfeba0245e7d305e128948a769"
+    },
+    {
+      "file": "runtime/monitor-service.js",
+      "before": null,
+      "sha256": "a1e77039bb7f9fa36343e5b36de9aa61776b209a27011930b0cff7344350773d"
+    },
+    {
+      "file": "runtime/accounts.js",
+      "before": "ff86aa08a310a0a9cab4b4213d298f65e1bbea20c1c28a24c60d1383f07e8a30",
+      "sha256": "d43fbb5e661479381658b9a57baec6b890c6c2a28813e71e8653cd685049779a"
+    },
+    {
+      "file": "runtime/delivery.js",
+      "before": "f3f4d9a49ab755c99f339515b28c52e2c43088f2651f2d236d079d454c0805d6",
+      "sha256": "69ff642db1cd7b6e7465f486142b9757dc9db3eae37620695d6f1520e39d252a"
+    },
+    {
+      "file": "runtime/settings.js",
+      "before": "d9b0f8ba31e897e24bf23f82c2011520e9b9b02bab34c348de762d6955d490d8",
+      "sha256": "5e0f077f195bf00b28b90c01339be2120b0687b2bbf50e9559c6d95ca4ac91e9"
+    },
+    {
+      "file": "runtime/api.js",
+      "before": "a0d68061e05a255d34ea9297ad3c2c36864962d5049e6d6b4a04eed5e0704252",
+      "sha256": "f7dde1bb2b9fa418212fbfa22ace71702bb95f2b135990815c5b94bb879703fd"
+    },
+    {
+      "file": "runtime/worker.js",
+      "before": "e688cad9ae3f830106b0c5383f0c57398c1932cf71476264762ad8dd0790ed4d",
+      "sha256": "7f64e979d48bd24407467b4a1a23d359f35e289c40584672d51a50ff18b1b8f2"
+    },
+    {
+      "file": "runtime/replies.js",
+      "before": "a5d03282a27ec29938387a3ad6eca7441aeee7a258715f9a63e6893c5556a479",
+      "sha256": "0e84f9b44b45b3d9ecd1b733e05d8d947cc0a19d84a4f7fa4f7ad33bce652d93"
+    },
+    {
+      "file": "runtime/analytics.js",
+      "before": "cc607cf50ae0415d17ba3b124708091ba175a47d64558396cb385a726c926505",
+      "sha256": "599b41f4ce7317dc517c5fa5282fc1a5cf665e93c2f84e736be0bb7f61b8af6a"
+    },
+    {
+      "file": "scripts/dashboard.cjs",
+      "before": "791a126858cf17e6b4a95000df8ec3bbd0c3a4051167d48cf93a22d231dbf263",
+      "sha256": "f1b9b635d2f982b79b23d19247ae25433603efd5f9a9938edc0aa93cece9ed22"
+    },
+    {
+      "file": "scripts/browser-check.cjs",
+      "before": "d3265e6ba80b938c3b347850c8262e9b01ae5e5340423fce94e3e0cd492298fe",
+      "sha256": "26b91c2353220c94cc6c23df7a1e2a515d451edc6c85573703c83e1a676984cb"
+    },
+    {
+      "file": "scripts/run-monitor.ps1",
+      "before": null,
+      "sha256": "b4c912d2f418cc49dfcbc67c976d79f75a2c18adaede099ccfb97a69af701d05"
+    },
+    {
+      "file": "scripts/install-monitor-task.ps1",
+      "before": null,
+      "sha256": "b4dc23265b13998b98c77becf851234816e31017661e3864dac8c8c594fb24d9"
+    },
+    {
+      "file": "tests/core.test.cjs",
+      "before": "7d383f462f92775016b7578279002710d3d3a93e130376e3138ff6f26f910def",
+      "sha256": "9dc604d8c1e94a8e776ccdcbcb403b5f455ee6970a4e445515241ff9c64dbb44"
+    },
+    {
+      "file": "package.json",
+      "before": "20a9136904c9f045dd4759bf78f1fbcdf5d305b439fb594d62acead18a569cf4",
+      "sha256": "f1787b6447d9b71a3624dbcd8679dab71f0cdba9b38829a1facc39395b3b95da"
+    },
+    {
+      "file": "dashboard/src/app/settings/page.tsx",
+      "before": "933783698cc438794872e8d9f468694ad2dd532df409647ec8a77fa9bda1075e",
+      "sha256": "e7f30c0de085ec43e3b4990778ec3d3e059d1202235099bcc73dcb9b2959c0b7"
+    },
+    {
+      "file": "dashboard/src/app/health/page.tsx",
+      "before": "743ee48f34e97ea4e41e2e8ef4201e4064eee04bae13aa1eb3d95326efbd0a1d",
+      "sha256": "5510e4c3bbde550b6ccb779b014aaf064ebfd55a518bc2edf0e7ab57d6d60a39"
+    },
+    {
+      "file": "dashboard/src/app/accounts/page.tsx",
+      "before": "5c5cc46ffd878c93db77fd0dcf517d3766394fd04720441baf33d89fd39329b5",
+      "sha256": "8bc7e8ccacb11a22cc42e28bcd761842d16265914dae2f456484bcbffe4103d5"
+    },
+    {
+      "file": "README.md",
+      "before": "994f6d30108105eeb520fea390af2aec0fc6e497fdd359fd0f1e7a59f621215e",
+      "sha256": "4a16ef86ed3a2cc7b81e06e937936eb4e4f7e53a3c7daf08b4411fc171b449a1"
+    },
+    {
+      "file": "REPAIR-STATUS.md",
+      "before": "ef519688880e134c2430473ed118cfd52f7a64fd50853d6b08923f7365252616",
+      "sha256": "adb075b60eddeb4a27a39d9fc1e048edfaa79c59b5970ab5b65d8ea9cedbc72e"
+    }
+  ],
+  "backup": "D:\\Users\\aliha\\.cursor\\projects\\d-leadgen\\monitor-deployment-backup"
+}

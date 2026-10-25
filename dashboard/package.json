@@ -3,16 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "dotenv -e ../.env -- concurrently \"next dev\" \"node ../start.js\"",
-    "build": "dotenv -e ../.env -- next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "node ../scripts/dashboard.cjs dev",
+    "build": "node ../scripts/dashboard.cjs build",
+    "start": "node ../scripts/dashboard.cjs start",
+    "lint": "node ../scripts/run-node.cjs node_modules/eslint/bin/eslint.js src"
   },
   "dependencies": {
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
-    "next": "16.2.7",
+    "next": "16.4.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.6.0"
@@ -26,7 +26,7 @@
     "concurrently": "^10.0.3",
     "dotenv-cli": "^7.4.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.7",
+    "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

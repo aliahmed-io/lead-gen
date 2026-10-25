@@ -13,6 +13,7 @@ module.exports = [
       sourceType: "commonjs",
       globals: {
         console: "readonly",
+        Buffer:"readonly",structuredClone:"readonly",fetch:"readonly",AbortController:"readonly",AbortSignal:"readonly",Request:"readonly",setImmediate:"readonly",clearImmediate:"readonly",
         process: "readonly",
         require: "readonly",
         module: "readonly",

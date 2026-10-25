@@ -1,212 +1,76 @@
-# Google Maps Lead Scraper v2
+# LeadGen freelance workspace
 
-Automated lead-generation pipeline that scrapes Google Maps for furniture and home decor stores across **Texas, Florida, and North Carolina**, visits their websites to extract email addresses, detects their e-commerce platform, and exports everything to an Excel spreadsheet.
+This dashboard manages researched prospects, outreach drafts, mailboxes, campaigns and replies. The repaired application uses a transactional working database. Original lead lists are never the application's write target.
 
----
+## First start
 
-## What's New in v2
+Use the included verified Node 22.23.4 runtime for this project. On a fresh Windows checkout, run scripts/setup-node.ps1 first; it downloads the official archive and verifies its SHA-256 checksum. The npm scripts select that private runtime without changing system Node. The scripts enable Node's experimental SQLite support; Node 22 may print an experimental-feature warning.
 
-- **Sleep & lid-close prevention** — blocks system sleep and ignores lid closing on Windows (using `caffeinate` or `systemd-inhibit` on macOS/Linux).
-- **Query-level resumption** — tracks fully completed search queries in the database so restarted runs skip them instantly.
-- **Persistent JSON database** — re-run safely without duplicating leads.
-- **Up to 300 results per query** — scrolls until exhausted or limit reached.
-- **Automatic breaks** every 100 results (3–5 min pause) to avoid bans.
-- **Longer, randomised delays** (3–6s between results, 8–15s between queries).
-- **Playwright email fallback** — renders JS-heavy sites when axios finds nothing.
-- **Dynamic contact-link discovery** — follows "Contact" / "About" nav links.
-- **Structured data parsing** — extracts emails from JSON-LD schema.
-- **Email deobfuscation** — catches `[at]` / `(at)` / `&#64;` patterns.
-- **Chain-domain skipping** — saves time by skipping retailers that never expose emails.
-- **More data** — price level, open status, social links, description.
-- **Graceful shutdown** (Ctrl+C) — saves database and exports partial results.
-- **~120 search queries** covering major cities in TX, FL, NC.
+1. Run `npm run setup` from this folder. This copies source data into `data-working/leadgen.sqlite`, saves source snapshots and creates local administrator access.
 
----
+2. Local use does not require signing up or signing in. The launch scripts enable device-only access and bind the server to `127.0.0.1`. Saved administrator credentials are retained privately for the optional authenticated mode; they are not required to open the local dashboard.
 
-## Prerequisites
+3. Run `npm run dev` and visit http://localhost:3000. Starting the dashboard also starts account protection monitoring; it does not start a sender.
 
-- **Node.js** ≥ 18.0.0
-- A stable internet connection
+4. For a production build on this device, run `npm run build:dashboard`, then `npm start`. The local dashboard opens directly without a login screen. Local-only mode rejects external hosts, forwarded public traffic and cross-site browser requests. It must not be exposed through a public tunnel or proxy. A public deployment requires `LEADGEN_LOCAL_ONLY=0`, administrator sign-in and HTTPS; recipient unsubscribe hosting remains a separate launch requirement.
 
----
+5. Run `npm run worker` in a separate supervised process only when background sending/sync work is intended. For monitoring alone use `npm run monitor`. Windows sign-in monitoring can be installed with `scripts/install-monitor-task.ps1`; the task runs hidden and never sends mail. The computer must be awake and the user signed in. Live email additionally requires ENABLE_LIVE_EMAIL=1 and passing recipient/account checks.
 
-## Installation
+Dependencies are installed independently in the root and dashboard folders (`npm ci` in each). The lockfiles are included. Keep secrets, data-working and exports out of public hosting/source control. This is a single-operator application, not a multi-tenant service.
 
-```bash
-# 1. Navigate into the project directory
-cd lead-scraper
+## Data and lead review
 
-# 2. Install Node.js dependencies
-npm install
+Original JSON, CSV, XLSX and contact-list files remain in place. First migration creates separate snapshots and a hash manifest. No original queue recipient is automatically approved. Generated contacts and contacts without sufficient provenance are quarantined. A previously generated address remains blocked on re-import.
 
-# 3. Install the Chromium browser for Playwright
-npx playwright install chromium
-```
+Review each prospect's source and suitability in Leads, record current mailbox-verification evidence, then enroll reviewed contacts. DNS/MX alone returns unknown, not verified. The optional verifier contract is HTTPS POST `{email}` with a Bearer key and response `{status: "valid"|"invalid"|"catch-all"|"unknown", reason?: string}`. A provider adapter may be needed. Review actual business details yourself; software cannot establish the accuracy or permission status of every scraped address.
 
----
+Settings, templates, campaigns and account edits are written to SQLite, not the original JSON files. Existing enrollments retain their template/sequence snapshot. To apply a new sequence, explicitly review and enroll a new run. The queue starts paused. Outbound mail requires a real sender identity, postal address, public HTTPS unsubscribe URL, recent account diagnostics, source review and verification. Manual replies share quotas, suppression and mailbox protection; they do not require automated-campaign verification or business hours.
 
-## Usage
+## Before a live pilot
 
-```bash
-# Run the scraper
-node index.js
-```
+- Revoke the obsolete mailbox credential embedded in three preserved legacy helpers: run_fetch_leads.js, run_get_lead_details.js and run_fast_file_log.js. They contain contact lists, so they were preserved unchanged and are not called by the application. Use scripts/inspect-inbox.cjs for the replacement inspection workflow. Remove exposed credentials from remote repository history through your normal repository process after rotation.
 
-The script will:
+- Enter your real sender name, postal address, offer and portfolio. Add fresh mailbox app credentials in Accounts. Confirm SPF, DMARC and your actual DKIM selector with the provider; the application reports DNS presence, not guaranteed authentication or inbox placement.
 
-1. Load the existing database (or create a new one).
-2. Search Google Maps for each query — only new businesses are added.
-3. Take a 3–5 minute break every 100 results.
-4. Visit each new business's website to extract emails (axios, then Playwright fallback).
-5. Export the **full database** to Excel.
-6. Print a summary with email hit rate, platform, and state breakdowns.
+- Set DASHBOARD_URL to the deployed HTTPS origin and test opt-out there. Keep tracking disabled unless you intend to use it; tracking events are unfiltered observations, not reliable human engagement counts.
 
-### Re-running
+- Verify a small, researched segment using an appropriate external verification source. Test received messages with operator-owned recipients, inspect authentication, threading and opt-out, then start a small reviewed pilot. This repair did not send any email or change provider DNS.
 
-Simply run `node index.js` again. The database (`leads_db.json`) prevents duplicates — only new businesses are scraped and scanned.
+## Operations and recovery
 
-### Stopping safely
+`npm run backup` creates a consistent SQLite backup under data-working/backups. Keep the original ENCRYPTION_KEY (or generated data-working/encryption.key) separately and securely; backups without it cannot decrypt mailbox credentials. Backups include personal data and authentication state. Protect access with filesystem permissions and encrypted storage.
 
-Press **Ctrl+C** at any time. The script will:
-- Save the database
-- Export whatever leads it has to Excel
-- Exit cleanly
+Restore into a NEW directory using `node --experimental-sqlite scripts/restore-copy.cjs BACKUP_FILE NEW_DIRECTORY`, then set LEADGEN_DATA_DIR to that directory before starting. Preserve the matching encryption key and inspect the restored copy before enabling work. No restore overwrites an existing directory. Do not copy only a live SQLite file while WAL writes are active; use the backup command.
 
----
+Health shows the independent protection-monitor heartbeat, worker heartbeat, effective account caps and actual diagnostic timestamps. A stopped or stale monitor blocks live dispatch. Full diagnostics run every 15 minutes and expire after 30 minutes. Rejected credentials back off exponentially from 1 hour to 24 hours; editing a credential invalidates old diagnostics and schedules a new check. An offline worker is not healthy. Review uncertain deliveries in Delivery review against the provider's Sent folder before permitting a retry; an SMTP acknowledgement cannot be made atomic with a local database commit. A stale in-progress attempt becomes ambiguous for review, never automatically resendable. Worker leases and durable attempt IDs protect concurrent execution. Shut down workers gracefully and supervise them for restarts.
 
-## Configuration
+## Checks
 
-All settings are in [`config.js`](./config.js):
+`npm test` runs isolated fixture tests with mock SMTP and verifies protected source hashes. `npm run lint`, `npm run build`, dashboard `npm run lint` and `npm run build:dashboard` validate source and production compilation. `npm run test:browser` uses isolated fake contacts and a locally installed Edge browser; BROWSER_MODE=production checks an existing production build. It never uses real SMTP. See REPAIR-STATUS.md for the scope and remaining launch checks.
 
-| Setting                       | Default       | Description                                       |
-| ----------------------------- | ------------- | ------------------------------------------------- |
-| `OUTPUT_FILE`                 | `"leads.xlsx"`| Path for the Excel output                         |
-| `DB_FILE`                     | `"leads_db.json"` | Path for the persistent JSON database          |
-| `MAX_RESULTS_PER_QUERY`       | `300`         | Max results per query (stops when feed exhausted)  |
-| `CONCURRENCY`                 | `2`           | Concurrent axios requests for email scanning       |
-| `PLAYWRIGHT_EMAIL_CONCURRENCY`| `2`           | Concurrent Playwright pages for fallback           |
-| `HEADLESS`                    | `true`        | Set `false` to watch the browser                   |
-| `USE_PLAYWRIGHT_FALLBACK`     | `true`        | Enable/disable the Playwright email fallback phase |
-| `BREAK_AFTER_RESULTS`         | `100`         | Take a break after this many results               |
-| `BREAK_DURATION_MIN`          | `180000`      | Minimum break (3 min in ms)                        |
-| `BREAK_DURATION_MAX`          | `300000`      | Maximum break (5 min in ms)                        |
-| `RESULT_DELAY_MIN`            | `3000`        | Min delay between individual results (ms)          |
-| `RESULT_DELAY_MAX`            | `6000`        | Max delay between individual results (ms)          |
-| `QUERY_DELAY_MIN`             | `8000`        | Min delay between search queries (ms)              |
-| `QUERY_DELAY_MAX`             | `15000`       | Max delay between search queries (ms)              |
-| `WEBSITE_TIMEOUT`             | `12000`       | Timeout for axios requests (ms)                    |
-| `DB_AUTOSAVE_INTERVAL`        | `10`          | Auto-save database every N new records             |
+## Personal sending policy and automatic account protection
 
-### Changing search queries
+Hard ceilings are 100 outbound messages per mailbox and 600 overall per Central Time day. These include automated first messages, follow-ups and manual replies. Smaller configured limits, warmup/recovery caps, scheduling and pacing still apply; the ceiling is not a promise of volume or safety. Current settings are set to those ceilings during installation without enabling sending. Pacing is now independent per mailbox. The installed default range is 4–5 minutes per mailbox, also shared with manual replies; the queue no longer sleeps globally after each message. Real throughput still depends on account readiness, scheduler timing, replies, follow-up delays and network overhead.
 
-Edit the `SEARCH_QUERIES` array in `config.js`:
+Authentication rejection, provider throttling, missing connection/DNS checks and repeated temporary failures pause the affected account. Rolling 24-hour hard-bounce signals use an early warning threshold (2 distinct hard-bounced recipients, or a rate at/above the lower of your configured threshold and 2% after 10 observed sends). Repeated temporary errors use a one-hour window. Received abuse-feedback reports are deduplicated, suppress the correlated recipient and require review. Providers do not necessarily send all complaints to the inbox: this does not measure unseen spam-folder placement, every complaint or domain reputation.
 
-```js
-const SEARCH_QUERIES = [
-  'furniture store Texas',
-  'furniture store California',
-  'home decor store New York',
-  // Add or remove as needed...
-];
-```
+Temporary recovery requires a completed cooldown and two successful SMTP, IMAP and required DNS diagnostics at least 15 minutes apart. A new failure resets recovery. A recovered account starts at up to 10 messages/day, then 20, 40, 80, and at most 100 after clean elapsed days; additional failures pause it again. Complaint, policy and hard-bounce warnings require operator review after current warning windows/cooldown clear; an operator pause never resumes automatically. No timer alone proves reputation recovery.
 
----
+The six supplied app passwords were compared privately against accounts/mailboxes (1).csv and exactly match the working settings. Existing provider hosts are consistent with Google Workspace. Provider authentication was nevertheless rejected (535); do not substitute the ordinary login/admin password or expose TOTP secrets. Confirm the mail service is active and obtain working app credentials in the provider before sending. The source CSV and original settings remain untouched.
 
-## Output
+## Owner-first qualification and launch checks
 
-### Excel file
+Use Leads → Review owner (or Owner review in navigation). Research gathers public email/name/role snippets and structured team-size facts from up to six public pages. Scraper enrichment can also inspect up to three rendered pages when static evidence is insufficient; it uses an installed supported browser and retains sandboxing. Shared departmental addresses remain in the research evidence but cannot qualify as direct owner contacts. Names and addresses are never guessed from a pattern. A nearby founder mention is a candidate, not proof of current ownership.
 
-Appears as **`leads.xlsx`** in the project root (or wherever `OUTPUT_FILE` points).
+Confirm the exact direct email and current owner, then document independent ownership and a 1–250-person count or a published size-range upper bound. This is your personal targeting rule, not a legal definition of SME. Known chain domains and published sizes above the ceiling remain excluded. Unknown facts stay blocked. Evidence expires after 90 days. Changing an uncontacted primary email resets verification; a contacted address keeps its conversation history. Archive duplicate working rows individually before resolving a shared contact. Original sources are preserved.
 
-| Column         | Description                                        |
-| -------------- | -------------------------------------------------- |
-| Business Name  | Name from Google Maps                              |
-| Email          | Extracted email(s), semicolon-separated             |
-| Website        | Business website URL                               |
-| Phone          | Phone number                                        |
-| City           | Parsed city from address                           |
-| State          | US state abbreviation                              |
-| Rating         | Google Maps star rating                            |
-| Reviews        | Number of Google reviews                           |
-| Platform       | Shopify, WooCommerce, WordPress, or Other          |
-| Category       | Google Maps business category                      |
-| Price Level    | $ / $$ / $$$ / $$$$ (if available)                 |
-| Social Links   | Facebook, Instagram, etc. URLs                     |
-| Description    | Business description (up to 300 chars)             |
-| Maps URL       | Direct link to the Google Maps listing             |
-| Scraped Date   | Date of export (YYYY-MM-DD)                        |
+Mailbox verification is a separate check from ownership. Record an external verification result for that exact selected email before enrollment. Both enrollment and automatic send reservation enforce targeting, suppression, verification, account health, pilot evidence and capacity. CSV import cannot grant approval or inject verified owner status.
 
-### Database file
+Launch checks shows identity/address configuration, public HTTPS origin, monitor state and per-mailbox received-message pilot evidence. Paste recipient-side raw headers only after testing with mailboxes you own. The parser checks SPF/DKIM/DMARC results and sender alignment, while you attest to inbox observation, threading and opt-out behavior. It is not an independent inbox-placement certification. Pilot evidence expires after 30 days or changes to the relevant mailbox connection settings. Do not enable campaigns before completing these checks.
 
-`leads_db.json` stores all scraped data persistently. You can:
-- Back it up at any time
-- Inspect it with any text editor
-- Delete it to start fresh
+For a bounded batch of existing prospects, run `npm run research:owners -- --limit=10`. It researches active, non-quarantined candidates without emailing or approving anyone. If Google Maps presents a verification challenge, the scraper stops, records a blocked reason and retains pending queries instead of repeatedly restarting or marking a failed query completed.
 
----
+## Dependency maintenance
 
-## Project Structure
+This repair updates Next.js, mail handling and transitive dependencies, and installs the official supported SheetJS tarball rather than the old npm-registry release. See [SheetJS installation](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/) and [official Node releases](https://nodejs.org/dist/). Both root and dashboard lockfiles are retained. Keep the private runtime and packages patched over time; an audit result is a point-in-time check, not a security guarantee.
 
-```
-lead-scraper/
-├── index.js          Main orchestrator (3-phase pipeline)
-├── scraper.js        Google Maps scraping (Playwright)
-├── emailFinder.js    Email extraction (axios + Playwright fallback)
-├── keepAwake.js      Sleep and lid-close prevention
-├── exporter.js       Excel export & summary
-├── config.js         All configuration
-├── db.js             JSON-file database
-├── package.json      Dependencies
-├── README.md         This file
-├── leads_db.json     Persistent database (auto-created)
-└── leads.xlsx        Excel output (auto-created)
-```
-
----
-
-## Anti-Ban Measures
-
-| Measure                           | Detail                                            |
-| --------------------------------- | ------------------------------------------------- |
-| Random delays                     | 3–6s between results, 8–15s between queries       |
-| Automatic breaks                  | 3–5 min pause every 100 results                   |
-| User-agent rotation               | 5 realistic Chrome UAs, rotated per query          |
-| Viewport randomisation            | 5 different screen sizes                           |
-| WebDriver flag masking            | Stealth script removes automation fingerprints     |
-| Image/media blocking              | Reduces bandwidth and page load time               |
-| CAPTCHA detection                 | Auto-pauses 90s for manual solve                   |
-| Graceful error handling           | One failed site never crashes the whole run         |
-
----
-
-## Troubleshooting
-
-### CAPTCHA
-
-Set `HEADLESS = false` in `config.js`, re-run, and solve CAPTCHAs in the visible browser. The script pauses 90 seconds automatically.
-
-### Low email hit rate
-
-- Ensure `USE_PLAYWRIGHT_FALLBACK = true` (default).
-- Increase `WEBSITE_TIMEOUT` for slow sites.
-- Check `leads_db.json` — some businesses genuinely don't publish emails.
-
-### Script runs too long
-
-- Reduce `SEARCH_QUERIES` to fewer cities.
-- Lower `MAX_RESULTS_PER_QUERY` (e.g., 100).
-- Shorten `BREAK_DURATION_MIN` / `BREAK_DURATION_MAX`.
-
----
-
-## Platform Compatibility
-
-Tested on **Windows 10/11**, **macOS 12+**, and **Ubuntu 22.04+**.
-
----
-
-## Legal Disclaimer
-
-This tool is for **research and educational purposes only**. Ensure your use complies with Google's Terms of Service, local laws, and the privacy policies of visited websites.
-#   l e a d - g e n  
- 

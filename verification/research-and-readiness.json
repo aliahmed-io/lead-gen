@@ -1,0 +1,20 @@
+{
+  "leads": 4107,
+  "researchAttempts": 10,
+  "researchSucceeded": 8,
+  "researchUnavailable": 2,
+  "publicPages": 27,
+  "contactCandidates": 5,
+  "ownerContextCandidates": 0,
+  "publishedSizeFacts": 0,
+  "qualified": 0,
+  "excluded": 1168,
+  "identityConfigured": false,
+  "publicHttpsConfigured": true,
+  "monitorCurrent": true,
+  "liveEmailEnabled": false,
+  "pilots": 0,
+  "readyMailboxes": 0,
+  "campaign": "paused",
+  "note": "Public research supplies candidates only; no prospect was approved or emailed."
+}

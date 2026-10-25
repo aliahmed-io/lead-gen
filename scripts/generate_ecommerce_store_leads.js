@@ -123,7 +123,7 @@ function generateHalalEcommerceLeads(totalCount = 10000) {
       niche: category,
       city,
       state,
-      emailStatus: 'verified',
+      synthetic:true, emailStatus: 'fixture-only',
       qualityTier,
       qualityScore,
       addedAt: new Date().toISOString()
@@ -153,8 +153,9 @@ function generateHalalEcommerceLeads(totalCount = 10000) {
 
 const result = generateHalalEcommerceLeads(10250);
 
-const jsonPath = path.resolve(__dirname, '../ecommerce_store_leads.json');
-const csvPath = path.resolve(__dirname, '../ecommerce_store_leads.csv');
+fs.mkdirSync(path.resolve(__dirname,'../data-working/fixtures'),{recursive:true});
+const jsonPath=path.resolve(__dirname,'../data-working/fixtures/ecommerce_store_leads.json');
+const csvPath=path.resolve(__dirname,'../data-working/fixtures/ecommerce_store_leads.csv');
 
 fs.writeFileSync(jsonPath, JSON.stringify({
   metadata: {
@@ -169,7 +170,7 @@ const csvContent = result.csvRows.map(row => row.join(',')).join('\n');
 fs.writeFileSync(csvPath, csvContent, 'utf8');
 
 console.log(`\n======================================================`);
-console.log(`✅ HALAL E-COMMERCE LEADS GENERATED & CATEGORIZED`);
+console.log(`Synthetic ecommerce fixture created. Do not use for outreach.`);
 console.log(`======================================================`);
 console.log(`  📦 Total Unique Leads        : ${Object.keys(result.businesses).length.toLocaleString()}`);
 console.log(`  📱 Stores with NO Website    : ${result.noWebsiteCount.toLocaleString()} (High-opportunity web build prospects)`);

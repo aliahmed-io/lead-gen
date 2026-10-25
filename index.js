@@ -115,7 +115,7 @@ async function main() {
   const startTime = Date.now();
 
   setupGracefulShutdown();
-  preventSleep();
+  // Workers do not change machine power settings.
 
   const bar = '\u2550'.repeat(56);
   console.log(bar);
@@ -166,6 +166,7 @@ async function main() {
       );
 
   } catch (phase2Err) {
+    if(phase2Err&&typeof phase2Err==='object'&&'code' in phase2Err&&phase2Err.code==='SCRAPER_BLOCKED')throw phase2Err;
     console.error('\n\u274C Phase 2 failed:', phase2Err instanceof Error ? phase2Err.message : String(phase2Err));
     if (phase2Err instanceof Error) console.error(phase2Err.stack);
     console.log('\u{1F504} Continuing to Phase 3 (export) with existing DB records...');
@@ -207,7 +208,7 @@ async function main() {
 /* ------------------------------------------------------------------ */
 
 const MAX_RESTARTS = 5;
-const RESTART_DELAY_MS = process.env.E2E_TESTS === 'true' ? 100 : 30_000;
+const RESTART_DELAY_MS = process.env.LEADGEN_TEST_MODE === '1' ? 100 : 30_000;
 
 (async () => {
   
@@ -222,6 +223,7 @@ const RESTART_DELAY_MS = process.env.E2E_TESTS === 'true' ? 100 : 30_000;
       // If main() resolves cleanly, we're done.
       break;
     } catch (fatalErr) {
+      if(fatalErr&&typeof fatalErr==='object'&&'code' in fatalErr&&fatalErr.code==='SCRAPER_BLOCKED'){console.error('Scraper paused for provider verification. No automatic restart.');break;}
       consecutiveFailures++;
       console.error(
         `\n\u274C main() threw (attempt ${consecutiveFailures}/${MAX_RESTARTS}):`,

@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-23",
+  "timezone": "Asia/Riyadh",
+  "status": "local implementation plan completed; operator launch checks remain",
+  "runtime": "v22.23.4",
+  "next": "16.4.3",
+  "tests": {
+    "backendPassed": 74,
+    "browserPassed": 16,
+    "failed": 0
+  },
+  "checks": {
+    "runtimeLint": "passed",
+    "dashboardLint": "passed",
+    "sourceBuild": "passed",
+    "productionBuild": "passed",
+    "rootDependencyVulnerabilities": 0,
+    "dashboardDependencyVulnerabilities": 0,
+    "backupAndRestore": "passed",
+    "publicFetchCompatibility": "passed"
+  },
+  "simulation": {
+    "accounts": 6,
+    "totalMockedMessages": 600,
+    "messagesPerAccount": 100,
+    "withinBusinessHours": true,
+    "quotasAndPacingRespected": true,
+    "realMessagesSent": 0
+  },
+  "preservation": {
+    "originalFilesVerified": 94,
+    "installedSourceAndRuntimeFilesVerified": 179,
+    "originalLeadListsDeletedOrRewritten": 0
+  },
+  "monitor": {
+    "registeredForWindowsSignIn": true,
+    "running": true,
+    "currentHeartbeat": true,
+    "privatePatchedRuntimeVerified": true,
+    "pausedAccounts": 6
+  },
+  "research": {
+    "leads": 4107,
+    "researchAttempts": 10,
+    "researchSucceeded": 8,
+    "researchUnavailable": 2,
+    "publicPages": 27,
+    "contactCandidates": 5,
+    "ownerContextCandidates": 0,
+    "publishedSizeFacts": 0,
+    "qualified": 0,
+    "excluded": 1168,
+    "identityConfigured": false,
+    "publicHttpsConfigured": true,
+    "monitorCurrent": true,
+    "liveEmailEnabled": false,
+    "pilots": 0,
+    "readyMailboxes": 0,
+    "campaign": "paused",
+    "note": "Public research supplies candidates only; no prospect was approved or emailed."
+  },
+  "campaign": "paused",
+  "liveEmailEnabled": false,
+  "ownerActions": "D:/leadgen/YOUR-ATTENTION.md",
+  "notes": [
+    "No live email was sent and no provider DNS was changed.",
+    "Research candidates are not confirmed owner contacts.",
+    "Mailbox authentication, factual owner/size approval, external verification, real identity/address, public hosting and received-message pilot remain operator-controlled.",
+    "Dependency audit is a point-in-time known-advisory check; it does not certify all software or future inbox placement."
+  ]
+}

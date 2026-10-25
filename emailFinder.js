@@ -15,7 +15,7 @@
  */
 
 const dns = require('dns').promises;
-const axios = require('axios');
+const {safeFetchText}=require('./runtime/network');
 const cheerio = require('cheerio');
 const pLimit = require('p-limit');
 const { chromium } = require('playwright');
@@ -34,6 +34,12 @@ const {
   HEADLESS,
   USE_PLAYWRIGHT_FALLBACK,
 } = require('./config');
+const {
+  cleanEmailAddress,
+  isValidSyntax,
+  isRoleBasedEmail,
+  checkDomainBlacklist,
+} = require('./verifier');
 
 /* ------------------------------------------------------------------ */
 /*  Utilities                                                         */
@@ -130,7 +136,23 @@ function isChainDomain(domain) {
  */
 function isValidEmail(email) {
   if (!email || email.length > 254 || email.length < 5) return false;
-  return !EMAIL_BLACKLIST_PATTERNS.some((p) => p.test(email));
+  if (EMAIL_BLACKLIST_PATTERNS.some((p) => p.test(email))) return false;
+  if (!isValidSyntax(email) || isRoleBasedEmail(email)) return false;
+  const domain = email.split('@')[1] || '';
+  if (checkDomainBlacklist(domain).blocked) return false;
+  return true;
+}
+
+/**
+ * Helper to clean and add an email to the accumulator Set if valid.
+ * @param {string} raw
+ * @param {Set<string>} set
+ */
+function addCleanedEmail(raw, set) {
+  const cleaned = cleanEmailAddress(raw);
+  if (cleaned && isValidEmail(cleaned)) {
+    set.add(cleaned);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -139,7 +161,7 @@ function isValidEmail(email) {
 
 /**
  * Extract validated emails from raw HTML using multiple strategies:
- *   1. Visible text content
+ *   1. Space-separated visible text content (prevents tag concatenation)
  *   2. mailto: links
  *   3. All href attributes
  *   4. Raw HTML source
@@ -153,18 +175,18 @@ function extractEmailsFromHtml(html) {
   const emails = new Set();
   const $ = cheerio.load(html);
 
-  /* 1. Text content */
-  const text = $.text();
-  for (const e of text.match(EMAIL_REGEX) || []) {
-    if (isValidEmail(e)) emails.add(e.toLowerCase());
+  /* 1. Space-separated text content (prevents adjacent tags from gluing together) */
+  const spacedText = html.replace(/<[^>]+>/g, ' ');
+  for (const e of spacedText.match(EMAIL_REGEX) || []) {
+    addCleanedEmail(e, emails);
   }
 
   /* 2. mailto: links */
   $('a[href^="mailto:"]').each((_i, el) => {
     const href = $(el).attr('href') || '';
     const raw = href.replace(/^mailto:/i, '').split('?')[0].trim();
-    if (raw && EMAIL_REGEX.test(raw) && isValidEmail(raw)) {
-      emails.add(raw.toLowerCase());
+    if (raw) {
+      addCleanedEmail(raw, emails);
     }
   });
 
@@ -178,14 +200,14 @@ function extractEmailsFromHtml(html) {
     for (const t of targets) {
       if (!t) continue;
       for (const e of t.match(EMAIL_REGEX) || []) {
-        if (isValidEmail(e)) emails.add(e.toLowerCase());
+        addCleanedEmail(e, emails);
       }
     }
   });
 
   /* 4. Raw HTML source */
   for (const e of html.match(EMAIL_REGEX) || []) {
-    if (isValidEmail(e)) emails.add(e.toLowerCase());
+    addCleanedEmail(e, emails);
   }
 
   /* 5. JSON-LD structured data */
@@ -199,11 +221,11 @@ function extractEmailsFromHtml(html) {
   });
 
   /* 6. Obfuscated email patterns */
-  for (const e of deobfuscateEmails(text)) {
-    emails.add(e);
+  for (const e of deobfuscateEmails(spacedText)) {
+    addCleanedEmail(e, emails);
   }
   for (const e of deobfuscateEmails(html)) {
-    emails.add(e);
+    addCleanedEmail(e, emails);
   }
 
   return Array.from(emails);
@@ -383,64 +405,7 @@ const NETWORK_ERROR_CODES = [
  * @param {string} url
  * @returns {Promise<string|null>}
  */
-async function fetchPage(url) {
-  const MAX_NETWORK_RETRIES = 0; // Don't retry network errors on initial bulk scan to save time
-  const BASE_DELAY_MS = 1000;
-
-  for (let attempt = 0; attempt <= MAX_NETWORK_RETRIES; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), WEBSITE_TIMEOUT + 1000);
-    
-    try {
-      const resp = await axios.get(url, {
-        signal: controller.signal,
-        timeout: WEBSITE_TIMEOUT,
-        maxContentLength: 3 * 1024 * 1024, // 3MB limit
-        maxBodyLength: 3 * 1024 * 1024,
-        headers: {
-          'User-Agent': getRandomUserAgent(),
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          Connection: 'keep-alive',
-        },
-        maxRedirects: 3, // Reduced from 5
-        validateStatus: () => true,
-        decompress: true,
-      });
-      clearTimeout(timeoutId);
-
-      if (resp.status === 429) {
-        if (attempt === 0) {
-          await new Promise((r) => setTimeout(r, 2000));
-          continue;
-        }
-        return null;
-      }
-
-      if (resp.status >= 400) {
-        return null;
-      }
-
-      return typeof resp.data === 'string' ? resp.data : String(resp.data);
-    } catch (err) {
-      clearTimeout(timeoutId);
-      const code = err.code || '';
-      const msg = (err.message || '').toUpperCase();
-      const isNetworkError =
-        NETWORK_ERROR_CODES.some((c) => code === c || msg.includes(c));
-
-      if (isNetworkError && attempt < MAX_NETWORK_RETRIES) {
-        await new Promise((r) => setTimeout(r, BASE_DELAY_MS));
-        continue;
-      }
-
-      return null;
-    }
-  }
-
-  return null;
-}
+async function fetchPage(url){try{return (await safeFetchText(url)).text;}catch{return null;}}
 
 /* ------------------------------------------------------------------ */
 /*  Phase 1 — axios + Cheerio                                         */
@@ -455,116 +420,11 @@ async function fetchPage(url) {
  * @returns {Promise<Object>} Enriched business record.
  */
 async function processWebsiteAxios(business) {
-  const baseUrl = normalizeUrl(business.website);
-
-  if (!baseUrl) {
-    return {
-      ...business,
-      emails: [],
-      email: '',
-      platform: 'Unknown',
-      emailStatus: 'no-website',
-    };
-  }
-
-  const allEmails = new Set();
-  let platform = 'Other';
-  let emailStatus = 'success';
-  const visitedUrls = new Set();
-  let anyPageFetched = false;
-
-  try {
-    /* ── Static paths ─────────────────────────────────────────── */
-    let homepageHtml = null;
-
-    for (const path of EMAIL_SCAN_PATHS) {
-      const url = baseUrl + path;
-      if (visitedUrls.has(url)) continue;
-      visitedUrls.add(url);
-
-      try {
-        const html = await fetchPage(url);
-        if (!html) {
-          if (path === '') {
-            break; // Homepage failed to load entirely, domain is likely unreachable.
-          }
-          continue;
-        }
-
-        anyPageFetched = true;
-
-        if (path === '') {
-          homepageHtml = html;
-          platform = detectPlatform(html);
-        }
-
-        for (const e of extractEmailsFromHtml(html)) allEmails.add(e);
-        if (allEmails.size >= 2) break; // Optimization: stop if we found emails
-      } catch {
-        /* individual path failure — continue */
-      }
-
-      if (anyPageFetched && SAME_DOMAIN_DELAY_MAX > 0) {
-        await randomDelay(SAME_DOMAIN_DELAY_MIN, SAME_DOMAIN_DELAY_MAX);
-      }
-    }
-
-    /* ── Dynamic contact-link discovery ────────────────────────── */
-    if (homepageHtml && allEmails.size === 0) {
-      const discovered = discoverContactLinks(homepageHtml, baseUrl);
-
-      for (const dUrl of discovered) {
-        if (visitedUrls.has(dUrl)) continue;
-        visitedUrls.add(dUrl);
-
-        try {
-          const html = await fetchPage(dUrl);
-          if (html) {
-            anyPageFetched = true;
-            for (const e of extractEmailsFromHtml(html)) allEmails.add(e);
-            if (allEmails.size >= 2) break; // Optimization
-          }
-        } catch {
-          /* skip */
-        }
-
-        if (anyPageFetched && SAME_DOMAIN_DELAY_MAX > 0) {
-          await randomDelay(SAME_DOMAIN_DELAY_MIN, SAME_DOMAIN_DELAY_MAX);
-        }
-      }
-    }
-  } catch (err) {
-    const msg = err.message || '';
-    if (
-      err.code === 'ECONNABORTED' ||
-      msg.includes('timeout') ||
-      msg.includes('ETIMEDOUT')
-    ) {
-      emailStatus = 'timeout';
-    } else {
-      emailStatus = 'error';
-    }
-  }
-
-  const emailList = Array.from(allEmails);
-  const emailStr = emailList.join('; ');
-
-  let finalStatus = emailStatus;
-  if (emailList.length > 0) {
-    finalStatus = 'found';
-  } else if (!anyPageFetched) {
-    finalStatus = 'error';
-  } else {
-    finalStatus = 'success';
-  }
-
-  return {
-    ...business,
-    emails: emailList,
-    email: emailStr,
-    platform,
-    emailStatus: finalStatus,
-  };
+  let platform='Other';const extraEmails=new Set();
+  const research=await require('./runtime/research').research(business,{fetcher:async(url,redirects,options)=>{const result=await safeFetchText(url,redirects,options);platform=platform==='Other'?detectPlatform(result.text):platform;for(const email of extractEmailsFromHtml(result.text))extraEmails.add(email);return result;}});
+  const ownerFirst=research.contacts.filter(c=>c.ownerCandidate).map(c=>c.email);
+  const emails=[...new Set([...ownerFirst,...research.contacts.map(c=>c.email),...extraEmails])];
+  return {...business,emails,email:emails[0]||'',platform,research,emailStatus:research.status==='excluded'?'excluded':research.pages.length?'success':'error'};
 }
 
 /* ------------------------------------------------------------------ */
@@ -583,255 +443,30 @@ async function processWebsiteAxios(business) {
  * @param {import('./db').LeadsDatabase} db
  * @returns {Promise<Array<Object>>} Enriched business records.
  */
-async function findEmails(businesses, db) {
-  const isDryRun = process.argv.includes('--dry-run');
-  if (isDryRun) {
-    console.log('⚡ Dry-run mode active. Skipping unified email extraction.');
-    return businesses;
-  }
-  const withWebsites = businesses.filter(
-    (b) => b.website && b.website.trim().length > 0
-  );
-
-  console.log(
-    `\n\u{1F4E7} Phase 2 \u2014 Unified Email Extraction: processing ${withWebsites.length} websites...`
-  );
-
-  const path = require('path');
-  const { exportToExcel } = require('./exporter');
-
-  /** Browser-crash error signatures. */
-  const BROWSER_CRASH_PATTERNS = [
-    'Target closed',
-    'Browser closed',
-    'Protocol error',
-    'Session closed',
-    'Execution context was destroyed',
-  ];
-
-  function isBrowserCrash(err) {
-    const msg = (err && err.message) || '';
-    return BROWSER_CRASH_PATTERNS.some((p) => msg.includes(p));
-  }
-
-  /** Helper: launch a fresh Playwright browser. */
-  async function launchBrowser() {
-    const b = await chromium.launch({
-      headless: HEADLESS,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    return b;
-  }
-
-  let browser = null;
-  let browserRelaunchCount = 0;
-  const MAX_BROWSER_RELAUNCHES = 3;
-
-  if (USE_PLAYWRIGHT_FALLBACK) {
-    browser = await launchBrowser();
-  }
-
-  try {
-    const limit = pLimit(CONCURRENCY);
-    let completedCount = 0;
-    let foundCount = 0;
-
-    const tasks = withWebsites.map((biz) =>
-      limit(async () => {
-        /* ── Top-level error containment: NEVER let a single lead crash Promise.all ── */
-        
-        // Ensure no lead can hang for more than 60 seconds (Hard Kill Timeout)
-        const hardTimeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Hard kill timeout: lead took over 60 seconds')), 60000);
-        });
-
-        const taskExecution = async () => {
-          // Removed 2000 leads hard limit          // Assign leadNum immediately at task start and log Phase 1
-          const leadNum = biz.leadNum || ++global.leadCounter;
-          biz.leadNum = leadNum;
-          if (!biz.isPhase1Logged) {
-            console.log(`lead no ${leadNum} , ${biz.name}, phase 1 complete`);
-            biz.isPhase1Logged = true;
-          }
-
-          let emails = [];
-          let platform = 'Other';
-          let emailStatus = 'success';
-
-          // 1. Run Axios + Cheerio
-          try {
-            const axiosResult = await processWebsiteAxios(biz);
-            emails = axiosResult.emails || [];
-            platform = axiosResult.platform || 'Other';
-            emailStatus = axiosResult.emailStatus || 'success';
-          } catch (err) {
-            emailStatus = 'error';
-          }
-
-          // 2. Playwright Fallback (only if Axios found nothing, Playwright is enabled, and not a chain)
-          if (USE_PLAYWRIGHT_FALLBACK && emails.length === 0 && browser) {
-            const domain = extractDomain(biz.website || '');
-            if (domain) {
-              if (isChainDomain(domain)) {
-                emailStatus = 'chain-skipped';
-              } else {
-                let localContext = null;
-                let page = null;
-                try {
-                  localContext = await browser.newContext({
-                    userAgent: getRandomUserAgent(),
-                    viewport: { width: 1366, height: 768 },
-                    locale: 'en-US',
-                  });
-                  page = await localContext.newPage();
-
-                  // Block stylesheets, images, media, and fonts
-                  await page.route('**/*', (route) => {
-                    const type = route.request().resourceType();
-                    if (['image', 'media', 'font', 'stylesheet'].includes(type)) {
-                      route.abort().catch(() => {});
-                    } else {
-                      route.continue().catch(() => {});
-                    }
-                  });
-
-                  const baseUrl = normalizeUrl(biz.website);
-
-                  /* Homepage */
-                  await page.goto(baseUrl, {
-                    timeout: PLAYWRIGHT_PAGE_TIMEOUT,
-                    waitUntil: 'domcontentloaded',
-                  });
-                  await page.waitForTimeout(2000); /* let JS render */
-
-                  let html = await page.content();
-                  emails = extractEmailsFromHtml(html);
-
-                  /* Contact page if no emails on homepage */
-                  if (emails.length === 0) {
-                    for (const path of ['/contact', '/contact-us', '/pages/contact']) {
-                      try {
-                        await page.goto(baseUrl + path, {
-                          timeout: PLAYWRIGHT_PAGE_TIMEOUT,
-                          waitUntil: 'domcontentloaded',
-                        });
-                        await page.waitForTimeout(1500);
-                        html = await page.content();
-                        const found = extractEmailsFromHtml(html);
-                        emails.push(...found);
-                        if (emails.length > 0) break;
-                      } catch {
-                        /* path doesn't exist — continue */
-                      }
-                    }
-                  }
-
-                  if (emails.length > 0) {
-                    emailStatus = 'found-playwright';
-                  } else {
-                    emailStatus = 'scanned';
-                  }
-                } catch (err) {
-                  /* ── Browser crash recovery ── */
-                  if (isBrowserCrash(err) && browserRelaunchCount < MAX_BROWSER_RELAUNCHES) {
-                    browserRelaunchCount++;
-                    console.warn(
-                      `\n⚠️  [BROWSER CRASH] Relaunch ${browserRelaunchCount}/${MAX_BROWSER_RELAUNCHES} — retrying ${biz.name}...`
-                    );
-                    try { 
-                      await Promise.race([
-                        browser.close().catch(() => {}),
-                        new Promise(r => setTimeout(r, 5000))
-                      ]); 
-                    } catch {}
-                    try {
-                      browser = await launchBrowser();
-                    } catch (launchErr) {
-                      console.error('   ❌ Browser relaunch failed:', launchErr.message);
-                      browser = null;
-                    }
-                    emailStatus = 'error';
-                  } else {
-                    const msg = err.message || '';
-                    const isTimeout = msg.includes('timeout') || msg.includes('Navigation timeout');
-                    emailStatus = isTimeout ? 'timeout' : 'error';
-                  }
-                  // Wait a tiny bit on error to not spin out
-                  await new Promise((r) => setTimeout(r, 500));
-                } finally {
-                  if (page) {
-                    await page.close().catch(() => {});
-                  }
-                  if (localContext) {
-                    await localContext.close().catch(() => {});
-                  }
-                }
-              }
-            }
-          }
-
-          // 3. Save result
-          const unique = [...new Set(emails)];
-          const emailStr = unique.join('; ');
-
-          db.update(biz, {
-            emails: unique,
-            email: emailStr,
-            platform,
-            emailStatus,
-          });
-
-          // Save DB only, defer Excel export to the end
-          db.save();
-          // exportToExcel(db.getAll());
-
-          completedCount++;
-          if (unique.length > 0) {
-            foundCount++;
-          }
-
-          const statusText = unique.length > 0
-            ? `emails found: ${unique.length} (${unique.join(', ')})`
-            : `no email (${emailStatus})`;
-          console.log(`lead no ${leadNum} , ${biz.name}, phase 2 complete (${statusText})`);
-          console.log('completed starting a new lead');
-        };
-
-        try {
-          await Promise.race([taskExecution(), hardTimeoutPromise]);
-        } catch (outerErr) {
-          /* ── Absolute last-resort catch: log, mark error, save, never throw ── */
-          const leadNum = biz.leadNum || ++global.leadCounter;
-          if (!biz.isPhase1Logged) {
-            console.log(`lead no ${leadNum} , ${biz.name}, phase 1 complete`);
-            biz.isPhase1Logged = true;
-          }
-          console.log(`lead no ${leadNum} , ${biz.name}, phase 2 complete (error: ${outerErr.message || outerErr})`);
-          console.log('completed starting a new lead');
-          db.update(biz, {
-            emails: [],
-            email: '',
-            platform: 'Other',
-            emailStatus: 'error',
-          });
-          db.save();
-          // exportToExcel(db.getAll());
-          completedCount++;
-        }
-      })
-    );
-
-    await Promise.all(tasks);
-  } finally {
-    if (browser) {
-      await Promise.race([
-        browser.close().catch(() => {}),
-        new Promise(r => setTimeout(r, 5000))
-      ]);
+async function findEmails(businesses, db, {signal}={}) {
+  if(process.argv.includes('--dry-run'))return businesses;
+  const targeting=require('./runtime/targeting');
+  const pending=businesses.filter(b=>b.website&&!b.quarantined&&!b.archived&&!targeting.exclusion(b));
+  let browser=null;
+  if(USE_PLAYWRIGHT_FALLBACK)try{browser=await require('./runtime/browser').launch({headless:HEADLESS});}catch{console.log('Rendered enrichment unavailable; bounded static website research continues.');}
+  let cursor=0,completed=0;
+  try{await Promise.all(Array.from({length:Math.min(2,pending.length)},async()=>{while(cursor<pending.length&&!signal?.aborted){const b=pending[cursor++];try{
+    let platform='Other';const extra=new Set();
+    const research=await require('./runtime/research').research(b,{signal,fetcher:async(url,redirects,options)=>{const response=await safeFetchText(url,redirects,options);if(platform==='Other')platform=detectPlatform(response.text);for(const e of extractEmailsFromHtml(response.text))extra.add(e);return response;}});
+    if(browser&&!signal?.aborted&&!research.contacts.some(c=>c.ownerCandidate)){
+      const rendered=await require('./runtime/browser-research').renderResearch(browser,b,{signal});
+      const found=new Map(research.contacts.map(c=>[c.email,c]));for(const c of rendered.contacts){if(!found.has(c.email)||c.ownerCandidate)found.set(c.email,c);}
+      research.contacts=[...found.values()];research.owners.push(...rendered.owners);research.sizeFacts.push(...rendered.sizeFacts);research.pages.push(...rendered.pages);research.status=research.pages.length?'researched':'unavailable';
     }
-  }
-
-  return withWebsites.map((biz) => db.get(biz) || biz);
+    if(signal?.aborted)break;
+    const current=db.get(b);if(!current||current.website!==b.website)continue;
+    const candidates=research.contacts.filter(c=>c.ownerCandidate).map(c=>c.email);
+    const emails=[...new Set([...candidates,...research.contacts.map(c=>c.email),...extra,...(current.emails||[])])];
+    db.update(b,{research,emails,email:emails[0]||'',platform,emailStatus:research.pages.length?(emails.length?'found':'success'):'error'});
+    completed++;console.log(JSON.stringify({websiteResearchCompleted:completed,total:pending.length,ownerCandidates:research.contacts.filter(c=>c.ownerCandidate).length}));
+   }catch{if(!signal?.aborted)db.update(b,{emailStatus:'error'});}}}));
+  }finally{if(browser)await browser.close().catch(()=>{});}
+  return pending.map(b=>db.get(b)||b);
 }
 
 module.exports = {

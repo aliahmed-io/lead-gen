@@ -1,0 +1,3 @@
+'use client';
+import {useEffect} from 'react';
+export function useDirtyGuard(dirty:boolean){useEffect(()=>{if(!dirty)return;const unload=(event:BeforeUnloadEvent)=>{event.preventDefault();};const navigate=(event:MouseEvent)=>{const anchor=(event.target as Element)?.closest('a');if(anchor&&anchor.origin===location.origin&&anchor.pathname!==location.pathname&&!window.confirm('Leave this page and discard unsaved changes?')){event.preventDefault();event.stopPropagation();}};window.addEventListener('beforeunload',unload);document.addEventListener('click',navigate,true);return()=>{window.removeEventListener('beforeunload',unload);document.removeEventListener('click',navigate,true);};},[dirty]);}

@@ -1,0 +1,460 @@
+
+> lead-scraper@1.0.0 test
+> node scripts/run-node.cjs --test tests/core.test.cjs
+
+TAP version 13
+# (node:7328) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: sessions are signed, expire and reject tampering
+ok 1 - sessions are signed, expire and reject tampering
+  ---
+  duration_ms: 145.4229
+  type: 'test'
+  ...
+# Subtest: settings responses never contain account or auxiliary secrets
+ok 2 - settings responses never contain account or auxiliary secrets
+  ---
+  duration_ms: 62.3677
+  type: 'test'
+  ...
+# Subtest: settings reject malformed or reversed operational limits
+ok 3 - settings reject malformed or reversed operational limits
+  ---
+  duration_ms: 49.6076
+  type: 'test'
+  ...
+# Subtest: template preview and sender use the same variant and verified names
+ok 4 - template preview and sender use the same variant and verified names
+  ---
+  duration_ms: 49.8382
+  type: 'test'
+  ...
+# Subtest: CSV quoting roundtrips and import maps exported header names
+ok 5 - CSV quoting roundtrips and import maps exported header names
+  ---
+  duration_ms: 51.3901
+  type: 'test'
+  ...
+# Subtest: lead source review cannot approve generated contacts
+ok 6 - lead source review cannot approve generated contacts
+  ---
+  duration_ms: 48.7489
+  type: 'test'
+  ...
+# Subtest: quoted unsubscribe footer is ignored in interested replies
+ok 7 - quoted unsubscribe footer is ignored in interested replies
+  ---
+  duration_ms: 49.108
+  type: 'test'
+  ...
+# Subtest: all later replies are captured even after an interested status
+ok 8 - all later replies are captured even after an interested status
+  ---
+  duration_ms: 51.2132
+  type: 'test'
+  ...
+# Subtest: auto replies snooze rather than count as positive leads
+ok 9 - auto replies snooze rather than count as positive leads
+  ---
+  duration_ms: 51.0952
+  type: 'test'
+  ...
+# Subtest: structured DSNs only bounce their Final-Recipient
+ok 10 - structured DSNs only bounce their Final-Recipient
+  ---
+  duration_ms: 49.7447
+  type: 'test'
+  ...
+# Subtest: source and opt-out checks remain fresh across store readers
+ok 11 - source and opt-out checks remain fresh across store readers
+  ---
+  duration_ms: 49.1624
+  type: 'test'
+  ...
+# Subtest: unknown verification and stale diagnostics block sending
+ok 12 - unknown verification and stale diagnostics block sending
+  ---
+  duration_ms: 51.796
+  type: 'test'
+  ...
+# Subtest: saved sequence order and delay determine the next step
+ok 13 - saved sequence order and delay determine the next step
+  ---
+  duration_ms: 49.2424
+  type: 'test'
+  ...
+# Subtest: dry-run rendering changes no records, events, attempts or quotas
+ok 14 - dry-run rendering changes no records, events, attempts or quotas
+  ---
+  duration_ms: 61.3796
+  type: 'test'
+  ...
+# Subtest: duplicate manual requests reserve one durable attempt
+ok 15 - duplicate manual requests reserve one durable attempt
+  ---
+  duration_ms: 51.2205
+  type: 'test'
+  ...
+# Subtest: transient errors do not bounce valid prospects
+ok 16 - transient errors do not bounce valid prospects
+  ---
+  duration_ms: 54.4418
+  type: 'test'
+  ...
+# Subtest: ambiguous delivery cannot be retried without explicit review
+ok 17 - ambiguous delivery cannot be retried without explicit review
+  ---
+  duration_ms: 69.7127
+  type: 'test'
+  ...
+# Subtest: manual reply and campaign share atomic daily capacity
+ok 18 - manual reply and campaign share atomic daily capacity
+  ---
+  duration_ms: 57.1049
+  type: 'test'
+  ...
+# Subtest: zero-send analytics contain no invented wins, revenue or grade
+ok 19 - zero-send analytics contain no invented wins, revenue or grade
+  ---
+  duration_ms: 54.8681
+  type: 'test'
+  ...
+# Subtest: negative replies never count as positive and zero deal value stays zero
+ok 20 - negative replies never count as positive and zero deal value stays zero
+  ---
+  duration_ms: 46.4495
+  type: 'test'
+  ...
+# Subtest: SQL transactions roll back and concurrent process updates preserve both writes
+ok 21 - SQL transactions roll back and concurrent process updates preserve both writes
+  ---
+  duration_ms: 162.679
+  type: 'test'
+  ...
+# Subtest: lease ownership prevents duplicate workers
+ok 22 - lease ownership prevents duplicate workers
+  ---
+  duration_ms: 48.0743
+  type: 'test'
+  ...
+# Subtest: private network targets and unsigned tracking tokens are rejected
+ok 23 - private network targets and unsigned tracking tokens are rejected
+  ---
+  duration_ms: 43.0315
+  type: 'test'
+  ...
+# Subtest: public unsubscribe signatures cannot authorize administrative access
+ok 24 - public unsubscribe signatures cannot authorize administrative access
+  ---
+  duration_ms: 43.9229
+  type: 'test'
+  ...
+# Subtest: logout revokes the server-side session
+ok 25 - logout revokes the server-side session
+  ---
+  duration_ms: 88.1479
+  type: 'test'
+  ...
+# Subtest: an unsubscribe racing SMTP acceptance is not overwritten by sent status
+ok 26 - an unsubscribe racing SMTP acceptance is not overwritten by sent status
+  ---
+  duration_ms: 48.5719
+  type: 'test'
+  ...
+# Subtest: delivery accepted before a reply retains its reply stop state
+ok 27 - delivery accepted before a reply retains its reply stop state
+  ---
+  duration_ms: 51.4465
+  type: 'test'
+  ...
+# Subtest: replayed delivery reports are idempotent across mailbox checkpoint resets
+ok 28 - replayed delivery reports are idempotent across mailbox checkpoint resets
+  ---
+  duration_ms: 50.3082
+  type: 'test'
+  ...
+# Subtest: bulk enrollment is atomic if a later contact fails review
+ok 29 - bulk enrollment is atomic if a later contact fails review
+  ---
+  duration_ms: 47.1062
+  type: 'test'
+  ...
+# Subtest: abandoned delivery becomes ambiguous and cannot silently retry
+ok 30 - abandoned delivery becomes ambiguous and cannot silently retry
+  ---
+  duration_ms: 46.6456
+  type: 'test'
+  ...
+# Subtest: personal ceilings reject 101 per mailbox and 601 total
+ok 31 - personal ceilings reject 101 per mailbox and 601 total
+  ---
+  duration_ms: 50.1769
+  type: 'test'
+  ...
+# Subtest: 100 per-account and 600 global ceilings cannot be bypassed by old configuration
+ok 32 - 100 per-account and 600 global ceilings cannot be bypassed by old configuration
+  ---
+  duration_ms: 53.9095
+  type: 'test'
+  ...
+# Subtest: provider throttling is distinct from recipient hard bounces
+ok 33 - provider throttling is distinct from recipient hard bounces
+  ---
+  duration_ms: 58.7707
+  type: 'test'
+  ...
+# Subtest: authentication failure immediately pauses the mailbox
+ok 34 - authentication failure immediately pauses the mailbox
+  ---
+  duration_ms: 54.6371
+  type: 'test'
+  ...
+# Subtest: two consecutive temporary failures stop further sending
+ok 35 - two consecutive temporary failures stop further sending
+  ---
+  duration_ms: 68.9861
+  type: 'test'
+  ...
+# Subtest: recent bounces pause at an early threshold while old events age out
+ok 36 - recent bounces pause at an early threshold while old events age out
+  ---
+  duration_ms: 62.3712
+  type: 'test'
+  ...
+# Subtest: temporary recovery needs cooldown and two spaced full checks then reduced capacity
+ok 37 - temporary recovery needs cooldown and two spaced full checks then reduced capacity
+  ---
+  duration_ms: 55.8134
+  type: 'test'
+  ...
+# Subtest: an operator pause and reputation review cannot auto-resume
+ok 38 - an operator pause and reputation review cannot auto-resume
+  ---
+  duration_ms: 55.042
+  type: 'test'
+  ...
+# Subtest: a failure during recovery clears successful-check history
+ok 39 - a failure during recovery clears successful-check history
+  ---
+  duration_ms: 45.3033
+  type: 'test'
+  ...
+# Subtest: mailbox edits invalidate in-flight diagnostic results
+ok 40 - mailbox edits invalidate in-flight diagnostic results
+  ---
+  duration_ms: 45.0635
+  type: 'test'
+  ...
+# Subtest: monitor checks due accounts and respects diagnostic backoff
+ok 41 - monitor checks due accounts and respects diagnostic backoff
+  ---
+  duration_ms: 48.8501
+  type: 'test'
+  ...
+# Subtest: monitor lease prevents competing diagnostic loops
+ok 42 - monitor lease prevents competing diagnostic loops
+  ---
+  duration_ms: 45.4566
+  type: 'test'
+  ...
+# Subtest: live delivery stops without a current monitor heartbeat
+ok 43 - live delivery stops without a current monitor heartbeat
+  ---
+  duration_ms: 43.8013
+  type: 'test'
+  ...
+# Subtest: received abuse feedback suppresses only the correlated recipient and pauses its account
+ok 44 - received abuse feedback suppresses only the correlated recipient and pauses its account
+  ---
+  duration_ms: 90.9754
+  type: 'test'
+  ...
+# Subtest: CSV mailbox import always prefers a nonempty app password regardless of header order
+ok 45 - CSV mailbox import always prefers a nonempty app password regardless of header order
+  ---
+  duration_ms: 91.4192
+  type: 'test'
+  ...
+# Subtest: rejected-credential diagnostics back off without exposing provider secrets
+ok 46 - rejected-credential diagnostics back off without exposing provider secrets
+  ---
+  duration_ms: 93.0918
+  type: 'test'
+  ...
+# Subtest: scraped owner suggestions never qualify an unknown contact
+ok 47 - scraped owner suggestions never qualify an unknown contact
+  ---
+  duration_ms: 100.9477
+  type: 'test'
+  ...
+# Subtest: departmental email, stale ownership and employee-only contacts are blocked
+ok 48 - departmental email, stale ownership and employee-only contacts are blocked
+  ---
+  duration_ms: 98.8295
+  type: 'test'
+  ...
+# Subtest: chains and published enterprise employee counts cannot qualify
+ok 49 - chains and published enterprise employee counts cannot qualify
+  ---
+  duration_ms: 97.5194
+  type: 'test'
+  ...
+# Subtest: ownership and size review binds to the exact address and preserves an unsent record
+ok 50 - ownership and size review binds to the exact address and preserves an unsent record
+  ---
+  duration_ms: 91.4172
+  type: 'test'
+  ...
+# Subtest: a previously contacted email cannot be silently replaced
+ok 51 - a previously contacted email cannot be silently replaced
+  ---
+  duration_ms: 93.88
+  type: 'test'
+  ...
+# Subtest: CSV cannot import forged approval, owner review or verification
+ok 52 - CSV cannot import forged approval, owner review or verification
+  ---
+  duration_ms: 92.6076
+  type: 'test'
+  ...
+# Subtest: source-only approval cannot bypass the enrollment target gate
+ok 53 - source-only approval cannot bypass the enrollment target gate
+  ---
+  duration_ms: 112.2526
+  type: 'test'
+  ...
+# Subtest: owner evidence is rechecked after enrollment before sending
+ok 54 - owner evidence is rechecked after enrollment before sending
+  ---
+  duration_ms: 107.7601
+  type: 'test'
+  ...
+# Subtest: HTML extraction records owner/email context and structured size without guessing addresses
+ok 55 - HTML extraction records owner/email context and structured size without guessing addresses
+  ---
+  duration_ms: 137.3411
+  type: 'test'
+  ...
+# Subtest: research visits ownership pages even if homepage already contains a generic email
+ok 56 - research visits ownership pages even if homepage already contains a generic email
+  ---
+  duration_ms: 115.5635
+  type: 'test'
+  ...
+# Subtest: known chains never trigger enrichment HTTP requests
+ok 57 - known chains never trigger enrichment HTTP requests
+  ---
+  duration_ms: 112.4059
+  type: 'test'
+  ...
+# Subtest: research rejects cross-domain evidence and does not claim facts on failed pages
+ok 58 - research rejects cross-domain evidence and does not claim facts on failed pages
+  ---
+  duration_ms: 101.1633
+  type: 'test'
+  ...
+# Subtest: targeting filter and export source use the same qualification
+ok 59 - targeting filter and export source use the same qualification
+  ---
+  duration_ms: 112.4063
+  type: 'test'
+  ...
+# Subtest: manual replies and automated sends reserve the same durable mailbox pace
+ok 60 - manual replies and automated sends reserve the same durable mailbox pace
+  ---
+  duration_ms: 106.2579
+  type: 'test'
+  ...
+# Subtest: a completed step with no matching B variant is attributed to actual variant A
+ok 61 - a completed step with no matching B variant is attributed to actual variant A
+  ---
+  duration_ms: 100.5725
+  type: 'test'
+  ...
+# Subtest: pilot evidence parses received Gmail alignment and invalidates on credential changes
+ok 62 - pilot evidence parses received Gmail alignment and invalidates on credential changes
+  ---
+  duration_ms: 116.2402
+  type: 'test'
+  ...
+# Subtest: failed or wrong-domain received authentication cannot pass the pilot gate
+ok 63 - failed or wrong-domain received authentication cannot pass the pilot gate
+  ---
+  duration_ms: 87.2396
+  type: 'test'
+  ...
+# Subtest: six-account simulated workday sends exactly 100 per account with independent pacing
+ok 64 - six-account simulated workday sends exactly 100 per account with independent pacing
+  ---
+  duration_ms: 61367.5058
+  type: 'test'
+  ...
+# Subtest: a refreshed email scan cannot replace a reviewed primary owner contact
+ok 65 - a refreshed email scan cannot replace a reviewed primary owner contact
+  ---
+  duration_ms: 452.0382
+  type: 'test'
+  ...
+# Subtest: business identity survives Maps tracking changes without merging different addresses
+ok 66 - business identity survives Maps tracking changes without merging different addresses
+  ---
+  duration_ms: 108.4207
+  type: 'test'
+  ...
+# Subtest: archiving a duplicate contact row preserves the other business and its enrollment
+ok 67 - archiving a duplicate contact row preserves the other business and its enrollment
+  ---
+  duration_ms: 99.015
+  type: 'test'
+  ...
+# Subtest: browser fallback uses an installed browser with sandbox enabled
+ok 68 - browser fallback uses an installed browser with sandbox enabled
+  ---
+  duration_ms: 112.0419
+  type: 'test'
+  ...
+# Subtest: a provider verification block preserves pending queries and records an actionable reason
+ok 69 - a provider verification block preserves pending queries and records an actionable reason
+  ---
+  duration_ms: 118.6311
+  type: 'test'
+  ...
+# Subtest: Excel export writes verified targeting columns and treats formula-like text as text
+ok 70 - Excel export writes verified targeting columns and treats formula-like text as text
+  ---
+  duration_ms: 438.765
+  type: 'test'
+  ...
+# Subtest: patched mail libraries render and parse the exact signed message without network delivery
+ok 71 - patched mail libraries render and parse the exact signed message without network delivery
+  ---
+  duration_ms: 399.4733
+  type: 'test'
+  ...
+# Subtest: SMTP TLS mode remains correct after the mail-library update
+ok 72 - SMTP TLS mode remains correct after the mail-library update
+  ---
+  duration_ms: 132.8751
+  type: 'test'
+  ...
+# Subtest: pinned DNS callback supports both Node address and all-address result formats
+ok 73 - pinned DNS callback supports both Node address and all-address result formats
+  ---
+  duration_ms: 109.4685
+  type: 'test'
+  ...
+# Subtest: unavailable public research retains retryable state and backs off instead of becoming permanently scanned
+ok 74 - unavailable public research retains retryable state and backs off instead of becoming permanently scanned
+  ---
+  duration_ms: 113.1162
+  type: 'test'
+  ...
+1..74
+# tests 74
+# suites 0
+# pass 74
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 68616.5881

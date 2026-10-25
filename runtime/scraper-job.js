@@ -1,0 +1,5 @@
+'use strict';
+require('./bootstrap').ensure();const store=require('./store');const fs=require('fs');const path=require('path');const [type,owner]=process.argv.slice(2);let stopping=false;const controller=new AbortController();process.on('SIGINT',()=>{stopping=true;controller.abort();});process.on('SIGTERM',()=>{stopping=true;controller.abort();if(type!=='email_scanner')process.emit('SIGINT');});
+const timer=setInterval(()=>{if(!store.lease('scraper',owner,30000))process.exit(1);const job=store.read('scraperJob');store.write('scraperJob',{...job,heartbeatAt:Date.now()});if(!stopping&&fs.existsSync(path.join(store.dataDir,'cancel-'+owner))){stopping=true;process.emit('SIGINT');}},3000);
+process.on('exit',code=>{clearInterval(timer);store.release('scraper',owner);store.write('scraperJob',{...store.read('scraperJob'),status:store.read('scraperJob').status==='blocked'?'blocked':stopping?'cancelled':code===0?'completed':'failed',finishedAt:Date.now()});});
+if(type==='email_scanner')require('../run_email_backlog').run({signal:controller.signal}).then(()=>process.exit(0)).catch(()=>process.exit(1));else require('../index');

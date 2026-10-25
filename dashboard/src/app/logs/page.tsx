@@ -15,6 +15,7 @@ export default function AuditLogs() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [search, setSearch] = useState("");
   const [errorsOnly, setErrorsOnly] = useState(false);
+  const [error,setError]=useState('');
   const [loading, setLoading] = useState(true);
 
   const fetchLogs = useCallback(async (showLoading = false) => {
@@ -23,12 +24,14 @@ export default function AuditLogs() {
     }
     try {
       const res = await fetch('/api/logs');
+      if (!res.ok)throw new Error('Unable to load audit events');
       if (res.ok) {
+        setError('');
         const data = await res.json();
         setLogs(data.logs || []);
       }
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error?e.message:'Unable to load logs');
     } finally {
       setLoading(false);
     }
@@ -50,6 +53,7 @@ export default function AuditLogs() {
 
   return (
     <div className="p-10 max-w-7xl mx-auto flex flex-col h-full font-sans">
+      {error&&<p role="alert">{error}</p>}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-[var(--text-primary)] mb-2 font-serif">Audit Logs</h1>
@@ -80,7 +84,7 @@ export default function AuditLogs() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
             <input 
               type="text" 
-              placeholder="Search logs..." 
+              aria-label="Search audit logs" name="search" placeholder="Search logs…" 
               className="input pl-10 pr-4 py-2 w-full md:w-64 outline-none focus:border-[var(--honey-500)]"
               value={search}
               onChange={e => setSearch(e.target.value)}

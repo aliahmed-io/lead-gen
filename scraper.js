@@ -585,18 +585,8 @@ function isValidBusiness(details) {
 
   const nameLower = details.name.toLowerCase();
 
-  // Reject known offline / browser connection error messages
-  if (
-    nameLower.includes('internet') ||
-    nameLower.includes('connection') ||
-    nameLower.includes('الإنترنت') ||
-    nameLower.includes('الانترنت') ||
-    nameLower.includes('اتصال') ||
-    nameLower.includes('خرائط google') ||
-    nameLower.includes('google maps')
-  ) {
-    return false;
-  }
+  // Match error headings, not legitimate names such as Furniture Connection.
+  if (/^(?:no internet|you(?: are|\x27re) offline|this site can(?:not|\x27t) be reached|google maps|خرائط google|لا يوجد اتصال بالإنترنت|err_[a-z_]+)[.! ]*$/i.test(nameLower)) return false;
 
   // Reject if it is completely empty of any identifying info other than name
   if (
@@ -622,10 +612,10 @@ function isValidBusiness(details) {
  * @param {string} query
  * @param {import('./db').LeadsDatabase} db
  * @param {{total: number, sinceBreak: number}} counters - mutable counters.
- * @param {boolean} isFirstQueryOfSession
+ * First query context is tracked by the caller.
  * @returns {Promise<{success: boolean, results: Array<BusinessDetails>, newCount: number, captchaStuck?: boolean}>}
  */
-async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
+async function scrapeQuery(page, query, db, counters) {
   /** @type {Array<BusinessDetails>} */
   const results = [];
   let newCount = 0;
@@ -645,39 +635,24 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
 
     await dismissOverlays(page);
 
-    /* CAPTCHA gate ------------------------------------------------ */
-    if (await detectCaptcha(page)) {
-      console.warn(
-        '\u26A0\uFE0F  CAPTCHA detected! Solve it in the browser window.'
-      );
-      console.warn('\u23F8\uFE0F  Pausing 90 seconds...');
-      await new Promise((r) => setTimeout(r, 90000));
-
-      if (await detectCaptcha(page)) {
-        console.warn('\u26A0\uFE0F  CAPTCHA still present after 90s. Waiting another 120s...');
-        await new Promise((r) => setTimeout(r, 120000));
-
-        if (await detectCaptcha(page)) {
-          console.error('\u274C CAPTCHA persists after 3.5 min. Signaling for context relaunch.');
-          return { success: false, results, newCount, captchaStuck: true };
-        }
-      }
-      console.log('\u2705 CAPTCHA resolved.');
-    }
+    // A provider verification challenge is a blocked run, never an empty successful query.
+    if(await detectCaptcha(page))throw require('./runtime/scrape-status').blockedError('Google Maps requires verification. Scraping stopped; review access before restarting. Saved leads and pending queries are retained.');
 
     success = true;
 
     /* Wait for feed or single result ------------------------------ */
     const hasFeed = await page
-      .waitForSelector('div[role="feed"]', { timeout: process.env.E2E_TESTS === 'true' ? 1000 : 15000 })
+      .waitForSelector('div[role="feed"]', { timeout: process.env.LEADGEN_TEST_MODE === '1' ? 1000 : 15000 })
       .catch(() => null);
 
     if (!hasFeed) {
+      success=false;
       try {
-        await page.waitForSelector('h1', { timeout: process.env.E2E_TESTS === 'true' ? 500 : 8000 });
+        await page.waitForSelector('h1', { timeout: process.env.LEADGEN_TEST_MODE === '1' ? 500 : 8000 });
         const single = await extractBusinessDetails(page);
         if (single && single.name) {
           if (isValidBusiness(single)) {
+            success=true;
             const parsed = parseAddress(single.address || '');
             single.city = parsed.city;
             single.state = parsed.state;
@@ -778,7 +753,7 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
         }
 
         await page
-          .waitForSelector('h1', { timeout: process.env.E2E_TESTS === 'true' ? 500 : 8000 })
+          .waitForSelector('h1', { timeout: process.env.LEADGEN_TEST_MODE === '1' ? 500 : 8000 })
           .catch(() => null);
 
         await randomDelay(800, 1500);
@@ -866,6 +841,7 @@ async function scrapeQuery(page, query, db, counters, isFirstQueryOfSession) {
       }
     }
   } catch (err) {
+    if(err&&typeof err==='object'&&'code' in err&&err.code==='SCRAPER_BLOCKED')throw err;
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error(`\u274C Query error "${query}": ${errMsg}`);
     success = false;
@@ -901,12 +877,11 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
   /** @type {Array<BusinessDetails>} */
   const allNew = [];
   const counters = { total: 0, sinceBreak: 0 };
-  let isFirstQueryOfSession = true;
   let consecutiveFailures = 0; // track back-to-back query failures
 
   await ensureOnline('Google Maps scraper initialization');
 
-  let browser = await chromium.launch({
+  let browser = await require('./runtime/browser').launch({
     headless: HEADLESS,
     args: [
       '--no-sandbox',
@@ -947,7 +922,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
       );
 
       /* --- Query-level retry with exponential backoff (3 attempts) --- */
-      const QUERY_BACKOFFS = process.env.E2E_TESTS === 'true' ? [100, 200, 300] : [30000, 60000, 120000];
+      const QUERY_BACKOFFS = process.env.LEADGEN_TEST_MODE === '1' ? [100, 200, 300] : [30000, 60000, 120000];
       let querySucceeded = false;
 
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -975,7 +950,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
         }
 
         try {
-          const scrapeResult = await scrapeQuery(page, query, db, counters, isFirstQueryOfSession);
+          const scrapeResult = await scrapeQuery(page, query, db, counters);
           allNew.push(...scrapeResult.results);
 
           console.log(
@@ -1007,6 +982,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
             `   \u26A0\uFE0F  Query "${query}" returned success:false (attempt ${attempt + 1}/3).`
           );
         } catch (queryErr) {
+          if(queryErr&&typeof queryErr==='object'&&'code' in queryErr&&queryErr.code==='SCRAPER_BLOCKED')throw queryErr;
           /* --- Browser crash recovery --- */
           if (isBrowserCrash(/** @type {Error} */ (queryErr))) {
             const queryErrMsg = queryErr instanceof Error ? queryErr.message : String(queryErr);
@@ -1023,7 +999,7 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
             } catch { /* ignore */ }
             await new Promise((r) => setTimeout(r, 5000));
             await ensureOnline('browser crash recovery');
-            browser = await chromium.launch({
+            browser = await require('./runtime/browser').launch({
               headless: HEADLESS,
               args: [
                 '--no-sandbox',
@@ -1076,9 +1052,6 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
       if (qi < queries.length - 1) {
         await randomDelay(QUERY_DELAY_MIN, QUERY_DELAY_MAX);
       }
-      
-      // We have now run at least one query this session
-      isFirstQueryOfSession = false;
     }
 
     try { await context.close(); } catch { /* may already be closed */ }
@@ -1097,4 +1070,4 @@ async function scrapeAllQueries(queries, db, onQueryComplete) {
   return allNew;
 }
 
-module.exports = { scrapeAllQueries, randomDelay, getRandomUserAgent };
+module.exports = { scrapeAllQueries, randomDelay, getRandomUserAgent, extractBusinessDetails, parseAddress, isValidBusiness };

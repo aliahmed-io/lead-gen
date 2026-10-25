@@ -1,0 +1,27 @@
+[
+  {
+    "sha256": "1110481406dbe5734f7b15763e79f73c615e2dcb0eb8fb64dbc3332a2d3bf016",
+    "before": "bb1c65ac4de7dff2b61396150d07c75e8e2dc2d8ef6a63b36c65036967625cd6",
+    "file": "runtime/network.js"
+  },
+  {
+    "sha256": "b751562818b2ae3a7598b3c72bb7864d8d85faccab5fc204b47ae1bbb3df00bc",
+    "before": "354c2aacfb68c79803eff7c14287006a2606fd0f7dbad4ee8d6b4a1798611b94",
+    "file": "runtime/leads.js"
+  },
+  {
+    "sha256": "6763f3acc9c457a6172dfbc365ab4bac5a3d05f9a338832bbc82d614019ab251",
+    "before": "0ad8d7c6c425b9c12dc2be1b00d4eb514d65c656870f82e392914f024cce66d6",
+    "file": "scripts/research-owners.cjs"
+  },
+  {
+    "sha256": "f4e5f3f50eb8ab1922f1f6ea85c68b3c911ec5c52e1bc2e9a8e55f11185400c6",
+    "before": "ccbe4582d3d20a8e37c19e05609d56b899c58c18bf5e5d6c91c11f68b82d6821",
+    "file": "scripts/run-monitor.ps1"
+  },
+  {
+    "sha256": "172d3eabe8d69ad34db5f7758a9f8270cd6b1ce28d8001ffe3b193427dfe0797",
+    "before": "cabda05834c7a571e24657f6f8a96be5e66f6fb5754ca5eb6cb043f6131d5f49",
+    "file": "tests/core.test.cjs"
+  }
+]

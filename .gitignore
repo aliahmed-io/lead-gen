@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Environment variables
 .env
@@ -19,10 +18,25 @@ inbox_db.json.tmp
 # Sensitive credential files — NEVER commit these
 mailboxes.csv
 import-mailboxes.js
-accounts/
+/accounts/
 *.csv
 audit.log
 
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Runtime copies and credentials
+data-working/
+*.sqlite*
+*.log
+
+# Preserved legacy contact-list helpers contain obsolete embedded credentials.
+/run_fetch_leads.js
+/run_get_lead_details.js
+/run_fast_file_log.js
+/settings.json
+
+# Local verified runtime and isolated dependency links
+/.runtime/
+node_modules.original-link/

@@ -1,0 +1,1 @@
+require('../runtime/bootstrap').ensure();const s=require('../runtime/store');console.log('Working database ready. Originals are preserved.');console.log('Administrator access note: '+require('path').join(s.dataDir,'admin-access.txt'));console.log('Live sending is disabled unless ENABLE_LIVE_EMAIL=1 is explicitly set.');

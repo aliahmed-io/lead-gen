@@ -1,26 +1,3 @@
-import type { NextConfig } from "next";
-import path from "path";
-
-const nextConfig: NextConfig = {
-  turbopack: {},
-  webpack: (config) => {
-    config.watchOptions = {
-      ...config.watchOptions,
-      ignored: [
-        /node_modules/,
-        path.resolve(process.cwd(), '../settings.json'),
-        path.resolve(process.cwd(), '../templates.json'),
-        path.resolve(process.cwd(), '../campaign_db.json'),
-        path.resolve(process.cwd(), '../leads_db.json'),
-        path.resolve(process.cwd(), '../campaign_state.json'),
-        path.resolve(process.cwd(), '../inbox_db.json'),
-        path.resolve(process.cwd(), '../inbox_db.json.tmp'),
-        path.resolve(process.cwd(), '../leads_db.json.tmp'),
-        path.resolve(process.cwd(), '../audit.log'),
-      ],
-    };
-    return config;
-  },
-};
-
-export default nextConfig;
+import type {NextConfig} from 'next';
+import path from 'node:path';
+const nextConfig:NextConfig={outputFileTracingRoot:path.resolve(process.cwd(),'..'),webpack:config=>{config.watchOptions={...config.watchOptions,ignored:['**/node_modules/**','**/data-working/**']};config.externals=[...(Array.isArray(config.externals)?config.externals:[config.externals]).filter(Boolean),({request}:{request?:string},callback:(error?:Error|null,result?:string)=>void)=>{if(request==='@leadgen/runtime')return callback(null,'commonjs '+path.resolve(process.cwd(),'../runtime.js'));callback();}];return config;},async headers(){return [{source:'/:path*',headers:[{key:'X-Content-Type-Options',value:'nosniff'},{key:'Referrer-Policy',value:'same-origin'},{key:'X-Frame-Options',value:'DENY'},{key:'Permissions-Policy',value:'camera=(), microphone=(), geolocation=()'}]}];}};export default nextConfig;

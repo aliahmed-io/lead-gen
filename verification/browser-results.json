@@ -1,0 +1,22 @@
+{
+  "checks": [
+    "Unauthenticated admin API blocked, including legacy account routes",
+    "Sign-in and protected navigation",
+    "Secret redaction and origin enforcement",
+    "Cross-page selection export",
+    "Quality filter retained in bulk selection",
+    "Owner and SMB evidence review works; unknown mailbox stays blocked",
+    "Launch pilot parser, observations and header redaction",
+    "Maps DOM fixture extracts business name, website, phone and location",
+    "Template editor and rendering use same variant",
+    "Settings save roundtrip",
+    "Reply drafts remain with their recipient",
+    "Account management page renders",
+    "Protection monitor status and effective account limits render",
+    "Mobile navigation and page width",
+    "No browser JavaScript exceptions",
+    "Signed public opt-out cannot authorize admin access"
+  ],
+  "status": "passed",
+  "fixtureDataOnly": true
+}

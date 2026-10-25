@@ -45,7 +45,7 @@ export const Button: React.FC<ButtonProps> = ({
         fontWeight: 600,
         cursor: disabled || loading ? 'not-allowed' : 'pointer',
         opacity: disabled || loading ? 0.6 : 1,
-        transition: 'all 0.15s ease',
+        transition: 'background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease',
         ...sizeStyles,
         ...style,
       }}

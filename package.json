@@ -1,14 +1,22 @@
 {
   "name": "lead-scraper",
   "version": "1.0.0",
-  "description": "Google Maps lead scraper for furniture and home decor stores — extracts business details, emails, and platform info to Excel.",
+  "description": "Google Maps lead scraper for furniture and home decor stores \u00e2\u20ac\u201d extracts business details, emails, and platform info to Excel.",
   "main": "index.js",
   "scripts": {
-    "start": "node start.js",
-    "dev": "concurrently \"npm run dev --prefix dashboard\" \"node start.js\"",
-    "scrape": "node index.js",
-    "lint": "eslint index.js scraper.js db.js keepAwake.js",
-    "build": "tsc"
+    "start": "node scripts/dashboard.cjs start",
+    "dev": "node scripts/dashboard.cjs dev",
+    "worker": "node scripts/run-node.cjs start.js",
+    "setup": "node scripts/run-node.cjs scripts/setup.cjs",
+    "scrape": "node scripts/run-node.cjs runtime/scrape-cli.js",
+    "test": "node scripts/run-node.cjs --test tests/core.test.cjs tests/local-access.test.cjs",
+    "lint": "node scripts/run-node.cjs node_modules/eslint/bin/eslint.js runtime scripts tests --ext .js,.cjs",
+    "build": "node scripts/run-node.cjs node_modules/typescript/bin/tsc && node scripts/run-node.cjs scripts/check-source.cjs",
+    "build:dashboard": "node scripts/dashboard.cjs build",
+    "backup": "node scripts/run-node.cjs scripts/backup.cjs",
+    "monitor": "node scripts/run-node.cjs runtime/monitor-service.js",
+    "research:owners": "node scripts/run-node.cjs scripts/research-owners.cjs",
+    "test:browser": "node scripts/run-node.cjs scripts/browser-check.cjs"
   },
   "keywords": [
     "lead-generation",
@@ -28,14 +36,14 @@
     "mailparser": "^3.9.9",
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.10",
+    "nodemailer": "^10.2.1",
     "p-limit": "^2.3.0",
     "playwright": "^1.52.0",
     "proper-lockfile": "^4.1.2",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.23.4"
   },
   "devDependencies": {
     "@types/node": "^25.9.2",

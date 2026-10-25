@@ -49,7 +49,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           pointerEvents: 'none',
         }}
       >
-        <AnimatePresence>
+        <div role="status" aria-live="polite" aria-atomic="false"><AnimatePresence>
           {toasts.map(t => {
             const isSuccess = t.type === 'success';
             const isError = t.type === 'error';
@@ -84,6 +84,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 <Icon size={16} style={{ flexShrink: 0 }} />
                 <span style={{ flex: 1 }}>{t.message}</span>
                 <button
+                  aria-label="Dismiss notification"
                   onClick={() => removeToast(t.id)}
                   style={{ background: 'none', border: 'none', color: 'currentColor', opacity: 0.7, cursor: 'pointer', padding: '2px' }}
                 >
@@ -92,7 +93,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               </motion.div>
             );
           })}
-        </AnimatePresence>
+        </AnimatePresence></div>
       </div>
     </ToastContext.Provider>
   );

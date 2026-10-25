@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const dbPath = path.resolve(__dirname, '../leads_db.json');
+fs.mkdirSync(path.resolve(__dirname,'../data-working/fixtures'),{recursive:true});
+const dbPath=path.resolve(__dirname,'../data-working/fixtures/categorized-leads.json');
 
 // Sample high-converting e-commerce categories and niches
 const NICHES = [
@@ -94,7 +95,7 @@ function generateDataset(totalCount = 10000) {
       city,
       state,
       niche: NICHES[i % NICHES.length],
-      emailStatus: qualityTier === 'low' ? 'unverified' : 'verified',
+      synthetic:true, emailStatus: 'fixture-only',
       qualityTier,
       qualityScore,
       addedAt: new Date(Date.now() - (i * 3600000)).toISOString()
@@ -126,7 +127,7 @@ Object.values(dataset.businesses).forEach(b => {
 fs.writeFileSync(dbPath, JSON.stringify(dataset, null, 2), 'utf8');
 
 console.log(`\n======================================================`);
-console.log(`✅ LEAD CATEGORIZATION COMPLETE: 10,250 LEADS GRADED`);
+console.log(`Synthetic test dataset created. These are not researched prospects.`);
 console.log(`======================================================`);
 console.log(`  🔥 TOP QUALITY (Score 80–100) : ${topCount.toLocaleString()} leads (${((topCount/10250)*100).toFixed(1)}%)`);
 console.log(`  📊 AVERAGE QUALITY (Score 50–79): ${avgCount.toLocaleString()} leads (${((avgCount/10250)*100).toFixed(1)}%)`);
