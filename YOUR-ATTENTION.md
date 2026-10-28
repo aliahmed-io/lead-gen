@@ -1,18 +1,32 @@
-# Your actions before outreach
+# Launch preparation — 26 October 2026
 
-The local software changes are implemented. No live campaign was started and no email was sent during repair. Original source lead lists and credential exports remain intact. Keep campaigns paused until the items below are complete.
+## Prepared and tested
+- Twelve planned mailboxes across the six existing domains: six Alex, three Sarah, three Emma. The six old Mailpool accounts remain intact in configuration while recovery is investigated. No replacement accounts were provisioned.
+- Limits: ten outbound messages per mailbox per day; 120 total. Initials, follow-ups and manual outbound through LeadGen share those limits. External warm-up is not counted or paused automatically by LeadGen.
+- Three initial copy variants and four follow-ups updated with the $2,000 case-study offer and two months' maintenance. Removed the unsubstantiated $8,000 comparison, invented product compliments, conversion promises and the assumption that every AI/AR feature is included. Scope is agreed before starting.
+- All nine Alex/Sarah/Emma initial variant combinations rendered successfully.
+- Full regression suite: 87 passed, including 120 mocked campaign sends with correct sender identities, quotas and multipart formatting; public signed unsubscribe GET/POST and blocked admin routes.
+- An isolated unsubscribe service is installed on 127.0.0.1:3001. Dashboard startup launches it alongside protection monitoring. The private dashboard remains on 127.0.0.1:3000.
+- `npm run launch:check` reports real launch blockers and probes the configured public URL using a signed read-only canary. It sends no email and submits no unsubscribe.
+- Further research saved for ten furniture/decor candidates. No fully qualified owner contacts emerged; no automatic approval or outreach.
+- Nine original lead/contact/credential source files checked by SHA-256 and unchanged. Backups created before changing working templates/settings.
 
-1. **Confirm your actual mailing address.** The live agency portfolio is verified and configured as https://aethelon-agency.vercel.app/work. Seven outreach templates now match the agency's published $2,000 / $3,500 / $4,000 packages and 20% deposit, without copying unverified sales metrics or testimonials. The fictitious Austin address was removed; physicalAddress is blank, so sending remains blocked. The proposed Fanadir Bay address belongs to the owner's parents. Ownership is not required, but its use as a genuine current business mailing address, exact building/unit, mail-receiving arrangements and postcode still need confirmation. Public postcode listings conflict; no postcode was invented or marked legally approved.
+## Still needed before outreach
+1. Mailpool's final recovery decision, then either accepted credentials for recovered inboxes or approved provider provisioning. Do not cancel or recreate the originals during recovery.
+2. A genuine physical business mailing address. An email address does not fill this field; no address was invented.
+3. Public HTTPS routing to the isolated unsubscribe service. The currently configured endpoint is unreachable. Follow D:/leadgen/PUBLIC-UNSUBSCRIBE-SETUP.md. A local tunnel requires the PC and service to stay online; always-on hosting is needed if that cannot be maintained.
+4. Review current owner/contact/business-size evidence and externally verify the first pilot addresses. The application currently has zero eligible contacts; having scraped candidates is not the same as a send-ready batch.
+5. With working mailboxes, inspect received-message authentication, inbox placement, replies and unsubscribe suppression using inboxes you own. Record pilot evidence per sender.
+6. Configure the provider's warm-up and its total traffic budget. Confirm how it will stop when LeadGen pauses an account; there is no tested Zapwarm integration yet.
+7. Only after these checks pass, enable live sending and start a small reviewed pilot. Neither the 120 daily ceiling nor warm-up guarantees account health or inbox placement.
 
-2. **Review your target segment and owner evidence.** The working query backlog contains many Alabama-focused queries across several retail niches. Choose your intended niches/cities. In Owner review, inspect the published sources and confirm current ownership, the exact direct email and independent business size (personal default 1–250 people). Unknown facts do not qualify. A founder mention or a valid mailbox is not proof of current ownership.
+## Targeting direction
+Start with independent furniture and home-decor ecommerce businesses; watches are secondary. Existing stored leads are primarily US-oriented. Exact campaign geography is not yet selected. Prioritize stores whose products and assets suit a demonstrable 3D/AR or AI use case, without promising those capabilities before scoping the work.
 
-3. **Verify selected mailboxes externally.** Configure your chosen verifier adapter/key, or record evidence from a current external verification report for each selected address. MX existence alone does not validate a mailbox. Changing the primary email resets verification.
+## Commands
+- `npm start`: local dashboard, protection monitor and isolated unsubscribe listener; does not start campaign delivery.
+- `npm run launch:check`: readiness report; a nonzero exit means action is still required.
+- `npm test`: isolated regression tests, no live email.
+- `npm run optout`: standalone unsubscribe listener if not already started by the dashboard.
 
-4. **Provide always-available HTTPS hosting.** Set DASHBOARD_URL to your actual public HTTPS origin and confirm signed opt-out pages work from outside your computer/network. The local Windows monitor requires this PC to be awake and your user signed in. Public opt-out access must remain available to recipients. Hosting credentials/domain decisions remain yours; no paid service or public deployment was created.
-
-5. **Restore provider access and DNS when ready.** The signed-in Mailpool account lists all six domains as active, but zero inboxes per domain, an empty Google Inboxes page and zero Google Workspace inbox slots. Mailpool states cancellation deactivates inboxes at the billing-cycle end. Ask Mailpool whether the former addresses/data can be restored before buying slots or recreating accounts. The displayed monthly rate on 24 October 2026 was $4 per Google inbox ($24 for six, before extras); warm-up was separate. No purchase or billing change was made. The six saved app passwords match the supplied CSV, but Google returned 535 authentication rejections. After service restoration, obtain accepted app credentials and configure SPF, DMARC and the actual provider-issued DKIM selector/record. Rotate credentials previously embedded in preserved legacy helpers; if source was published, clean exposed secrets from repository history.
-
-6. **Run and record a real owned-recipient pilot after access is restored.** In Launch checks, follow the per-mailbox test instructions. Inspect recipient-side SPF/DKIM/DMARC headers, actual Inbox/Spam placement, opt-out suppression, reply capture and threading. Record the observed results for each mailbox. Only then enable a small, reviewed campaign. The 100/account and 600-total daily settings are ceilings, not a recommended starting volume or delivery guarantee; recovery protection can reduce them.
-
-The monitor pauses observed authentication, throttling, connection/DNS and delivery warning problems. It cannot observe every complaint or spam-folder placement. Policy/complaint/bounce holds need review; temporary recovery needs a cooldown and two spaced passing diagnostics. Do not clear a reputation hold solely because a timer expired.
-
+No campaigns were started, no live emails were sent, no DNS or provider subscription was changed.

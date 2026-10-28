@@ -40,3 +40,7 @@ data-working/
 # Local verified runtime and isolated dependency links
 /.runtime/
 node_modules.original-link/
+
+# Large lead data (contains PII, exceeds GitHub 100 MB limit)
+MASTER_LEADS_*.json
+research-working/

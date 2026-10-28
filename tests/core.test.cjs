@@ -96,3 +96,80 @@ test('SMTP TLS mode remains correct after the mail-library update',()=>{const a=
 test('pinned DNS callback supports both Node address and all-address result formats',()=>{const lookup=require('../runtime/network').pinnedLookup({address:'203.0.113.10',family:4});lookup('example.com',{all:true},(error,addresses)=>{assert.equal(error,null);assert.deepEqual(addresses,[{address:'203.0.113.10',family:4}]);});lookup('example.com',{},(error,address,family)=>{assert.equal(error,null);assert.equal(address,'203.0.113.10');assert.equal(family,4);});});
 
 test('unavailable public research retains retryable state and backs off instead of becoming permanently scanned',async()=>{store.mutate('leads',d=>{d.businesses.l1.website='https://example.com';});await leads.researchLead('l1',{fetcher:async()=>{throw Error('Temporary site failure');}});const b=store.read('leads').businesses.l1;assert.equal(b.research.status,'unavailable');assert.equal(b.researchAttempts,1);assert.equal(leads.researchDue(b),false);assert.equal(leads.researchDue(b,b.nextResearchAt+1),true);assert.equal(b.targetReview.email,'lead@example.com');});
+
+test('sender names render for Alex and Sarah without invented fallback or splitting names',()=>{
+ assert.equal(templates.extractFirstName('Clifford from Aethelon'),'Clifford');
+ assert.equal(templates.extractFirstName('Anne-Marie Smith'),'Anne-Marie');
+ assert.equal(templates.extractFirstName(''),'');
+ const defs={initial:{subject:'From {{Sender Name}}',text:'Hi {{First Name}}, **{{Sender Name}}** here.'}};
+ templates.validateTemplates({...store.read('templates'),...defs});
+ for(const senderName of ['Alex','Sarah']){
+  const result=templates.render('initial',{firstName:'Owner',senderName},'A',defs);
+  assert.equal(result.subject,'From '+senderName);assert.match(result.html,new RegExp('<strong>'+senderName+'</strong>'));
+ }
+ assert.doesNotMatch(templates.formatHtml('<img src=x onerror=alert(1)>'),/<img/);
+});
+test('twelve accounts enforce ten total outbound messages each and 120 overall',()=>{
+ const config={...store.read('settings'),maxEmailsPerDay:10,maxDailyTotal:120};
+ const list=Array.from({length:12},(_,i)=>({id:'new-'+i}));
+ const insert=store.connection().prepare('INSERT INTO attempts VALUES(?,?,?,?,?,?,?)');
+ for(const account of list){
+  for(let i=0;i<10;i++){assert.equal(delivery.capacity(account,config),true);insert.run(account.id+'-'+i,'fixture@example.com',i%2,'accepted',account.id,Date.now(),'{}');}
+  assert.equal(delivery.capacity(account,config),false);
+ }
+ assert.equal(store.connection().prepare('SELECT count(*) AS n FROM attempts').get().n,120);
+ assert.equal(delivery.capacity({id:'extra'},config),false);
+});
+test('variant comparisons count unique initial recipients and unique replies',()=>{
+ for(const step of [0,1,2])store.record('sent',{email:'lead@example.com',variant:'B',step});
+ for(let i=0;i<3;i++)store.record('reply',{email:'lead@example.com',variant:'B',sentiment:'positive'});
+ const b=require('../runtime/analytics').stats().variantBreakdown.B;
+ assert.equal(b.sent,1);assert.equal(b.replies,1);assert.equal(b.positiveReplies,1);
+});
+test('preflight checks every variant and reports identity separately',()=>{
+ store.mutate('settings',s=>{s.physicalAddress='';});
+ let result=require('../runtime/analytics').preflight();
+ assert.equal(result.validation.checks.templatesExist,true);
+ assert.ok(result.validation.errors.some(e=>e.includes('postal address')));
+ store.mutate('templates',t=>{t.initial_B.text='{{notSupported}}';});
+ result=require('../runtime/analytics').preflight();assert.equal(result.validation.checks.templatesExist,false);
+});
+
+test('120 mock campaign deliveries preserve Alex Sarah Emma identity, quotas and MIME formatting',async()=>{
+ clock=Date.parse('2026-10-26T15:00:00Z');
+ const original=store.read('settings').accounts[0];
+ const accounts=Array.from({length:12},(_,i)=>({...original,id:'launch-'+i,email:(i<6?'alex':i<9?'sarah':'emma')+'@domain'+i+'.com',firstName:i<6?'Alex':i<9?'Sarah':'Emma',senderName:(i<6?'Alex':i<9?'Sarah':'Emma')+' | Studio'}));
+ store.mutate('settings',s=>{s.accounts=accounts;s.maxEmailsPerDay=10;s.maxDailyTotal=120;});
+ store.mutate('templates',t=>{for(const key of ['initial','initial_B','initial_C'])t[key]={subject:'For {{Company}}',text:'Hi {{First Name}},\n\nI am **{{Sender Name}}**.\n\n{{Portfolio}}'};});
+ const prototype=store.read('leads').businesses.l1;
+ const definitions=store.read('templates');const sequence=store.read('settings').sequence;
+ store.mutate('campaign',c=>{c.records={};for(const account of accounts)c.accountState[account.id]={lastDiagnosticAt:clock,lastSmtpStatus:'pass',lastImapStatus:'pass',dnsResult:{spf:{pass:true},dkim:{pass:true},dmarc:{pass:true},mx:{pass:true}}};});
+ store.mutate('launchEvidence',d=>{for(const a of accounts)d[a.id]={checkedAt:clock,fingerprint:require('../runtime/launch').fingerprint(a),authenticationPassed:true,ownedRecipients:true,unsubscribeWorked:true,replyThreadingWorked:true,observedInbox:true};});
+ const payloads=[];
+ for(const account of accounts)for(let i=0;i<10;i++){
+  const email='owner@shop-'+account.id+'-'+i+'.example.com',id=account.id+'-'+i;
+  const lead={...prototype,id,_key:id,email,verification:{status:'verified',checkedAt:clock},targetReview:reviewFixture(email)};
+  store.mutate('leads',d=>{d.businesses[id]=lead;});
+  store.mutate('campaign',c=>{c.records[email]={email,leadId:id,approved:true,status:'pending',accountId:account.id,enrollmentId:id,step:null,templateSnapshot:definitions,sequenceSnapshot:sequence};});
+  const result=await delivery.dispatch(email,{transportOverride:{sendMail:async p=>{payloads.push(p);return {messageId:'<'+id+'>'};}}});
+  assert.equal(result.success,true,JSON.stringify(result));clock+=4000;
+ }
+ assert.equal(payloads.length,120);
+ for(const account of accounts){const sent=payloads.filter(p=>p.from.includes(account.email));assert.equal(sent.length,10);assert.ok(sent.every(p=>p.text.includes('I am '+account.firstName)&&p.html.includes('<strong>'+account.firstName+'</strong>')&&!p.text.includes('**')));assert.equal(delivery.capacity(account,store.read('settings')),false);}
+ assert.equal(store.events().filter(e=>e.type==='sent').length,120);
+});
+test('separate public optout listener exposes no admin routes and persists signed suppression',async()=>{
+ const server=require('../runtime/optout-server').createServer();
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const base='http://127.0.0.1:'+server.address().port;
+ try{
+  assert.equal((await fetch(base+'/api/settings')).status,404);
+  assert.equal((await fetch(base+'/api/unsubscribe/one-click?token=invalid',{method:'POST'})).status,400);
+  const token=auth.publicToken('unsubscribe',{email:'lead@example.com'}),url=base+'/api/unsubscribe/one-click?token='+token;
+  const page=await fetch(url);assert.equal(page.status,200);assert.match(await page.text(),/Stop future outreach/);
+  assert.equal(models.campaign().unsubscribed.includes('lead@example.com'),false);
+  for(let i=0;i<2;i++)assert.equal((await fetch(url,{method:'POST'})).status,200);
+  assert.equal(models.campaign().unsubscribed.filter(e=>e==='lead@example.com').length,1);
+  const admin=auth.login('fixture-admin-password-long');assert.equal((await fetch(base+'/api/unsubscribe/one-click?token='+admin,{method:'POST'})).status,400);
+ }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});

@@ -1,0 +1,16 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const { reconcile, verifiedCsv } = require('../runtime/research-verification');
+const arg = name => process.argv.find(s => s.startsWith('--' + name + '='))?.slice(name.length + 3);
+const research = arg('research'), report = arg('report'), provider = arg('provider'), verifiedAt = arg('verified-at');
+if (!research || !report || !provider || !verifiedAt) throw new Error('Use --research=05-research-results.json --report=provider-results.csv --provider=ProviderName --verified-at=YYYY-MM-DD');
+const original = JSON.parse(fs.readFileSync(path.resolve(research), 'utf8'));
+const reportText = fs.readFileSync(path.resolve(report), 'utf8');
+const output = reconcile(original, reportText, { provider, verifiedAt });
+const folder = path.resolve(arg('output') || path.join(path.dirname(path.resolve(research)), 'verification-import-' + new Date().toISOString().replace(/[:.]/g, '-')));
+fs.mkdirSync(folder, { recursive: false });
+fs.writeFileSync(path.join(folder, 'provider-report.copy.csv'), reportText, { flag: 'wx' });
+fs.writeFileSync(path.join(folder, 'verified-owner-candidates.csv'), verifiedCsv(output), { flag: 'wx' });
+fs.writeFileSync(path.join(folder, 'reconciled-verification.json'), JSON.stringify(output, null, 2), { flag: 'wx' });
+console.log(JSON.stringify({ output: folder, ...output.counts, originalsChanged: false, campaignsChanged: false, emailsSent: 0 }));

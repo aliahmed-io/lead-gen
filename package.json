@@ -1,7 +1,7 @@
 {
   "name": "lead-scraper",
   "version": "1.0.0",
-  "description": "Google Maps lead scraper for furniture and home decor stores \u00e2\u20ac\u201d extracts business details, emails, and platform info to Excel.",
+  "description": "Google Maps lead scraper for furniture and home decor stores â€” extracts business details, emails, and platform info to Excel.",
   "main": "index.js",
   "scripts": {
     "start": "node scripts/dashboard.cjs start",
@@ -16,7 +16,12 @@
     "backup": "node scripts/run-node.cjs scripts/backup.cjs",
     "monitor": "node scripts/run-node.cjs runtime/monitor-service.js",
     "research:owners": "node scripts/run-node.cjs scripts/research-owners.cjs",
-    "test:browser": "node scripts/run-node.cjs scripts/browser-check.cjs"
+    "test:browser": "node scripts/run-node.cjs scripts/browser-check.cjs",
+    "optout": "node scripts/run-node.cjs runtime/optout-server.js",
+    "launch:check": "node scripts/run-node.cjs scripts/launch-check.cjs",
+    "research:master": "node scripts/run-node.cjs scripts/research-master.cjs",
+    "research:verification": "node scripts/run-node.cjs scripts/import-research-verification.cjs",
+    "test:research": "node scripts/run-node.cjs --test tests/master-research.test.cjs tests/research-verification.test.cjs tests/master-research-cli.test.cjs"
   },
   "keywords": [
     "lead-generation",

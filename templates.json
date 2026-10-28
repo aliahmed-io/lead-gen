@@ -1,30 +1,30 @@
 {
   "initial": {
     "subject": "Partnership idea for {{Company}}",
-    "text": "Hi {{First Name}},\n\nI'm {{Sender Name}} from **Aethelon Studio**. We are a new agency building modern **custom ecommerce stores** statically engineered for higher conversion, using the latest **AI and 3D/AR** technology.\n\nSince we are expanding our portfolio right now, we would love to offer {{Company}} a partnership at a heavily discounted rate in exchange for an honest **testimonial** and permission to **showcase your website** in our projects.\n\nInstead of the usual **$8,000+ market rate** (which does not include **AI**, **AR**, or ongoing support), the cost is **$2,000 for the complete website** with **2 months of free maintenance** included.\n\nYou can check out our work here:\n{{Portfolio}}\n\nWould you be open to a quick chat this week to see if this makes sense for {{Company}}?\n\nBest,\n{{Sender Name}} | **Aethelon Studio**"
+    "text": "Hi {{First Name}},\n\nI am {{Sender Name}} from **Aethelon Studio**. We build custom ecommerce storefronts for independent brands.\n\nWe are expanding our portfolio and offering a **$2,000 case-study storefront project**, with **two months of post-launch maintenance included**. We would agree the scope before starting, and ask for an honest testimonial and permission to showcase the finished work.\n\nFor furniture and decor, we can also discuss **3D/AR previews or AI shopping assistance** where they suit the products, available assets and agreed scope.\n\nOur work: {{Portfolio}}\n\nWould you be open to a short conversation about {{Company}}?\n\nBest,\n{{Sender Name}} | Aethelon Studio"
   },
   "initial_B": {
-    "subject": "Idea for {{Company}}'s online store",
-    "text": "Hi {{First Name}},\n\nI'm {{Sender Name}} from **Aethelon Studio**. I came across {{Company}} recently and really liked your products.\n\nWe are a new studio that builds ultra-fast **custom ecommerce stores** with built-in **AI shopping tools** and **3D/AR product previews** designed for higher conversion.\n\nBecause we are looking to add a few standout case studies to our projects, we are offering a complete custom store build for **$2,000 flat** with **2 months of free maintenance** (down from the **$8,000 market rate** that does not include **AI**, **AR**, or maintenance), in exchange for a **testimonial** and permission to **showcase your store**.\n\nHere is a look at our recent projects:\n{{Portfolio}}\n\nIf I put together a few quick ideas specifically for {{Company}}'s store, would you be open to taking a look?\n\nBest,\n{{Sender Name}} | **Aethelon Studio**"
+    "subject": "An idea for {{Company}}'s online store",
+    "text": "Hi {{First Name}},\n\nI am {{Sender Name}} from **Aethelon Studio**. Would a few practical storefront ideas for {{Company}} be useful?\n\nWe build custom ecommerce stores and can explore **3D/AR product previews and AI assistance** when they fit the project.\n\nWe are expanding our portfolio and offering a **$2,000 case-study storefront project**, with **two months of post-launch maintenance included**. We would agree the scope before starting, and ask for an honest testimonial and permission to showcase the finished work.\n\nExamples: {{Portfolio}}\n\nIf it is relevant, reply and I can take a look at your current store first.\n\nBest,\n{{Sender Name}} | Aethelon Studio"
   },
   "initial_C": {
-    "subject": "Upgrading {{Company}}'s storefront",
-    "text": "Hi {{First Name}},\n\nMost store owners put off upgrading their website because traditional agencies charge an **$8,000+ market rate** without including modern features or post-launch support.\n\nAt **Aethelon Studio**, we build high-converting **custom ecommerce stores** powered by **AI and 3D/AR** that can either run standalone or plug right into your existing Shopify or WooCommerce backend.\n\nWe are currently partnering with a few select brands at **$2,000 for the complete website** plus **2 months of free maintenance** in exchange for a **testimonial** and the ability to **showcase {{Company}}** in our projects:\n{{Portfolio}}\n\nWould it make sense to have a quick conversation about what this could look like for {{Company}}?\n\nBest,\n{{Sender Name}} | **Aethelon Studio**"
+    "subject": "A storefront project for {{Company}}",
+    "text": "Hi {{First Name}},\n\nI am {{Sender Name}} from **Aethelon Studio**. We are looking for a few independent brands to collaborate with on our next storefront case studies.\n\nWe are expanding our portfolio and offering a **$2,000 case-study storefront project**, with **two months of post-launch maintenance included**. We would agree the scope before starting, and ask for an honest testimonial and permission to showcase the finished work.\n\nWe can discuss keeping your Shopify or WooCommerce backend, and whether **AI or 3D/AR** would add something useful within the project scope.\n\nOur portfolio: {{Portfolio}}\n\nIs a storefront update something {{Company}} is considering?\n\nBest,\n{{Sender Name}} | Aethelon Studio"
   },
   "followUp1": {
-    "subject": "Following up about {{Company}}'s website",
-    "text": "Hi {{First Name}},\n\nI just wanted to quickly follow up on my last note about our **$2,000 case study partnership** for {{Company}}.\n\nWe still have a partnership spot open if you have been thinking about upgrading your online store with a faster custom design, **AI**, and **3D/AR product views** (plus **2 months of free maintenance**).\n\nWould you be open to a quick 10-minute chat, or should I send over a few specific ideas for your site first?\n\nBest,\n{{Sender Name}} | **Aethelon Studio**"
+    "subject": "Following up about {{Company}}",
+    "text": "Hi {{First Name}},\n\nFollowing up on the **$2,000 storefront case-study project** I mentioned. We would agree the deliverables first, with two months of post-launch maintenance included.\n\nWould you like a few ideas for your store, or is this not a priority right now?\n\nBest,\n{{Sender Name}} | Aethelon Studio"
   },
   "followUp2": {
-    "subject": "A quick review of {{Company}}'s store",
-    "text": "Hi {{First Name}},\n\nIf you are not sure whether a **custom ecommerce storefront** upgrade makes sense right now, I would be glad to put together a short walkthrough of {{Company}}'s current site and share a few practical ways to improve speed and conversion.\n\nNo strings attached at all. Would you like me to send that over?\n\nBest,\n{{Sender Name}} | **Aethelon Studio**"
+    "subject": "A few ideas for {{Company}}",
+    "text": "Hi {{First Name}},\n\nI would be happy to review your current storefront and suggest a few practical improvements before we discuss a project.\n\nWould you like me to do that?\n\nBest,\n{{Sender Name}} | Aethelon Studio"
   },
   "followUp3": {
-    "subject": "Keeping your current backend at {{Company}}",
-    "text": "Hi {{First Name}},\n\nOne quick detail worth mentioning: upgrading to a **custom storefront** with **Aethelon Studio** does not require replacing your current Shopify or WooCommerce backend.\n\nYou can keep your exact inventory and order setup while getting a faster static storefront, **AI and 3D/AR** features, and **2 months of free maintenance** for **$2,000**.\n\nYou can see examples of our projects here:\n{{Portfolio}}\n\nIf that sounds useful, feel free to reply and let me know what you have in mind.\n\nBest,\n{{Sender Name}} | **Aethelon Studio**"
+    "subject": "Your existing store setup",
+    "text": "Hi {{First Name}},\n\nIf your store uses Shopify or WooCommerce, we can first assess whether a custom storefront could work with the backend you already use. The right approach depends on your catalog, apps and checkout requirements.\n\nExamples of our work: {{Portfolio}}\n\nHappy to discuss if it is relevant for {{Company}}.\n\nBest,\n{{Sender Name}} | Aethelon Studio"
   },
   "breakup": {
     "subject": "Closing the loop for {{Company}}",
-    "text": "Hi {{First Name}},\n\nI know you are busy running {{Company}}, so I will make this my last note for now.\n\nIf upgrading your online store ever moves to the top of your list, feel free to reach back out anytime and we will be glad to help.\n\nWishing you and the team all the best,\n{{Sender Name}} | **Aethelon Studio**"
+    "text": "Hi {{First Name}},\n\nThis will be my last follow-up. If a storefront project becomes relevant later, you are welcome to get in touch.\n\nWishing you and the team all the best,\n{{Sender Name}} | Aethelon Studio"
   }
 }
