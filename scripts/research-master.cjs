@@ -7,7 +7,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { createEngine, eligibleLead, host, sha, csv } = require('../runtime/master-research');
 const VERSION = 'owner-research-v1';
 function arg(name, fallback) { const v = process.argv.find(s => s.startsWith('--' + name + '=')); return v ? v.slice(name.length + 3) : fallback; }
-const input = path.resolve(arg('input', 'D:/leadgen/MASTER_LEADS_2026-10-26.json'));
+const input = path.resolve(arg('input', 'D:/Users/aliha/.cursor/projects/d-leadgen/output/final-batch1/final batch1 leadlist.json'));
 const appRoot = path.resolve(arg('app-root', path.join(__dirname, '..')));
 const output = path.resolve(arg('output', path.join(process.cwd(), 'research-working', 'furniture-' + new Date().toISOString().replace(/[:.]/g, '-'))));
 const concurrency = Number(arg('concurrency', '10'));

@@ -15,8 +15,18 @@ const host = value => { try { return new URL(/^https?:\/\//i.test(value) ? value
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const slug = value => norm(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const unique = (list, key) => [...new Map(list.map(item => [key(item), item])).values()];
+const unique = (list, key) => {
+  const seen = new Map();
+  for (const item of list) if (!seen.has(key(item))) seen.set(key(item), item);
+  return [...seen.values()];
+};
 function isDepartment(email) { return DEPARTMENT.test(String(email).split('@')[0]); }
+function nameFitsAddress(email, name) {
+  const parts = norm(name).split(' ').map(slug).filter(Boolean); if (!parts.length) return false;
+  const local = slug(String(email).split('@')[0]), first = parts[0], last = parts.at(-1);
+  if (parts.length === 1) return local === first;
+  return [first, parts.join(''), first + last, first[0] + last, first + last[0]].includes(local);
+}
 function cleanEmail(value) {
   let email = String(value || '').trim().replace(/^mailto:/i, '').split('?')[0];
   try { email = decodeURIComponent(email); } catch { /* Keep original for syntax rejection. */ }
@@ -25,18 +35,56 @@ function cleanEmail(value) {
 function eligibleLead(b) {
   return !b.dataQuality?.suspectedGenerated && FURNITURE.test([b.name, ...(b.names || []), ...(b.categories || [])].join(' ')) && (b.emails || []).length > 0;
 }
+const HOME_GOODS = /furniture|furnish|home decor|decor|lighting|lamp|rug|carpet|mattress|bedding|cabinet|upholster|antique|housewares|home goods|home & garden|kitchen|أثاث|مفروشات|ديكور|تحف|سلع منزلية|دواليب|تنجيد|أرضيات|إضاءة|سجاد|ستائر|خزائن|مطابخ|فراش|أنتيك|مصابيح/i;
+const STORE_PLATFORMS = new Set(['shopify', 'woocommerce', 'bigcommerce', 'magento', 'prestashop']);
+function broadLead(b) {
+  if (b.dataQuality?.suspectedGenerated || !(b.emails || []).length || !b.website) return false;
+  const homeGoods = HOME_GOODS.test([b.name, ...(b.names || []), ...(b.categories || [])].join(' '));
+  const storePlatform = (b.platforms || []).some(p => STORE_PLATFORMS.has(String(p).toLowerCase()));
+  return homeGoods || storePlatform;
+}
 function usableName(value) {
-  const name = norm(value).replace(/^(?:Mr|Mrs|Ms|Dr)\.?\s+/i, '');
-  return /^[\p{L}][\p{L}'’-]+(?:\s+[\p{L}][\p{L}'’-]+){1,3}$/u.test(name) && !/\b(?:our|meet|team|contact|about|store|furniture|design|founder|owner|president|company|business|customer|family|email|shop|online|read|more|privacy|terms)\b/i.test(name) ? name : '';
+  let parts = norm(value).replace(/[\u200b-\u200d\ufeff]/g, '').replace(/^(?:Mr|Mrs|Ms|Dr)\.?\s+/i, '').split(' ');
+  if (parts.length >= 3 && slug(parts[0]) === slug(parts.slice(1).join(' '))) parts = parts.slice(1);
+  if (parts.length === 4 && slug(parts.slice(0, 2).join(' ')) === slug(parts.slice(2).join(' '))) parts = parts.slice(0, 2);
+  if (parts.length >= 3 && slug(parts[0]) === slug(parts.at(-1))) parts = parts.slice(0, -1);
+  const name = parts.filter((p, i) => i === 0 || p.toLowerCase() !== parts[i - 1].toLowerCase()).join(' ');
+  return /^[\p{L}][\p{L}'’-]+(?:\s+[\p{L}][\p{L}'’-]+){1,3}$/u.test(name) && !/[’']s\b/i.test(name) && !/\b(?:i|im|our|the|meet|team|contact|about|store|furniture|design|founder|owner|president|company|business|customer|family|email|shop|online|read|more|privacy|terms|limited|ltd|llc|inc|gmbh|pty|corporation|corporate|chief|operating|officer|manager|designer|retailer|behind|children|co|welcome|patents|press|clinical|psychologist|women|owned|product|us)\b/i.test(name) ? name : '';
 }
 function ownerNames(text) {
   const names = [];
-  const person = "([A-Z][a-zA-Z'’–-]+(?:\\s+[A-Z][a-zA-Z'’–-]+){1,3})";
+  text = String(text || '').replace(/[\u200b-\u200d\ufeff]/g, ' ');
+  const stopWords = ['I', 'Our', 'The', 'Meet', 'Team', 'Contact', 'Founder', 'Owner', 'Proprietor', 'Co', 'CEO', 'Chief', 'Operating', 'Officer', 'Designer', 'Manager', 'Retailer', 'Support', 'Head', 'Sales', 'Executive', 'Director', 'President', 'Behind', 'Furniture', 'Store', 'Company', 'Limited', 'Ltd', 'Pty', 'GmbH', 'LLC', 'Inc', 'Trading', 'Welcome', 'Corporate', 'Patents', 'Press', 'Clinical', 'Psychologist', 'Women', 'Owned', 'Product', 'Us'];
+  const stop = stopWords.map(w => [...w].map(c => '[' + c.toLowerCase() + c.toUpperCase() + ']').join('')).join('|');
+  const token = '(?!(?:' + stop + ')\\b)[\\p{Lu}][\\p{L}\u2019\u2013\'-]+';
+  const person = '(?<![\\p{L}\u2019\u2013\'-])(' + token + '(?:\\s+' + token + '){1,3})';
   const role = '(?:[Cc]o[- ]?[Ff]ounder|[Cc]o[- ]?[Oo]wner|[Ff]ounder|[Oo]wner|[Pp]roprietor)';
-  for (const expression of [new RegExp(person + '\\s*[,|–—:-]\\s*(?:the\\s+)?' + role, 'g'), new RegExp(person + '\\s+(?:is|serves as)\\s+(?:our |the |a )?' + role, 'g'), new RegExp('\\b' + role + '(?:\\s+(?:and|&)\\s+(?:CEO|President))?\\s*[:–—-]?\\s+' + person, 'g'), new RegExp('\\b(?:founded|established|started)(?: in \\d{4})? by\\s+' + person, 'g'), new RegExp('\\bowned (?:and operated )?by\\s+' + person, 'g')]) {
+  const linkedTitle = '(?:(?:CEO|Ceo|Chief Executive Officer|Managing Director|President|Designer)\\s*(?:and|&|/)\\s*)?';
+  for (const expression of [
+    new RegExp(person + '\\s*(?:[,|–—:]\\s*|\\s+)' + linkedTitle + role + '\\b', 'gu'),
+    new RegExp(person + '\\s+(?:is|serves as)\\s+(?:our |the |a )?' + role, 'gu'),
+    new RegExp('(?:^|[.!?;,\\n]\\s*|\\b(?:[Tt]he|[Oo]ur|[Mm]eet(?: our)?)\\s+|[’\']s\\s+)' + role + '(?:\\s+(?:and|&)\\s+(?:CEO|President))?\\s*[:,–—-]?\\s+' + person, 'gu'),
+    new RegExp('\\b' + role + '\\s*[:–—]\\s*' + person, 'gu'),
+    new RegExp('\\b(?:founded|established|started)(?: in \\d{4})? by\\s+' + person, 'gu'),
+    new RegExp('\\bowned (?:and operated )?by\\s+' + person, 'gu'),
+  ]) {
     for (const match of text.matchAll(expression)) { const name = usableName(match[1]); if (name) names.push(name); }
   }
-  return [...new Set(names)];
+  if (!names.length) {
+    for (const expression of [new RegExp('\\b(' + token + ')\\s*[,|–—:]\\s*' + role + '\\b', 'gu'), new RegExp('\\b' + role + '\\s*[:–—]\\s*(' + token + ')\\b(?!\\s+[A-Z])', 'gu')]) {
+      for (const match of text.matchAll(expression)) if (!/^(?:Our|The|Meet|Team|Furniture|Store|Shop|Founder|Owner|President|Company|Business|Customer|Family|Email|Phone|Contact|Home|Design|About|Privacy|Terms|Read|More)$/i.test(match[1])) names.push(match[1]);
+    }
+  }
+  const cleaned = names.map(name => {
+    const parts = name.split(' '); if (parts.length < 3 || text.split(name).length > 2) return name;
+    // Repeated headings and image labels supply a useful boundary in flattened markup.
+    for (let size = parts.length - 1; size >= 2; size--) for (let start = 0; start + size <= parts.length; start++) {
+      const shorter = parts.slice(start, start + size).join(' ');
+      if (text.split(shorter).length > 2) return shorter;
+    }
+    return name;
+  });
+  return [...new Set(cleaned)];
 }
 function robotsRules(text, agent = 'leadgen website review/1.0') {
   const groups = []; let current = null;
@@ -110,7 +158,7 @@ function createEngine({ cheerio, network, verification, chainDomains = [], fetch
       for (const [key, value] of Object.entries(obj)) if (key !== '@context' && !['review', 'reviews', 'author', 'comment', 'itemListElement'].includes(key)) visit(value, depth + 1, relatedBusiness);
     };
     $('script[type="application/ld+json"]').each((_, el) => { try { visit(JSON.parse($(el).text())); } catch { /* Ignore invalid publisher markup. */ } });
-    const platform = /Shopify\.(?:shop|theme)|cdn\.shopify\.com|myshopify\.com/i.test(html) ? 'Shopify' : /woocommerce|wc-add-to-cart/i.test(html) ? 'WooCommerce' : /bigcommerce/i.test(html) ? 'BigCommerce' : /mage\/|Magento/i.test(html) ? 'Magento' : '';
+    const platform = /Shopify\.(?:shop|theme)|cdn\.shopify\.com|myshopify\.com/i.test(html) ? 'Shopify' : /woocommerce|wc-add-to-cart/i.test(html) ? 'WooCommerce' : /bigcommerce/i.test(html) ? 'BigCommerce' : /data-mage-init|Mage\.Cookies|Magento_[A-Z]|\/static\/version\d+\/frontend\//i.test(html) ? 'Magento' : '';
     $('script,style,noscript,svg,template').remove();
     $('[hidden],[aria-hidden="true"]').remove();
     $('[data-cfemail]').each((_, el) => {
@@ -143,13 +191,16 @@ function createEngine({ cheerio, network, verification, chainDomains = [], fetch
     });
     // Small, local blocks only: a founder mention elsewhere on a page is not email ownership.
     const blockEvidence = new Map();
-    $('p,li,address,h1,h2,h3,h4').each((_, el) => {
+    $('p,li,address,h1,h2,h3,h4,div').each((_, el) => {
       if ($(el).closest('blockquote,[itemprop="review"],.testimonial,.review,.reviews').length) return;
-      const snippet = norm($(el).text()); if (!snippet || snippet.length > 650) return;
-      if (OWNER.test(snippet) || HISTORICAL.test(snippet)) for (const name of ownerNames(snippet)) owners.push({ name, role: (snippet.match(OWNER) || [])[0] || 'historical founder candidate', sourceUrl: url, snippet, historical: HISTORICAL.test(snippet), currentOwnershipConfirmed: false, kind: 'published-text' });
+      const snippet = norm($(el).text()); if (!snippet || snippet.length > 2500) return;
+      if (OWNER.test(snippet) || HISTORICAL.test(snippet)) for (const name of ownerNames(snippet)) {
+        const index = snippet.indexOf(name); const excerpt = snippet.slice(Math.max(0, index - 180), index + 650);
+        owners.push({ name, role: (excerpt.match(OWNER) || [])[0] || 'historical founder candidate', sourceUrl: url, snippet: excerpt, historical: HISTORICAL.test(snippet), currentOwnershipConfirmed: false, kind: 'published-text' });
+      }
       const count = snippet.match(/\b(?:team of|staff of|we employ|we have)\s+(\d{1,5})\s+(?:employees|people|staff|team members)\b/i);
       if (count) sizeFacts.push({ minimum: Number(count[1]), maximum: Number(count[1]), sourceUrl: url, snippet });
-      blockEvidence.set(el, snippet);
+      if (snippet.length <= 650) blockEvidence.set(el, snippet);
     });
     $('a[href]').each((_, el) => {
       const raw = $(el).attr('href'); if (!/^mailto:/i.test(raw)) return;
@@ -191,7 +242,7 @@ function createEngine({ cheerio, network, verification, chainDomains = [], fetch
     return mxCache.get(domain);
   }
 
-  async function crawlSite(website, { maxPages = 8, timeoutMs = 45000, signal } = {}) {
+  async function crawlSite(website, { maxPages = 8, timeoutMs = 45000, signal, seedUrls = [], robots: suppliedRobots = null } = {}) {
     const started = Date.now(); const controller = new AbortController(); const onAbort = () => controller.abort();
     signal?.addEventListener('abort', onAbort, { once: true }); if (signal?.aborted) controller.abort();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -208,7 +259,11 @@ function createEngine({ cheerio, network, verification, chainDomains = [], fetch
       const u = new URL(/^https?:\/\//i.test(website) ? website : 'https://' + website);
       if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password || !['', '80', '443'].includes(u.port) || !u.hostname.includes('.') || DIRECTORY.test(u.hostname)) throw new Error('Not an independent public business website');
       const robotsUrl = new URL('/robots.txt', u).href;
-      try {
+      if (suppliedRobots) {
+        if (suppliedRobots.status === 'unreachable') throw new Error('Robots policy unavailable; retry required');
+        rules = { rules: suppliedRobots.rules || [], delay: Math.max(800, suppliedRobots.delay || 0) };
+        result.robots = { status: suppliedRobots.status || 'supplied', sourceUrl: robotsUrl, crawlDelayMs: rules.delay };
+      } else try {
         const r = await request(robotsUrl);
         if (host(r.url || robotsUrl) !== result.domain) throw new Error('Cross-domain robots redirect blocked');
         rules = robotsRules(r.text);
@@ -219,7 +274,9 @@ function createEngine({ cheerio, network, verification, chainDomains = [], fetch
         else { result.robots = { status: 'unavailable', sourceUrl: robotsUrl }; throw new Error('Robots policy unavailable; retry required: ' + message); }
       }
       if (rules.delay > 10000) { result.status = 'deferred-crawl-delay'; return result; }
-      const seen = new Set(); const queue = [{ url: u.href, priority: 0 }];
+      const seen = new Set();
+      const seeds = seedUrls.filter(raw => { try { return host(raw) === result.domain && ['http:', 'https:'].includes(new URL(raw).protocol); } catch { return false; } });
+      const queue = (seeds.length ? seeds : [u.href]).map(url => ({ url, priority: 0 }));
       while (queue.length && seen.size < maxPages && !controller.signal.aborted) {
         queue.sort((a, b) => a.priority - b.priority);
         const item = queue.shift(); if (seen.has(item.url)) continue; seen.add(item.url);
@@ -257,6 +314,28 @@ function createEngine({ cheerio, network, verification, chainDomains = [], fetch
   }
 
   function assessBusiness(b, site) {
+    site = { ...site };
+    for (const key of ['pages', 'contacts', 'owners', 'sizeFacts', 'commerce', 'niche']) if (!Array.isArray(site[key])) site[key] = [];
+    // Reassess saved snippets as well as new pages: old checkpoints can contain
+    // merged team-card labels or a supplier's founder instead of this business's owner.
+    const rejectedOwnerMentions = [];
+    const cleanedOwners = [];
+    for (const mention of site.owners) {
+      const names = /structured/.test(mention.kind || '') ? [usableName(mention.name)].filter(Boolean) : ownerNames(mention.snippet);
+      const affiliation = String(mention.snippet || '').match(/\b(?:[Cc]o[- ]?)?(?:[Ff]ounder|[Oo]wner)(?:\s+and\s+[\p{L} ]{1,40}?)?\s+(?:of|behind|at)\s+([\p{Lu}][\p{L}'’–-]+(?:\s+[\p{Lu}][\p{L}'’–-]+){0,4})/u)?.[1];
+      const entity = slug(affiliation), businessLabel = slug([b.name, ...(b.names || []), host(b.website)].join(' '));
+      if (!names.length || entity.length >= 5 && !businessLabel.includes(entity) && !entity.includes(slug(b.name))) {
+        rejectedOwnerMentions.push({ ...mention, reviewReason: names.length ? 'role-refers-to-another-business' : 'person-name-or-role-association-not-established' });
+        continue;
+      }
+      for (const name of names) {
+        const isBrandLabel = name.includes(' ') && [b.name, ...(b.names || [])].some(label => slug(label).includes(slug(name)));
+        const supplierProfile = /\bnamesake\b/i.test(mention.snippet || '') && !businessLabel.includes(slug(name.split(' ').at(-1)));
+        if (isBrandLabel || supplierProfile) rejectedOwnerMentions.push({ ...mention, name, reviewReason: 'brand-label-or-supplier-profile-needs-person-review' });
+        else cleanedOwners.push({ ...mention, name });
+      }
+    }
+    site.owners = unique(cleanedOwners, o => slug(o.name) + ':' + o.sourceUrl);
     const domain = host(b.website); const excludedReasons = [];
     if (chainDomains.some(d => domain === d || domain.endsWith('.' + d))) excludedReasons.push('known-chain-or-enterprise');
     if (site.sizeFacts.some(f => f.minimum > 250)) excludedReasons.push('published-employee-count-over-250');
@@ -269,7 +348,14 @@ function createEngine({ cheerio, network, verification, chainDomains = [], fetch
     const siteEmails = new Set(site.contacts.map(c => c.email));
     const stored = (b.emails || []).map(allowedEmail).filter(email => email && !siteEmails.has(email)).map(email => ({ email, sourceUrl: '', sourceBusinessId: b.id, snippet: 'Stored in the original lead dataset; not republished on the pages reached during this scan', kind: 'stored-email-only', ownerBinding: null, department: isDepartment(email) }));
     const contacts = [...site.contacts, ...stored].map(c => {
-      let binding = c.ownerBinding;
+      let binding = c.ownerBinding && owners.some(o => slug(o.name) === slug(c.ownerBinding.name)) ? c.ownerBinding : null;
+      if (!binding && c.kind !== 'stored-email-only' && !c.department) {
+        const sameBlock = unique(owners.filter(o => {
+          const addresses = [...new Set((o.snippet.match(EMAIL) || []).map(cleanEmail))];
+          return addresses.length === 1 && addresses[0] === c.email && ownerNames(o.snippet).length === 1;
+        }), o => slug(o.name));
+        if (sameBlock.length === 1) binding = { ...sameBlock[0], kind: 'same-person-block', currentOwnershipConfirmed: false };
+      }
       if (!binding && !c.department) {
         const local = slug(c.email.split('@')[0]);
         const matches = unique(owners.filter(o => { const parts = slug(o.name); return parts.length >= 6 && local === parts; }), o => slug(o.name));
@@ -282,12 +368,13 @@ function createEngine({ cheerio, network, verification, chainDomains = [], fetch
       const emailDomain = c.email.split('@')[1];
       const domainMatches = emailDomain === domain || emailDomain.endsWith('.' + domain);
       const unrelatedDomain = !domainMatches && !PERSONAL_DOMAINS.has(emailDomain);
-      const directEvidence = binding && ['structured-person-email', 'structured-business-person', 'structured-person', 'same-person-block'].includes(c.kind === 'structured-person-email' ? c.kind : binding.kind) && !binding.historical;
+      const directEvidence = binding && (c.kind === 'structured-person-email' || binding.kind === 'same-person-block' && nameFitsAddress(c.email, binding.name)) && !binding.historical;
+      const bindingEvidence = directEvidence && c.kind !== 'stored-email-only' && /^https?:\/\//i.test(c.sourceUrl || '') ? 'published-person-email' : binding ? 'inferred-name' : 'unbound';
       const suggested = Boolean(directEvidence && !c.department && !unrelatedDomain && validPages.length && ecommerce && site.niche.length && !excludedReasons.length && titleMatch);
-      return { ...c, ownerBinding: binding, sourceBusinessIds: [b.id], domainMatches, unrelatedDomain, evidenceTier: suggested ? 'published-owner-email-candidate' : binding && !c.department ? 'owner-email-needs-review' : 'general-contact-only', ownerCurrentStatusConfirmed: false, mailboxVerification: 'not-performed', sendApproved: false, reasons: [!ecommerce && 'ecommerce-not-established', !site.niche.length && 'niche-not-established', !titleMatch && 'business-identity-needs-review', c.department && 'shared-department-address', unrelatedDomain && 'unrelated-email-domain', !binding && 'owner-email-link-not-established', binding?.historical && 'historical-owner-only', ...excludedReasons].filter(Boolean) };
+      return { ...c, ownerBinding: binding, bindingEvidence, sourceBusinessIds: [b.id], domainMatches, unrelatedDomain, evidenceTier: suggested ? 'published-owner-email-candidate' : binding && !c.department ? 'owner-email-needs-review' : 'general-contact-only', ownerCurrentStatusConfirmed: false, mailboxVerification: 'not-performed', sendApproved: false, reasons: [!ecommerce && 'ecommerce-not-established', !site.niche.length && 'niche-not-established', !titleMatch && 'business-identity-needs-review', c.department && 'shared-department-address', unrelatedDomain && 'unrelated-email-domain', !binding && 'owner-email-link-not-established', binding && bindingEvidence !== 'published-person-email' && 'owner-email-association-inferred', binding?.historical && 'historical-owner-only', ...excludedReasons].filter(Boolean) };
     });
     const size = site.sizeFacts.find(f => f.minimum >= 1 && f.maximum <= 250);
-    return { businessId: b.id, name: b.name, website: b.website, country: b.country || '', city: b.city || '', state: b.state || '', sourceEmailCount: b.emails.length, storedEmails: b.emails, siteDomain: domain, checkedAt: site.checkedAt, websiteStatus: site.status, ecommerceEvidenceFound: ecommerce, nicheEvidenceFound: site.niche.length > 0, identityTitleMatch: titleMatch, excludedReasons, sizeEvidence: size || null, independentBusinessConfirmed: false, owners: site.owners, contacts, followUpNeeded: [!validPages.length && 'website-unavailable-or-blocked', !ecommerce && 'confirm-online-purchasing', !site.niche.length && 'confirm-furniture-decor-products', !titleMatch && 'review-website-business-identity', !size && 'published-business-size-missing', 'confirm-current-owner-and-independent-business', !contacts.some(c => c.evidenceTier === 'published-owner-email-candidate') && 'direct-owner-email-missing', 'paid-mailbox-verification-required'].filter(Boolean), sendApproved: false };
+    return { businessId: b.id, name: b.name, website: b.website, country: b.country || '', city: b.city || '', state: b.state || '', sourceEmailCount: b.emails.length, storedEmails: b.emails, siteDomain: domain, checkedAt: site.checkedAt, websiteStatus: site.status, ecommerceEvidenceFound: ecommerce, nicheEvidenceFound: site.niche.length > 0, identityTitleMatch: titleMatch, excludedReasons, sizeEvidence: size || null, independentBusinessConfirmed: false, owners: site.owners, rejectedOwnerMentions, contacts, followUpNeeded: [!validPages.length && 'website-unavailable-or-blocked', !ecommerce && 'confirm-online-purchasing', !site.niche.length && 'confirm-furniture-decor-products', !titleMatch && 'review-website-business-identity', !size && 'published-business-size-missing', 'confirm-current-owner-and-independent-business', !contacts.some(c => c.evidenceTier === 'published-owner-email-candidate') && 'direct-owner-email-missing', 'paid-mailbox-verification-required'].filter(Boolean), sendApproved: false };
   }
   return { factsFromHtml, crawlSite, assessBusiness, allowedEmail, domainMail };
 }
@@ -300,4 +387,4 @@ function csvCell(value) {
   return '"' + s.replace(/"/g, '""') + '"';
 }
 function csv(headers, rows) { return '\uFEFF' + [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n'; }
-module.exports = { createEngine, eligibleLead, host, sha, norm, slug, isDepartment, ownerNames, usableName, robotsRules, robotsAllows, csv };
+module.exports = { createEngine, eligibleLead, broadLead, host, sha, norm, slug, isDepartment, nameFitsAddress, ownerNames, usableName, robotsRules, robotsAllows, csv };

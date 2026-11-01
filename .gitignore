@@ -44,3 +44,7 @@ node_modules.original-link/
 # Large lead data (contains PII, exceeds GitHub 100 MB limit)
 MASTER_LEADS_*.json
 research-working/
+
+# Local enrichment provider keys and copied working evidence
+/.env.enrichment
+/enrichment-working/

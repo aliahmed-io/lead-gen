@@ -1,0 +1,22 @@
+{
+  "noWebsite_initial": {
+    "subject": "A website for {{Company}}",
+    "text": "Hi {{First Name}},\n\nI'm {{Sender Name}} from Aethelon Studio. I build websites for independent stores.\n\nWould a simple website for {{Company}} be useful? It could give customers a place to browse your products, find your opening hours and get in touch. If you'd like to sell online, we can talk about that too.\n\nI can send over a few ideas and a clear scope before you decide.\n\nSome of my work: {{Portfolio}}\n\nIs this something you've been thinking about?\n\nBest,\n{{Sender Name}}"
+  },
+  "noWebsite_followUp1": {
+    "subject": "Re: A website for {{Company}}",
+    "text": "Hi {{First Name}},\n\nJust following up on my note about a website for {{Company}}.\n\nWe could start small with your products, opening hours and contact details, then add online orders if that makes sense for your store.\n\nWould you like me to send a short outline?\n\nBest,\n{{Sender Name}}"
+  },
+  "noWebsite_followUp2": {
+    "subject": "What would be useful for {{Company}}?",
+    "text": "Hi {{First Name}},\n\nIf you're considering a website, would you mainly want customers to find the store, browse products or place orders online?\n\nThat would help me suggest something practical for {{Company}} and give you a clear estimate.\n\nBest,\n{{Sender Name}}"
+  },
+  "noWebsite_followUp3": {
+    "subject": "A simple starting point",
+    "text": "Hi {{First Name}},\n\nYou wouldn't need to put your whole catalog online to get started. A small selection of products, store details and a way to ask questions could be enough for a first version.\n\nIf that sounds useful for {{Company}}, I'm happy to talk through it.\n\nBest,\n{{Sender Name}}"
+  },
+  "noWebsite_breakup": {
+    "subject": "I'll leave it here",
+    "text": "Hi {{First Name}},\n\nI'll leave it here after this note. If a website becomes a priority for {{Company}}, feel free to get in touch.\n\nAnd if you already have one that I've missed, you're welcome to send me the link.\n\nBest,\n{{Sender Name}}"
+  }
+}

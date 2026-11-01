@@ -74,3 +74,12 @@ For a bounded batch of existing prospects, run `npm run research:owners -- --lim
 
 This repair updates Next.js, mail handling and transitive dependencies, and installs the official supported SheetJS tarball rather than the old npm-registry release. See [SheetJS installation](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/) and [official Node releases](https://nodejs.org/dist/). Both root and dashboard lockfiles are retained. Keep the private runtime and packages patched over time; an audit result is a point-in-time check, not a security guarantee.
 
+
+
+## Current lead inventory and website outreach
+
+SQLite `data-working/leadgen.sqlite` is the operational source of truth. The final list and requested store sublists are exported in `D:/Users/aliha/.cursor/projects/d-leadgen/output/final-batch1/`. Use the single recovery-backup.zip there to recover historical sources; old root-level JSON exports are not live databases. Do not delete the contact factory checkpoint or prospect discovery checkpoint: those contain resumable research, provider budgets, holds and evidence, rather than extra mailing lists.
+
+Campaign records distinguish `with_website`, `no_website_listed`, and `unknown`. No website listed is an inventory observation, not proof that no site exists. New no-website enrollments snapshot the five matching `noWebsite_*` templates. The renderer also routes legacy sequences using the current lead's website information. Missing website information remains unknown. Approved owner evidence, mailbox checks, suppression and account checks still apply to both groups.
+
+Run `npm run test:all` for all backend and contact-research regression suites. They use temporary fixture databases and mock/local services. Filesystem-restricted environments may need permission for local sockets and child processes. Run dashboard lint/build separately. Tests assert that legacy source files remain unchanged or absent, as appropriate after consolidation.

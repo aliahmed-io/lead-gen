@@ -26,7 +26,9 @@ function normalizeStatus(value) {
 }
 function reconcile(results, reportText, { provider, verifiedAt, now = Date.now() }) {
   if (!provider || typeof provider !== 'string' || provider.length > 100) throw new Error('Supply the actual verification-provider name');
-  const stamp = Date.parse(verifiedAt);
+  // Date-only input is the operator's calendar day in Asia/Riyadh, not UTC midnight.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(String(verifiedAt));
+  const stamp = Date.parse(dateOnly ? verifiedAt + 'T00:00:00+03:00' : verifiedAt);
   if (!Number.isFinite(stamp) || stamp > now + 300000) throw new Error('Supply the actual verification date; future dates are not accepted');
   const fresh = now - stamp <= 30 * 86400000;
   const rows = parseCsv(reportText); if (rows.length < 2) throw new Error('Verification report must contain a header and results');
@@ -49,7 +51,7 @@ function reconcile(results, reportText, { provider, verifiedAt, now = Date.now()
     const conflict = states.length > 1;
     const externalStatus = states.length === 1 ? states[0] : 'unknown';
     const accepted = Boolean(records.length && fresh && !conflict && externalStatus === 'valid' && c.evidenceTier === 'published-owner-email-candidate' && c.freeMailRoutingCheck?.status === 'mail-routing-found');
-    return { ...c, externalVerification: { provider, verifiedAt: new Date(stamp).toISOString(), status: externalStatus, fresh, conflict, originalResults: records.map(r => r.original), reportSha256: sha(reportText), suppliedReport: true }, passedPaidVerification: accepted, sendApproved: false, remainingRequirements: ['Confirm the exact person is the current owner', 'Confirm independent small/medium business size', 'Complete application launch and mailbox checks'] };
+    return { ...c, externalVerification: { provider, verifiedAt: new Date(stamp).toISOString(), dateOnly, suppliedDate: verifiedAt, status: externalStatus, fresh, conflict, originalResults: records.map(r => r.original), reportSha256: sha(reportText), suppliedReport: true }, passedPaidVerification: accepted, sendApproved: false, remainingRequirements: ['Confirm the exact person is the current owner', 'Confirm independent small/medium business size', 'Complete application launch and mailbox checks'] };
   });
   return { provider, verifiedAt: new Date(stamp).toISOString(), reportSha256: sha(reportText), contacts, unmatchedEmails: [...new Set(unmatchedEmails)], counts: { knownCandidates: contacts.length, reportMatches: reports.size, unmatchedReportEmails: new Set(unmatchedEmails).size, passedPaidVerification: contacts.filter(c => c.passedPaidVerification).length, conflictingResults: contacts.filter(c => c.externalVerification.conflict).length, sendApproved: 0 } };
 }

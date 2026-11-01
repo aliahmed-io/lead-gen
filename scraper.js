@@ -10,6 +10,7 @@
  * business data. Takes a configurable break every N results.
  */
 
+const { screenNewBusiness } = require('./runtime/enrichment/screen');
 const dns = require('dns').promises;
 const { chromium } = require('playwright');
 const { findEmails } = require('./emailFinder');
@@ -657,7 +658,7 @@ async function scrapeQuery(page, query, db, counters) {
             single.city = parsed.city;
             single.state = parsed.state;
 
-            if (!db.has(single)) {
+            if (!db.has(single) && !screenNewBusiness(single).skip) {
               db.add(single);
               results.push(single);
               newCount++;
@@ -800,7 +801,7 @@ async function scrapeQuery(page, query, db, counters) {
             finalDetails.city = parsed.city;
             finalDetails.state = parsed.state;
 
-            if (!db.has(finalDetails)) {
+            if (!db.has(finalDetails) && !screenNewBusiness(finalDetails).skip) {
               db.add(finalDetails);
               results.push(finalDetails);
               newCount++;
