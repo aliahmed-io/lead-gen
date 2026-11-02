@@ -83,3 +83,38 @@ SQLite `data-working/leadgen.sqlite` is the operational source of truth. The fin
 Campaign records distinguish `with_website`, `no_website_listed`, and `unknown`. No website listed is an inventory observation, not proof that no site exists. New no-website enrollments snapshot the five matching `noWebsite_*` templates. The renderer also routes legacy sequences using the current lead's website information. Missing website information remains unknown. Approved owner evidence, mailbox checks, suppression and account checks still apply to both groups.
 
 Run `npm run test:all` for all backend and contact-research regression suites. They use temporary fixture databases and mock/local services. Filesystem-restricted environments may need permission for local sockets and child processes. Run dashboard lint/build separately. Tests assert that legacy source files remain unchanged or absent, as appropriate after consolidation.
+
+## Website and page guide
+
+LeadGen is a personal, single-operator research and outreach project. The monochrome landing page uses six sections: introduction, research workflow, workspace features, operator controls, FAQ, and a closing workspace link. The workspace preview on the landing page is illustrative, not live campaign data. The original dashboard now lives at `/overview`; `/` introduces the project. Existing authentication and local-device access rules still apply.
+
+### Website screenshots
+
+Captured from a local preview with isolated temporary data and live email disabled. The operational dashboard retains its existing styling.
+
+![LeadGen landing page — desktop](docs/screenshots/landing-desktop.png)
+
+![LeadGen landing page — mobile](docs/screenshots/landing-mobile.png)
+
+![Outreach overview — isolated preview data](docs/screenshots/overview-desktop.png)
+
+### All application pages and features
+
+- `/` — Project landing page: six monochrome sections, workflow illustration, feature links, expandable FAQ, and workspace entry points.
+- `/overview` — Outreach overview: observed campaign totals, campaign state and controls, setup links, recent activity, and refresh status.
+- `/login` — Administrator sign-in for password-protected mode; local-only mode opens without sign-in.
+- `/leadgen` — Lead generation: business search and scraping controls, progress, and collected lead information.
+- `/leads` — Leads database: contact search and filtering, source review, verification, enrollment, and working-record management.
+- `/research` — Owner review: direct-contact evidence, ownership and business-size qualification, and targeting review.
+- `/inbox` — Conversations: incoming replies, thread history, unread status, and manual responses.
+- `/sequences` — Campaign sequence: template selection, follow-up delays, and step ordering.
+- `/templates` — Email templates: subject/body editing, variants, and message previews.
+- `/accounts` — Sending accounts: mailbox connection settings, credentials, account controls, and diagnostics.
+- `/health` — Health center: account readiness, diagnostic results, worker/monitor heartbeat, and protection status.
+- `/launch` — Launch checks: preflight review before a live pilot.
+- `/delivery` — Delivery review: inspect uncertain send attempts and record a reviewed disposition.
+- `/unsubscribes` — Suppression management: review and manage opted-out recipients.
+- `/logs` — Audit logs: inspect recorded operational activity.
+- `/settings` — Configuration: sender identity, postal address, outreach settings, limits, and scheduling.
+
+The sending worker runs separately from the dashboard. Opening a page does not start a campaign. Public opt-out and tracking handlers are API endpoints, not application pages.
