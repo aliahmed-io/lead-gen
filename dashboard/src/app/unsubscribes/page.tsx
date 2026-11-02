@@ -156,13 +156,13 @@ export default function UnsubscribesPage() {
       <AnimatePresence mode="wait">
         {error && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--danger-bg)', border: '1px solid rgba(181, 78, 69, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--danger)' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--danger-bg)', border: '1px solid var(--border-strong)', borderRadius: '12px', fontSize: '13px', color: 'var(--danger)' }}>
             <AlertCircle size={15} style={{ flexShrink: 0 }} /> {error}
           </motion.div>
         )}
         {success && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid rgba(74, 109, 75, 0.18)', borderRadius: '12px', fontSize: '13px', color: 'var(--success)' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid var(--border-strong)', borderRadius: '12px', fontSize: '13px', color: 'var(--success)' }}>
             <CheckCircle size={15} style={{ flexShrink: 0 }} /> {success}
           </motion.div>
         )}

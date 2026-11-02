@@ -23,7 +23,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ variant, label, showIc
     case 'good':
       bg = 'var(--success-bg)';
       color = 'var(--success)';
-      border = 'rgba(74, 109, 75, 0.2)';
+      border = 'var(--border-strong)';
       Icon = ShieldCheck;
       text = text || 'Healthy';
       break;
@@ -31,7 +31,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ variant, label, showIc
     case 'warning':
       bg = 'var(--warning-bg)';
       color = 'var(--warning)';
-      border = 'rgba(198, 120, 43, 0.2)';
+      border = 'var(--border-strong)';
       Icon = AlertTriangle;
       text = text || 'Watch';
       break;
@@ -40,7 +40,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ variant, label, showIc
     case 'danger':
       bg = 'var(--danger-bg)';
       color = 'var(--danger)';
-      border = 'rgba(181, 78, 69, 0.2)';
+      border = 'var(--border-strong)';
       Icon = ShieldAlert;
       text = text || 'Paused';
       break;

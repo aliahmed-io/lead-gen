@@ -90,7 +90,7 @@ LeadGen is a personal, single-operator research and outreach project. The monoch
 
 ### Website screenshots
 
-Captured from a local preview with isolated temporary data and live email disabled. The operational dashboard retains its existing styling.
+Captured from a local preview with isolated temporary data and live email disabled. All workspace pages and sign-in share the monochrome palette, sans-serif typography, buttons, forms, and navigation. The hero includes an interactive three-stage research → review → reach out demo with layered contact cards and reduced-motion support.
 
 ![LeadGen landing page — desktop](docs/screenshots/landing-desktop.png)
 
@@ -101,20 +101,20 @@ Captured from a local preview with isolated temporary data and live email disabl
 ### All application pages and features
 
 - `/` — Project landing page: six monochrome sections, workflow illustration, feature links, expandable FAQ, and workspace entry points.
-- `/overview` — Outreach overview: observed campaign totals, campaign state and controls, setup links, recent activity, and refresh status.
-- `/login` — Administrator sign-in for password-protected mode; local-only mode opens without sign-in.
-- `/leadgen` — Lead generation: business search and scraping controls, progress, and collected lead information.
-- `/leads` — Leads database: contact search and filtering, source review, verification, enrollment, and working-record management.
-- `/research` — Owner review: direct-contact evidence, ownership and business-size qualification, and targeting review.
-- `/inbox` — Conversations: incoming replies, thread history, unread status, and manual responses.
-- `/sequences` — Campaign sequence: template selection, follow-up delays, and step ordering.
-- `/templates` — Email templates: subject/body editing, variants, and message previews.
-- `/accounts` — Sending accounts: mailbox connection settings, credentials, account controls, and diagnostics.
-- `/health` — Health center: account readiness, diagnostic results, worker/monitor heartbeat, and protection status.
-- `/launch` — Launch checks: preflight review before a live pilot.
-- `/delivery` — Delivery review: inspect uncertain send attempts and record a reviewed disposition.
-- `/unsubscribes` — Suppression management: review and manage opted-out recipients.
-- `/logs` — Audit logs: inspect recorded operational activity.
-- `/settings` — Configuration: sender identity, postal address, outreach settings, limits, and scheduling.
+- `/overview` — Outreach overview: observed campaign totals, campaign state and controls, setup links, recent activity, and refresh status. [Screenshot](docs/screenshots/overview-desktop.png)
+- `/login` — Administrator sign-in for password-protected mode; local-only mode opens without sign-in. [Screenshot](docs/screenshots/login-desktop.png)
+- `/leadgen` — Lead generation: business search and scraping controls, progress, and collected lead information. [Screenshot](docs/screenshots/leadgen-desktop.png)
+- `/leads` — Leads database: contact search and filtering, source review, verification, enrollment, and working-record management. [Screenshot](docs/screenshots/leads-desktop.png)
+- `/research` — Owner review: direct-contact evidence, ownership and business-size qualification, and targeting review. [Screenshot](docs/screenshots/research-desktop.png)
+- `/inbox` — Conversations: incoming replies, thread history, unread status, and manual responses. [Screenshot](docs/screenshots/inbox-desktop.png)
+- `/sequences` — Campaign sequence: template selection, follow-up delays, and step ordering. [Screenshot](docs/screenshots/sequences-desktop.png)
+- `/templates` — Email templates: subject/body editing, variants, and message previews. [Screenshot](docs/screenshots/templates-desktop.png)
+- `/accounts` — Sending accounts: mailbox connection settings, credentials, account controls, and diagnostics. [Screenshot](docs/screenshots/accounts-desktop.png)
+- `/health` — Health center: account readiness, diagnostic results, worker/monitor heartbeat, and protection status. [Screenshot](docs/screenshots/health-desktop.png)
+- `/launch` — Launch checks: preflight review before a live pilot. [Screenshot](docs/screenshots/launch-desktop.png)
+- `/delivery` — Delivery review: inspect uncertain send attempts and record a reviewed disposition. [Screenshot](docs/screenshots/delivery-desktop.png)
+- `/unsubscribes` — Suppression management: review and manage opted-out recipients. [Screenshot](docs/screenshots/unsubscribes-desktop.png)
+- `/logs` — Audit logs: inspect recorded operational activity. [Screenshot](docs/screenshots/logs-desktop.png)
+- `/settings` — Configuration: sender identity, postal address, outreach settings, limits, and scheduling. [Screenshot](docs/screenshots/settings-desktop.png)
 
 The sending worker runs separately from the dashboard. Opening a page does not start a campaign. Public opt-out and tracking handlers are API endpoints, not application pages.

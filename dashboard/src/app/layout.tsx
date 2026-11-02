@@ -1,6 +1,7 @@
 'use client';
 import './globals.css';
 import './repairs.css';
+import './monochrome.css';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {useEffect,useState} from 'react';

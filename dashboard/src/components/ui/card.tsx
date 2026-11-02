@@ -26,7 +26,7 @@ export const Card: React.FC<CardProps> = ({
         border: '1px solid var(--border-subtle)',
         borderRadius: '16px',
         padding: '24px',
-        boxShadow: '0 2px 8px rgba(44, 34, 25, 0.02)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
         transition: 'all 0.15s ease',
         cursor: onClick ? 'pointer' : 'default',
         ...style,

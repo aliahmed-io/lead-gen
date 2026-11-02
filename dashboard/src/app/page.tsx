@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import {ArrowUpRight, Search, Mail, SlidersHorizontal, ShieldCheck, Layers, CornerDownRight} from 'lucide-react';
 import './landing.css';
+import './wow.css';
+import WorkflowDemo from './WorkflowDemo';
 
 const features = [
   {icon: Search, title: 'Research before reaching out.', text: 'Find businesses, inspect their websites, and keep the source behind each contact.', href: '/leadgen', link: 'Explore lead generation'},
@@ -13,15 +15,12 @@ export default function LandingPage() {
     <header className="lg-nav"><Link href="/" className="lg-brand"><span className="lg-mark" aria-hidden="true">↗</span> LeadGen<span className="lg-project">Personal project</span></Link><nav aria-label="Landing navigation"><a href="#workflow">How it works</a><a href="#workspace">The workspace</a><Link href="/overview" className="lg-button lg-small">Open workspace <ArrowUpRight size={16}/></Link></nav></header>
     <main id="landing-main">
       <section className="lg-hero">
-        <p className="lg-kicker"><span/> Research. Review. Reach out.</p>
+        <div className="lg-hero-copy"><p className="lg-kicker"><span/> Research. Review. Reach out.</p>
         <h1>A clearer way<br/>to find your<br/>next client.</h1>
         <p className="lg-intro">A personal outreach workspace for freelancers. Find relevant businesses, review real contacts, and manage email conversations in one place.</p>
         <div className="lg-actions"><Link href="/overview" className="lg-button">Explore the workspace <ArrowUpRight size={18}/></Link><a href="#workflow" className="lg-plain">See how it works <CornerDownRight size={18}/></a></div>
         <p className="lg-note">Built for one operator. You decide who to contact.</p>
-        <div className="lg-preview" aria-label="Illustrative outreach workspace preview">
-          <div className="lg-preview-bar"><strong>LeadGen / Workspace</strong><span>Illustrative preview · no live data</span></div>
-          <div className="lg-preview-body"><aside><strong>Your workspace</strong><span className="lg-selected">Overview</span><span>Lead generation</span><span>Leads database</span><span>Inbox</span><span>Campaigns</span></aside><div className="lg-preview-content"><div className="lg-preview-title"><h2>From research to a real conversation.</h2><span>Review first</span></div><div className="lg-flow"><div><Search size={20}/><strong>Find businesses</strong><span>Keep the source</span></div><b aria-hidden="true">→</b><div><ShieldCheck size={20}/><strong>Review contacts</strong><span>Check the evidence</span></div><b aria-hidden="true">→</b><div><Mail size={20}/><strong>Start conversations</strong><span>Keep the context</span></div></div><div className="lg-preview-bottom"><span>Source evidence</span><span>Contact review</span><span>Campaign readiness</span></div></div></div>
-        </div>
+        </div><WorkflowDemo />
       </section>
       <section id="workflow" className="lg-section lg-workflow"><div className="lg-section-heading"><p className="lg-kicker">The process</p><h2>Less scattered work.<br/>More considered outreach.</h2><p>Move through a simple workflow, with a review between finding a contact and sending a message.</p></div><ol className="lg-steps">{[['Find your fit','Search for businesses relevant to your work. Keep website and contact sources attached.'],['Review the evidence','Check ownership, suitability, and email verification before enrolling a contact.'],['Reach out with context','Prepare a sequence, review readiness, and follow the conversation in your inbox.']].map(([title,text],i)=><li key={title}><span>{String(i+1).padStart(2,'0')}</span><h3>{title}</h3><p>{text}</p></li>)}</ol></section>
       <section id="workspace" className="lg-section lg-features"><div className="lg-section-heading"><p className="lg-kicker">One workspace</p><h2>The whole picture.<br/>Without the tab hopping.</h2></div><div className="lg-feature-grid">{features.map(({icon:Icon,title,text,href,link})=><article key={title}><Icon size={30} strokeWidth={1.4}/><h3>{title}</h3><p>{text}</p><Link href={href}>{link}<ArrowUpRight size={16}/></Link></article>)}</div></section>

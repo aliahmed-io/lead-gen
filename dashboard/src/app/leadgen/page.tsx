@@ -289,9 +289,9 @@ export default function LeadGenPage() {
                   borderRadius: '12px',
                   fontSize: '12px',
                   fontWeight: 700,
-                  background: 'rgba(74, 109, 75, 0.15)',
+                  background: 'var(--success-bg)',
                   color: 'var(--success)',
-                  border: '1px solid rgba(74, 109, 75, 0.3)',
+                  border: '1px solid var(--border-strong)',
                 }}
               >
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }} />
@@ -344,8 +344,8 @@ export default function LeadGenPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: 'rgba(181, 78, 69, 0.1)',
-                borderColor: 'rgba(181, 78, 69, 0.3)',
+                background: 'var(--danger-bg)',
+                borderColor: 'var(--border-strong)',
                 color: 'var(--danger)',
               }}
             >
@@ -811,8 +811,8 @@ export default function LeadGenPage() {
 
           <pre
             style={{
-              background: '#111317',
-              color: '#4ade80',
+              background: '#171717',
+              color: '#dddddd',
               padding: '16px',
               borderRadius: '12px',
               fontSize: '12px',
@@ -820,7 +820,7 @@ export default function LeadGenPage() {
               height: '420px',
               overflowY: 'auto',
               whiteSpace: 'pre-wrap',
-              border: '1px solid #23272f',
+              border: '1px solid #444444',
               boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.4)',
             }}
           >

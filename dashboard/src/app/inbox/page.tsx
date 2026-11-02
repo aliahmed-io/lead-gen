@@ -287,7 +287,7 @@ export default function InboxPage() {
                     {/* Sentiment Pill */}
                     <div style={{ display: 'flex', gap: '6px', marginTop: '6px', alignItems: 'center' }}>
                       {thread.sentiment === 'meeting_requested' && (
-                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'rgba(74, 109, 75, 0.15)', color: 'var(--success)' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'var(--success-bg)', color: 'var(--success)' }}>
                           Meeting Call
                         </span>
                       )}

@@ -54,7 +54,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const isSuccess = t.type === 'success';
             const isError = t.type === 'error';
             const bg = isSuccess ? 'var(--success-bg)' : isError ? 'var(--danger-bg)' : 'var(--bg-surface)';
-            const border = isSuccess ? 'rgba(74, 109, 75, 0.25)' : isError ? 'rgba(181, 78, 69, 0.25)' : 'var(--border-default)';
+            const border = isSuccess ? 'var(--border-strong)' : isError ? 'var(--border-strong)' : 'var(--border-default)';
             const color = isSuccess ? 'var(--success)' : isError ? 'var(--danger)' : 'var(--text-primary)';
             const Icon = isSuccess ? CheckCircle : isError ? AlertCircle : Info;
 
